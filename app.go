@@ -5,6 +5,7 @@ import (
   "os"
   "reflect"
   "sync"
+  "unsafe"
 
   "github.com/veandco/go-sdl2/sdl"
   "github.com/go-gl/gl/v4.1-core/gl"
@@ -27,7 +28,9 @@ type App struct {
   drawCh chan bool
   root   *Root
   window *sdl.Window
+  framebuffers [2]uint32
 
+  ctx    sdl.GLContext
   debug  *os.File
 }
 
@@ -45,6 +48,8 @@ func NewApp(name string) *App {
     &sync.Mutex{},
     make(chan bool),
     NewRoot(),
+    nil,
+    [2]uint32{0, 0},
     nil,
     debug,
   }
@@ -64,7 +69,6 @@ func (app *App) run() error {
   defer sdl.Quit()
 
   var err error
-
   app.window, err = sdl.CreateWindow(
     app.name, 
     sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
@@ -78,6 +82,10 @@ func (app *App) run() error {
   defer app.window.Destroy()
 
   app.window.SetMinimumSize(1024, 768)
+
+  if err := InitOS(app.window); err != nil {
+    return err
+  }
 
   sdl.Delay(START_DELAY)
 
@@ -114,8 +122,14 @@ func (app *App) loopEvents() error {
   for running {
     event_ := sdl.WaitEvent()
 
+    // most common events first
     switch event := event_.(type) {
-    case *sdl.MouseMotionEvent: // most common event first
+    case *sdl.SysWMEvent:
+      if err := HandleSysWMEvent(app, event); err != nil{
+        return err
+      }
+      break
+    case *sdl.MouseMotionEvent:
       break
 
     case *sdl.QuitEvent:
@@ -177,6 +191,8 @@ func (app *App) render() {
     return
   }
 
+  app.ctx = ctx
+
   if err := app.window.GLMakeCurrent(ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current in render: %s\n", err.Error())
     return
@@ -193,6 +209,12 @@ func (app *App) render() {
     return
   }
 
+  //gl.CreateFramebuffers(1, &(app.framebuffers[0]))
+  //gl.CreateFramebuffers(1, &(app.framebuffers[1]))
+
+  //gl.GenFramebuffers(1, &(app.framebuffers[0]))
+  //gl.GenFramebuffers(1, &(app.framebuffers[1]))
+
   x, y := app.window.GetPosition()
   app.x = int(x)
   app.y = int(y)
@@ -202,7 +224,7 @@ func (app *App) render() {
     return
   }
 
-  app.draw(ctx)
+  app.draw()
 
   app.mutex.Unlock()
 
@@ -212,7 +234,7 @@ func (app *App) render() {
     //}
     <- app.drawCh
 
-    app.draw(ctx)
+    app.draw()
 
     sdl.Delay(RENDER_LOOP_INTERVAL)
 
@@ -258,14 +280,26 @@ func someOffscreenBecameVisible(oldX int, x int, w int, W int) bool {
   return b
 }
 
-func (app *App) draw(ctx sdl.GLContext) {
-  if err := app.window.GLMakeCurrent(ctx); err != nil {
+func (app *App) draw() {
+  if err := app.window.GLMakeCurrent(app.ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
     return
   }
 
   w, h := app.window.GetSize()
+
   gl.Viewport(0, 0, w, h)
+
+  app.drawInner()
+
+  app.window.GLSwap()
+
+  if err := app.window.GLMakeCurrent(nil); err != nil {
+    fmt.Fprintf(app.debug, "unable to unmake current: %s\n", err.Error())
+  }
+}
+
+func (app *App) drawInner() {
 
   //app.root.IncrementBGColor()
   color := app.root.BGColor()
@@ -278,8 +312,35 @@ func (app *App) draw(ctx sdl.GLContext) {
   )
 
   gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+}
 
-  //fmt.Println("drawing...")
+func (app *App) drawThumbnail(w int, h int, dst unsafe.Pointer) {
+  if err := app.window.GLMakeCurrent(app.ctx); err != nil {
+    fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
+    return
+  }
+  gl.BindFramebuffer(gl.FRAMEBUFFER, app.framebuffers[0])
+
+  wWin, hWin := app.window.GetSize()
+
+  gl.Viewport(0, 0, wWin, hWin)
+
+  app.drawInner()
+
+  // create the thumbnail
+  gl.BindFramebuffer(gl.READ_FRAMEBUFFER, app.framebuffers[0])
+  gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, app.framebuffers[1])
+  gl.BlitFramebuffer(0, 0, wWin, hWin, 0, 0, int32(w), int32(h), gl.COLOR_BUFFER_BIT, gl.LINEAR)
+  gl.BindFramebuffer(gl.READ_FRAMEBUFFER, app.framebuffers[1])
+  gl.ReadPixels(0, 0, int32(w), int32(h), gl.RGBA, gl.UNSIGNED_BYTE, dst)
+
+  // take this opportunity to also write to the screen
+  gl.BindFramebuffer(gl.READ_FRAMEBUFFER, app.framebuffers[0])
+  gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
+  gl.BlitFramebuffer(0, 0, wWin, hWin, 0, 0, wWin, hWin, gl.COLOR_BUFFER_BIT, gl.NEAREST)
+
+  // make sure default framebuffer is also the read framebuffer
+  gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 
   app.window.GLSwap()
 
