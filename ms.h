@@ -79,3 +79,59 @@ void SetIconicThumbnail(HWND hwnd, uint32_t w, uint32_t h, const BYTE* data) {
 
   DeleteObject(bmp);
 }
+
+void SetIconicLivePreview(HWND hwnd, uint32_t w, uint32_t h, const BYTE* data) {
+  // bitmap creation based on windows7 sdk sample
+  HDC hdcMem = CreateCompatibleDC(NULL);
+  if (hdcMem == NULL) {
+    fprintf(stderr, "something went wrong when preparing thumbnail bitmap\n");
+    return;
+  }
+
+  BITMAPINFO bmi;
+  ZeroMemory(&bmi.bmiHeader, sizeof(BITMAPINFOHEADER));
+  bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  bmi.bmiHeader.biWidth = w;
+  bmi.bmiHeader.biHeight = -h;
+  bmi.bmiHeader.biPlanes = 1;
+  bmi.bmiHeader.biBitCount = 32;
+
+  PBYTE pbDS = NULL;
+  HBITMAP bmp = CreateDIBSection(hdcMem, &bmi, DIB_RGB_COLORS, (VOID**)&pbDS, NULL, 0);
+  if (bmp == NULL) {
+    fprintf(stderr, "something went wrong when allocating thumbnail bitmap\n");
+    return;
+  }
+
+  for (int y = 0; y < (int)h; y++) {
+    for (int x = 0; x < (int)w; x++) {
+      int k = x*(int)h + y;
+      pbDS[0] = data[k*4+0];
+      pbDS[1] = data[k*4+1];
+      pbDS[2] = data[k*4+2];
+      pbDS[3] = data[k*4+3];
+      pbDS += 4;
+    }
+  }
+
+  DeleteDC(hdcMem);
+
+  //HBITMAP bmp = CreateBitmap(w, h, 1, 32, data);
+
+  POINT ptOffset;
+  ptOffset.x = 0;
+  ptOffset.y = 0;
+
+  HRESULT res = DwmSetIconicLivePreviewBitmap(hwnd, bmp, &ptOffset, DWM_SIT_DISPLAYFRAME);
+  if (res != S_OK) {
+    fprintf(stderr, "something went wrong when setting iconic live preview (%d, %#06x, %#010x)\n", res, res, bmp);
+  }
+
+  DeleteObject(bmp);
+}
+
+void InvalidateIconicBitmaps(HWND hwnd) {
+  if (DwmInvalidateIconicBitmaps(hwnd) != S_OK) {
+    fprintf(stderr, "something went wrong when invalidating thumbnail\n");
+  }
+}

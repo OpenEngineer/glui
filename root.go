@@ -9,10 +9,11 @@ type Root struct {
   bgColor sdl.Color
 }
 
+// windows can't be made transparent like this sadly, so alpha stays 255
 func NewRoot() *Root {
   return &Root{
     0,
-    sdl.Color{0,0,0,128},
+    sdl.Color{0,0,0,255},
   }
 }
 
@@ -26,5 +27,5 @@ func (r *Root) IncrementBGColor() {
 
   c := uint8(r.iTest*10%256)
 
-  r.bgColor = sdl.Color{c, c, c, 128}
+  r.bgColor = sdl.Color{c, c, c, 255}
 }

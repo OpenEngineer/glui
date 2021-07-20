@@ -1,6 +1,7 @@
 package glui
 
 import (
+  "errors"
   "fmt"
   "os"
   "reflect"
@@ -29,6 +30,8 @@ type App struct {
   root   *Root
   window *sdl.Window
   framebuffers [2]uint32
+  program uint32
+  dd      *DrawData
 
   ctx    sdl.GLContext
   debug  *os.File
@@ -50,6 +53,8 @@ func NewApp(name string) *App {
     NewRoot(),
     nil,
     [2]uint32{0, 0},
+    0,
+    nil,
     nil,
     debug,
   }
@@ -188,26 +193,75 @@ func (app *App) render() {
   ctx, err := app.window.GLCreateContext()
   if err != nil {
     fmt.Fprintf(app.debug, "unable to create context: %s\n", err.Error())
-    return
+    panic(err)
   }
 
   app.ctx = ctx
 
   if err := app.window.GLMakeCurrent(ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current in render: %s\n", err.Error())
-    return
+    panic(err)
   }
 
   if err := gl.Init(); err != nil {
     fmt.Fprintf(app.debug, "render gl.Init error: %s\n", err.Error())
-    return
+    panic(err)
   }
 
   glVersion := gl.GoStr(gl.GetString(gl.VERSION))
   if glVersion == "" {
-    fmt.Fprintf(app.debug, "empty OpenGL version\n")
-    return
+    err := errors.New("empty OpenGL version")
+    fmt.Fprintf(app.debug, "%s\n", err.Error())
+    panic(err)
   }
+
+  app.program, err = compileProgram()
+  if err != nil {
+    fmt.Fprintf(app.debug, "failed to compile OpenGL program: %s\n", err.Error())
+    panic(err)
+  }
+
+  fmt.Println("compiled program ok")
+
+  app.dd = NewDrawData(app.program)
+
+  fmt.Println("created draw data ok")
+
+  l := float32(-0.9)
+  r := float32(0.9)
+  t := float32(0.9)
+  b := float32(-0.9)
+
+  // TODO: example tri here
+  testTri := app.dd.Alloc(2)
+  fmt.Println("testTris: ", testTri)
+  app.dd.Pos.Set3(testTri[0], 0, l, b, -0.5)
+  app.dd.Pos.Set3(testTri[0], 1, r, b, -0.5)
+  app.dd.Pos.Set3(testTri[0], 2, l, t, -0.5)
+
+  app.dd.Type.Set1Const(testTri[0], VTYPE_PLAIN)
+
+  app.dd.Color.Set4(testTri[0], 0, 1.0, 0, 0, 1.0);
+  app.dd.Color.Set4(testTri[0], 1, 0, 1.0, 0, 1.0);
+  app.dd.Color.Set4(testTri[0], 2, 0, 0, 1.0, 1.0);
+
+  app.dd.TCoord.Set2(testTri[0], 0, 0.0, 0.0);
+  app.dd.TCoord.Set2(testTri[0], 1, 0.0, 0.0);
+  app.dd.TCoord.Set2(testTri[0], 2, 0.0, 0.0);
+
+  app.dd.Pos.Set3(testTri[1], 0, r, t, -0.5)
+  app.dd.Pos.Set3(testTri[1], 1, r, b, -0.5)
+  app.dd.Pos.Set3(testTri[1], 2, l, t, -0.5)
+
+  app.dd.Type.Set1Const(testTri[1], VTYPE_PLAIN)
+
+  app.dd.Color.Set4(testTri[1], 0, 1.0, 1.0, 0, 1.0);
+  app.dd.Color.Set4(testTri[1], 1, 0, 1.0, 0, 1.0);
+  app.dd.Color.Set4(testTri[1], 2, 0, 0, 1.0, 1.0);
+
+  app.dd.TCoord.Set2(testTri[1], 0, 0.0, 0.0);
+  app.dd.TCoord.Set2(testTri[1], 1, 0.0, 0.0);
+  app.dd.TCoord.Set2(testTri[1], 2, 0.0, 0.0);
 
   //gl.CreateFramebuffers(1, &(app.framebuffers[0]))
   //gl.CreateFramebuffers(1, &(app.framebuffers[1]))
@@ -224,7 +278,7 @@ func (app *App) render() {
     return
   }
 
-  app.draw()
+  //app.draw()
 
   app.mutex.Unlock()
 
@@ -296,6 +350,12 @@ func (app *App) draw() {
 
   if err := app.window.GLMakeCurrent(nil); err != nil {
     fmt.Fprintf(app.debug, "unable to unmake current: %s\n", err.Error())
+    return
+  }
+
+  if err := OnAfterDrawOS(app); err != nil {
+    fmt.Fprintf(app.debug, "unable to run OnAfterDraw: %s\n", err.Error())
+    return
   }
 }
 
@@ -312,6 +372,11 @@ func (app *App) drawInner() {
   )
 
   gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+  gl.UseProgram(app.program)
+  app.dd.SyncAndBind()
+
+  gl.DrawArrays(gl.TRIANGLES, 0, int32(app.dd.Len())*3)
 }
 
 func (app *App) drawThumbnail(w int, h int, dst unsafe.Pointer) {
@@ -346,5 +411,37 @@ func (app *App) drawThumbnail(w int, h int, dst unsafe.Pointer) {
 
   if err := app.window.GLMakeCurrent(nil); err != nil {
     fmt.Fprintf(app.debug, "unable to unmake current: %s\n", err.Error())
+    return
+  }
+}
+
+func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {
+  if err := app.window.GLMakeCurrent(app.ctx); err != nil {
+    fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
+    return
+  }
+  gl.BindFramebuffer(gl.FRAMEBUFFER, app.framebuffers[0])
+
+  gl.Viewport(0, 0, int32(w), int32(h))
+
+  app.drawInner()
+
+  // copy the pixels into a bitmap
+  gl.BindFramebuffer(gl.READ_FRAMEBUFFER, app.framebuffers[0])
+  gl.ReadPixels(0, 0, int32(w), int32(h), gl.RGBA, gl.UNSIGNED_BYTE, dst)
+
+  // take this opportunity to also write to the screen
+  gl.BindFramebuffer(gl.READ_FRAMEBUFFER, app.framebuffers[0])
+  gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
+  gl.BlitFramebuffer(0, 0, int32(w), int32(h), 0, 0, int32(w), int32(h), gl.COLOR_BUFFER_BIT, gl.NEAREST)
+
+  // make sure default framebuffer is also the read framebuffer
+  gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+  app.window.GLSwap()
+
+  if err := app.window.GLMakeCurrent(nil); err != nil {
+    fmt.Fprintf(app.debug, "unable to unmake current: %s\n", err.Error())
+    return
   }
 }

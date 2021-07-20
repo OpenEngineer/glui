@@ -13,3 +13,7 @@ func InitOS(window *sdl.Window) error {
 func HandleSysWMEvent(app *App, event *sdl.SysWMEvent) error {
   return nil
 }
+
+func OnAfterDrawOS(app *App) error {
+  return nil
+}

@@ -9,10 +9,10 @@ import "C"
 
 import (
   "fmt"
-  "image"
-  "image/color"
-  "image/png"
-  "os"
+  //"image"
+  //"image/color"
+  //"image/png"
+  //"os"
   "unsafe"
 
   "github.com/veandco/go-sdl2/sdl"
@@ -47,6 +47,20 @@ func HandleSysWMEvent(app *App, event *sdl.SysWMEvent) error {
   switch C.GetSysWMmsgType(sysMsg) {
   case C.WM_DWMSENDICONICLIVEPREVIEWBITMAP:
     fmt.Println("received SENDICONICLIVEPREVIEW request\n")
+    w, h := app.window.GetSize()
+
+    b := make([]byte, w*h*4)
+
+    bUnsafe := unsafe.Pointer(&(b[0]))
+
+    app.drawAndCopyToBitmap(int(w), int(h), bUnsafe)
+
+    hwnd, err := getWindowHandle(app.window)
+    if err != nil {
+      return err
+    }
+
+    C.SetIconicLivePreview(hwnd, (C.uint32_t)(w), (C.uint32_t)(h), (*C.uchar)(bUnsafe))
     break
   case C.WM_DWMSENDICONICTHUMBNAIL:
     fmt.Println("received SENICONICTHUMBNAIL request\n")
@@ -61,18 +75,22 @@ func HandleSysWMEvent(app *App, event *sdl.SysWMEvent) error {
     app.drawThumbnail(int(wMax), int(hMax), bUnsafe)
 
     // also save as image
-    bmpRect := image.Rect(0, 0, int(wMax), int(hMax))
+    /*bmpRect := image.Rect(0, 0, int(wMax), int(hMax))
     bmp := image.NewRGBA(bmpRect)
     for i := 0; i < int(wMax); i++ {
       for j := 0; j < int(hMax); j++ {
         k := i*int(hMax) + j
 
+        //if (i == 0 && j == 0) {
+          //fmt.Printf("%d, %d, %d, %d\n", b[k*4+0], b[k*4+1], b[k*4+2], b[k*4+3])
+        //}
+
         bmp.SetRGBA(i, j, color.RGBA{b[k*4+0], b[k*4+1], b[k*4+2], b[k*4+3]})
       }
-    }
+    }*/
 
     // save for debugging
-    f, err := os.Create("thumbnail.png")
+    /*f, err := os.Create("thumbnail.png")
     if err != nil {
       fmt.Fprintf(os.Stderr, "failed to create file for thumbnail")
     } else {
@@ -80,8 +98,7 @@ func HandleSysWMEvent(app *App, event *sdl.SysWMEvent) error {
         fmt.Fprintf(os.Stderr, "thumbnail generation failed")
       }
     }
-
-    f.Close()
+    f.Close()*/
 
     hwnd, err := getWindowHandle(app.window)
     if err != nil {
@@ -90,6 +107,17 @@ func HandleSysWMEvent(app *App, event *sdl.SysWMEvent) error {
 
     C.SetIconicThumbnail(hwnd, (C.uint32_t)(wMax), (C.uint32_t)(hMax), (*C.uchar)(bUnsafe))
   }
+
+  return nil
+}
+
+func OnAfterDrawOS(app *App) error {
+  hwnd, err := getWindowHandle(app.window)
+  if err != nil {
+    return err
+  }
+
+  C.InvalidateIconicBitmaps(hwnd)
 
   return nil
 }
