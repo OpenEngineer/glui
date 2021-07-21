@@ -72,7 +72,6 @@ void main() {
   if (vType == PLAIN) {
     oColor = vColor;
   }
-  oColor = vColor;
 }
 `)
 

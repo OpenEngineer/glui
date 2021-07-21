@@ -27,7 +27,7 @@ type App struct {
 
   mutex  *sync.Mutex
   drawCh chan bool
-  root   *Root
+  body   *Body
   window *sdl.Window
   framebuffers [2]uint32
   program uint32
@@ -50,11 +50,11 @@ func NewApp(name string) *App {
     0, 0,
     &sync.Mutex{},
     make(chan bool),
-    NewRoot(),
+    NewBody(),
     nil,
     [2]uint32{0, 0},
     0,
-    nil,
+    NewDrawData(),
     nil,
     debug,
   }
@@ -64,6 +64,10 @@ func (app *App) Run() {
   if err := app.run(); err != nil {
     fmt.Fprintf(os.Stderr, "%s\n", err.Error())
   }
+}
+
+func (app *App) Body() *Body {
+  return app.body
 }
 
 func (app *App) run() error {
@@ -141,18 +145,30 @@ func (app *App) loopEvents() error {
       running = false
       break
     case *sdl.TextInputEvent:
-      app.root.IncrementBGColor()
+      app.body.IncrementBGColor()
       fmt.Println("sending data into draw ch")
       app.drawCh <- true
       break
     case *sdl.KeyboardEvent:
       break
     case *sdl.WindowEvent:
-      if false {
-        fmt.Println("window event type: ", event.Type)
+      switch event.Event {
+      case sdl.WINDOWEVENT_SHOWN:
+        app.OnShowOrResize()
+        break
+      case sdl.WINDOWEVENT_EXPOSED:
+        app.OnShowOrResize()
+        break
+      case sdl.WINDOWEVENT_RESIZED:
+        app.OnShowOrResize()
+        break
+      case sdl.WINDOWEVENT_MAXIMIZED:
+        app.OnShowOrResize()
+        break
+      case sdl.WINDOWEVENT_RESTORED:
+        app.OnShowOrResize()
+        break
       }
-      app.drawCh <- true
-      break
     default:
       fmt.Println("event: ", reflect.TypeOf(event_).String())
     }
@@ -163,10 +179,19 @@ func (app *App) loopEvents() error {
   return nil
 }
 
+func (app *App) OnShowOrResize() {
+  app.dd.SyncSize(app.window)
+
+  app.body.OnResize(Rect{0, 0, app.dd.W, app.dd.H})
+
+  app.drawCh <- true
+}
+
 func (app *App) detectOffscreenBecomesVisible() {
   for true {
     x, y := app.window.GetPosition()
-    w, h := app.window.GetSize()
+    w := app.dd.W
+    h := app.dd.H
     W, H, err := app.getScreenSize()
     if err != nil {
       panic(err)
@@ -223,16 +248,16 @@ func (app *App) render() {
 
   fmt.Println("compiled program ok")
 
-  app.dd = NewDrawData(app.program)
+  app.dd.InitGL(app.program)
 
   fmt.Println("created draw data ok")
 
-  l := float32(-0.9)
+  /*l := float32(-0.9)
   r := float32(0.9)
   t := float32(0.9)
   b := float32(-0.9)
 
-  // TODO: example tri here
+  // TODO: move this into element
   testTri := app.dd.Alloc(2)
   fmt.Println("testTris: ", testTri)
   app.dd.Pos.Set3(testTri[0], 0, l, b, -0.5)
@@ -253,7 +278,7 @@ func (app *App) render() {
   app.dd.Pos.Set3(testTri[1], 1, r, b, -0.5)
   app.dd.Pos.Set3(testTri[1], 2, l, t, -0.5)
 
-  app.dd.Type.Set1Const(testTri[1], VTYPE_PLAIN)
+  app.dd.Type.Set1Const(testTri[1], VTYPE_HIDDEN)
 
   app.dd.Color.Set4(testTri[1], 0, 1.0, 1.0, 0, 1.0);
   app.dd.Color.Set4(testTri[1], 1, 0, 1.0, 0, 1.0);
@@ -261,7 +286,7 @@ func (app *App) render() {
 
   app.dd.TCoord.Set2(testTri[1], 0, 0.0, 0.0);
   app.dd.TCoord.Set2(testTri[1], 1, 0.0, 0.0);
-  app.dd.TCoord.Set2(testTri[1], 2, 0.0, 0.0);
+  app.dd.TCoord.Set2(testTri[1], 2, 0.0, 0.0);*/
 
   //gl.CreateFramebuffers(1, &(app.framebuffers[0]))
   //gl.CreateFramebuffers(1, &(app.framebuffers[1]))
@@ -340,9 +365,9 @@ func (app *App) draw() {
     return
   }
 
-  w, h := app.window.GetSize()
+  w, h := app.dd.GetSize()
 
-  gl.Viewport(0, 0, w, h)
+  gl.Viewport(0, 0, int32(w), int32(h))
 
   app.drawInner()
 
@@ -361,8 +386,8 @@ func (app *App) draw() {
 
 func (app *App) drawInner() {
 
-  //app.root.IncrementBGColor()
-  color := app.root.BGColor()
+  //app.body.IncrementBGColor()
+  color := app.body.BGColor()
 
   gl.ClearColor(
     float32(color.R)/float32(256),
@@ -444,4 +469,8 @@ func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {
     fmt.Fprintf(app.debug, "unable to unmake current: %s\n", err.Error())
     return
   }
+}
+
+func (app *App) DrawData() *DrawData {
+  return app.dd
 }

@@ -3,6 +3,7 @@ package glui
 import (
   "fmt"
 
+  "github.com/veandco/go-sdl2/sdl"
   "github.com/go-gl/gl/v4.1-core/gl"
 )
 
@@ -41,49 +42,58 @@ type UInt8Buffer struct {
 type DrawData struct {
   free []uint32
 
+  W int
+  H int
+
   Pos    *Float32Buffer
   Type   *UInt8Buffer
   Color  *Float32Buffer
   TCoord *Float32Buffer
 }
 
-func NewFloat32Buffer(location uint32, nComp int) *Float32Buffer {
-  // start with enough space for 100 triangles
-  b := &Float32Buffer{nComp, location, 0, 0, make([]float32, N_INIT_TRIS*3*nComp), true}
+func NewFloat32Buffer(nComp int) *Float32Buffer {
+  b := &Float32Buffer{nComp, 0, 0, 0, make([]float32, N_INIT_TRIS*3*nComp), true}
+
+  return b
+}
+
+func (b *Float32Buffer) InitGL(location uint32) {
+  b.loc = location
 
   gl.GenBuffers(1, &b.vbo)
   gl.GenVertexArrays(1, &b.vao)
   gl.BindVertexArray(b.vao)
-  gl.EnableVertexAttribArray(location)
+  gl.EnableVertexAttribArray(b.loc)
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.FLOAT, false, 0, nil)
   gl.BindBuffer(gl.ARRAY_BUFFER, 0)
   gl.BindVertexArray(0)
 
+  b.dirty = true
+}
+
+func NewUInt8Buffer(nComp int) *UInt8Buffer {
+  b := &UInt8Buffer{nComp, 0, 0, 0, make([]uint8, N_INIT_TRIS*3*nComp), true}
+
   return b
 }
 
-func NewUInt8Buffer(location uint32, nComp int) *UInt8Buffer {
-  b := &UInt8Buffer{nComp, location, 0, 0, make([]uint8, N_INIT_TRIS*3*nComp), true}
+func (b *UInt8Buffer) InitGL(location uint32) {
+  b.loc = location
 
   gl.GenBuffers(1, &b.vbo)
   gl.GenVertexArrays(1, &b.vao)
   gl.BindVertexArray(b.vao)
-  gl.EnableVertexAttribArray(location)
+  gl.EnableVertexAttribArray(b.loc)
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.UNSIGNED_BYTE, false, 0, nil)
   gl.BindBuffer(gl.ARRAY_BUFFER, 0)
   gl.BindVertexArray(0)
 
-  return b
+  b.dirty = true
 }
 
-func NewDrawData(prog uint32) *DrawData {
-  posLoc := gl.GetAttribLocation(prog, gl.Str("aPos\x00"))
-  typeLoc := gl.GetAttribLocation(prog, gl.Str("aType\x00"))
-  colorLoc := gl.GetAttribLocation(prog, gl.Str("aColor\x00"))
-  tcoordLoc := gl.GetAttribLocation(prog, gl.Str("aTCoord\x00"))
-
+func NewDrawData() *DrawData {
   free := make([]uint32, N_INIT_TRIS)
   for i := 0; i < N_INIT_TRIS; i++ {
     free[i] = uint32(i)
@@ -91,10 +101,12 @@ func NewDrawData(prog uint32) *DrawData {
 
   d := &DrawData{
     free,
-    NewFloat32Buffer(uint32(posLoc), 3),
-    NewUInt8Buffer(uint32(typeLoc), 1),
-    NewFloat32Buffer(uint32(colorLoc), 4),
-    NewFloat32Buffer(uint32(tcoordLoc), 2),
+    0,
+    0,
+    NewFloat32Buffer(3),
+    NewUInt8Buffer(1),
+    NewFloat32Buffer(4),
+    NewFloat32Buffer(2),
   }
 
   // set all types to zero
@@ -103,6 +115,18 @@ func NewDrawData(prog uint32) *DrawData {
   }
 
   return d
+}
+
+func (d *DrawData) InitGL(prog uint32) {
+  posLoc := gl.GetAttribLocation(prog, gl.Str("aPos\x00"))
+  typeLoc := gl.GetAttribLocation(prog, gl.Str("aType\x00"))
+  colorLoc := gl.GetAttribLocation(prog, gl.Str("aColor\x00"))
+  tcoordLoc := gl.GetAttribLocation(prog, gl.Str("aTCoord\x00"))
+
+  d.Pos.InitGL(uint32(posLoc))
+  d.Type.InitGL(uint32(typeLoc))
+  d.Color.InitGL(uint32(colorLoc))
+  d.TCoord.InitGL(uint32(tcoordLoc))
 }
 
 // number of tris
@@ -136,8 +160,10 @@ func (b *Float32Buffer) grow(nTrisNew int) {
     b.data[i] = old
   }
 
-  gl.DeleteBuffers(1, &b.vbo)
-  gl.GenBuffers(1, &b.vbo)
+  if b.vbo != 0 {
+    gl.DeleteBuffers(1, &b.vbo)
+    gl.GenBuffers(1, &b.vbo)
+  }
 
   b.dirty = true
 }
@@ -151,8 +177,10 @@ func (b *UInt8Buffer) grow(nTrisNew int) {
     b.data[i] = old
   }
 
-  gl.DeleteBuffers(1, &b.vbo)
-  gl.GenBuffers(1, &b.vbo)
+  if b.vbo != 0 {
+    gl.DeleteBuffers(1, &b.vbo)
+    gl.GenBuffers(1, &b.vbo)
+  }
 
   b.dirty = true
 }
@@ -226,6 +254,21 @@ func (b *Float32Buffer) Set2(triId uint32, vertexId uint32, value0 float32, valu
 
   b.data[offset + 0] = value0
   b.data[offset + 1] = value1
+
+  b.dirty = true
+}
+
+func (b *Float32Buffer) Set2Const(triId uint32, value0 float32, value1 float32) {
+  offset := triId*3
+
+  b.data[(offset + 0)*uint32(b.nComp) + 0] = value0
+  b.data[(offset + 0)*uint32(b.nComp) + 1] = value1
+
+  b.data[(offset + 1)*uint32(b.nComp) + 0] = value0
+  b.data[(offset + 1)*uint32(b.nComp) + 1] = value1
+
+  b.data[(offset + 2)*uint32(b.nComp) + 0] = value0
+  b.data[(offset + 2)*uint32(b.nComp) + 1] = value1
 
   b.dirty = true
 }
@@ -327,6 +370,13 @@ func (b *UInt8Buffer) bind() {
   gl.EnableVertexAttribArray(b.loc)
 }
 
+func (d *DrawData) SetPos(triId uint32, vertexId uint32, x_ int, y_ int, z float32) {
+  x := 2.0*float32(x_)/float32(d.W) - 1.0
+  y := 1.0 - 2.0*float32(y_)/float32(d.H)
+
+  d.Pos.Set3(triId, vertexId, x, y, z)
+}
+
 func (d *DrawData) SyncAndBind() {
   d.Pos.sync()
   d.Type.sync()
@@ -341,4 +391,13 @@ func (d *DrawData) SyncAndBind() {
   gl.BindVertexArray(d.Type.vao)
   gl.BindVertexArray(d.Color.vao)
   gl.BindVertexArray(d.TCoord.vao)*/
+}
+
+func (d *DrawData) GetSize() (int, int) {
+  return d.W, d.H
+}
+
+func (d *DrawData) SyncSize(window *sdl.Window) {
+  w, h := window.GetSize()
+  d.W, d.H = int(w), int(h)
 }
