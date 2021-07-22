@@ -20,6 +20,12 @@ func NewRainbow(dd *DrawData) *Rainbow {
   return e
 }
 
+func (e *Rainbow) AppendChild(child Element) {
+  e.ElementData.appendChild(child)
+
+  child.RegisterParent(e)
+}
+
 func (e *Rainbow) setTypesAndColors() {
   e.dd.Type.Set1Const(e.tri0, VTYPE_PLAIN)
 
@@ -46,6 +52,8 @@ func (e *Rainbow) OnResize(rect Rect) {
 
   t := rect.Y + margin
   b := rect.Bottom() - margin
+
+  e.bb = Rect{l, t, r - l, b - t}
 
   e.dd.SetPos(e.tri0, 0, l, b, 0.5)
   e.dd.SetPos(e.tri0, 1, r, b, 0.5)

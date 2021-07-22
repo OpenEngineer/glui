@@ -10,6 +10,7 @@ import (
 func writeVertexTypes(b *strings.Builder) {
   b.WriteString(fmt.Sprintf("\nconst int HIDDEN = %d;\n", VTYPE_HIDDEN))
   b.WriteString(fmt.Sprintf("const int PLAIN  = %d;\n", VTYPE_PLAIN))
+  b.WriteString(fmt.Sprintf("const int SKIN  = %d;\n", VTYPE_SKIN))
 }
 
 func vertexShader() string {
@@ -20,10 +21,10 @@ func vertexShader() string {
   writeVertexTypes(&b)
 
   b.WriteString(`
-in vec3  aPos;
-in uint  aType;
+in vec3 aPos;
+in float aType;
 in vec4 aColor;
-in vec2  aTCoord;
+in vec2 aTCoord;
 
 out float vType;
 out vec4  vColor;
@@ -66,11 +67,18 @@ in float vType;
 in vec4  vColor;
 in vec2  vTCoord;
 
+uniform sampler2D skin;
+
 out vec4 oColor;
 
 void main() {
-  if (vType == PLAIN) {
+  int t = int(vType);
+
+  if (t == PLAIN) {
     oColor = vColor;
+  } else if (t == SKIN) {
+    oColor = texture(skin, vTCoord);
+    //oColor = vec4(float(t) - 1.0, 1.0, 1.0, 0.0);//vColor;
   }
 }
 `)

@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -19,6 +17,16 @@ func NewBody() *Body {
     0,
     sdl.Color{0,0,0,255},
   }
+}
+
+func (e *Body) RegisterParent(_ Element) {
+  panic("can't register body parent")
+}
+
+func (e *Body) AppendChild(child Element) {
+  e.ElementData.appendChild(child)
+
+  child.RegisterParent(e)
 }
 
 func (e *Body) BGColor() sdl.Color {
@@ -38,8 +46,6 @@ func (e *Body) OnResize(this Rect) {
   // default block positioning
   n := len(e.children)
 
-  fmt.Printf("Have %d children\n", n)
-
   if n > 0 {
     h := this.H/n
 
@@ -47,4 +53,6 @@ func (e *Body) OnResize(this Rect) {
       e.children[i].OnResize(Rect{this.X, this.Y + h*i, this.W, h})
     }
   }
+
+  e.bb = this
 }

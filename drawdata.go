@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-
   "github.com/veandco/go-sdl2/sdl"
   "github.com/go-gl/gl/v4.1-core/gl"
 )
@@ -13,6 +11,7 @@ const (
 
   VTYPE_HIDDEN = 0
   VTYPE_PLAIN  = 1
+  VTYPE_SKIN   = 2
 )
 
 type Float32Buffer struct {
@@ -46,9 +45,11 @@ type DrawData struct {
   H int
 
   Pos    *Float32Buffer
-  Type   *UInt8Buffer
+  Type   *Float32Buffer
   Color  *Float32Buffer
   TCoord *Float32Buffer
+
+  Skin   *SkinMap
 }
 
 func NewFloat32Buffer(nComp int) *Float32Buffer {
@@ -93,7 +94,7 @@ func (b *UInt8Buffer) InitGL(location uint32) {
   b.dirty = true
 }
 
-func NewDrawData() *DrawData {
+func NewDrawData(s Skin) *DrawData {
   free := make([]uint32, N_INIT_TRIS)
   for i := 0; i < N_INIT_TRIS; i++ {
     free[i] = uint32(i)
@@ -104,9 +105,10 @@ func NewDrawData() *DrawData {
     0,
     0,
     NewFloat32Buffer(3),
-    NewUInt8Buffer(1),
+    NewFloat32Buffer(1),
     NewFloat32Buffer(4),
     NewFloat32Buffer(2),
+    NewSkinMap(s),
   }
 
   // set all types to zero
@@ -122,11 +124,14 @@ func (d *DrawData) InitGL(prog uint32) {
   typeLoc := gl.GetAttribLocation(prog, gl.Str("aType\x00"))
   colorLoc := gl.GetAttribLocation(prog, gl.Str("aColor\x00"))
   tcoordLoc := gl.GetAttribLocation(prog, gl.Str("aTCoord\x00"))
+  skinLoc := gl.GetUniformLocation(prog, gl.Str("skin\x00"))
 
   d.Pos.InitGL(uint32(posLoc))
   d.Type.InitGL(uint32(typeLoc))
   d.Color.InitGL(uint32(colorLoc))
   d.TCoord.InitGL(uint32(tcoordLoc))
+
+  d.Skin.InitGL(uint32(skinLoc))
 }
 
 // number of tris
@@ -249,6 +254,24 @@ func (b *Float32Buffer) Set(triId uint32, vertexId uint32, compId uint32, value 
   b.dirty = true
 }
 
+func (b *Float32Buffer) Set1(triId uint32, vertexId uint32, value float32) {
+  offset := (triId*3 + vertexId)*uint32(b.nComp)
+
+  b.data[offset + 0] = value
+
+  b.dirty = true
+}
+
+func (b *Float32Buffer) Set1Const(triId uint32, value float32) {
+  offset := triId*3
+
+  b.data[(offset + 0)*uint32(b.nComp)] = value
+  b.data[(offset + 1)*uint32(b.nComp)] = value
+  b.data[(offset + 2)*uint32(b.nComp)] = value
+
+  b.dirty = true
+}
+
 func (b *Float32Buffer) Set2(triId uint32, vertexId uint32, value0 float32, value1 float32) {
   offset := (triId*3 + vertexId)*uint32(b.nComp)
 
@@ -295,6 +318,27 @@ func (b *Float32Buffer) Set4(triId uint32, vertexId uint32,
   b.dirty = true
 }
 
+func (b *Float32Buffer) Set4Const(triId uint32, value0 float32, value1 float32, value2 float32, value3 float32) {
+  offset := triId*3
+
+  b.data[(offset + 0)*uint32(b.nComp) + 0] = value0
+  b.data[(offset + 0)*uint32(b.nComp) + 1] = value1
+  b.data[(offset + 0)*uint32(b.nComp) + 2] = value2
+  b.data[(offset + 0)*uint32(b.nComp) + 3] = value3
+
+  b.data[(offset + 1)*uint32(b.nComp) + 0] = value0
+  b.data[(offset + 1)*uint32(b.nComp) + 1] = value1
+  b.data[(offset + 1)*uint32(b.nComp) + 2] = value2
+  b.data[(offset + 1)*uint32(b.nComp) + 3] = value3
+
+  b.data[(offset + 2)*uint32(b.nComp) + 0] = value0
+  b.data[(offset + 2)*uint32(b.nComp) + 1] = value1
+  b.data[(offset + 2)*uint32(b.nComp) + 2] = value2
+  b.data[(offset + 2)*uint32(b.nComp) + 3] = value3
+
+  b.dirty = true
+}
+
 func (b *UInt8Buffer) Set(triId uint32, vertexId uint32, compId uint32, value uint8) {
   offset := (triId*3 + vertexId)*uint32(b.nComp)
 
@@ -334,8 +378,6 @@ func (b *UInt8Buffer) Set4(triId uint32, vertexId uint32, value0 uint8, value1 u
 
 func (b *Float32Buffer) sync() {
   if b.dirty {
-    fmt.Println("Syncing ", b.data)
-
     gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
     gl.BufferData(gl.ARRAY_BUFFER, 4*len(b.data), gl.Ptr(b.data), gl.STATIC_DRAW)
     gl.BindBuffer(gl.ARRAY_BUFFER, 0)
@@ -346,8 +388,6 @@ func (b *Float32Buffer) sync() {
 
 func (b *UInt8Buffer) sync() {
   if b.dirty {
-    fmt.Println("Syncing ", b.data)
-
     gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
     gl.BufferData(gl.ARRAY_BUFFER, len(b.data), gl.Ptr(b.data), gl.STATIC_DRAW)
     gl.BindBuffer(gl.ARRAY_BUFFER, 0)
@@ -377,11 +417,29 @@ func (d *DrawData) SetPos(triId uint32, vertexId uint32, x_ int, y_ int, z float
   d.Pos.Set3(triId, vertexId, x, y, z)
 }
 
+func (d *DrawData) SetSkinCoord(triId uint32, vertexId uint32, x_ int, y_ int) {
+  x := float32(x_)/float32(d.Skin.width)
+  y := float32(y_)/float32(d.Skin.height)
+
+  // XXX: transpose for some reason
+  d.TCoord.Set2(triId, vertexId, y, x)
+}
+
+func (d *DrawData) SetColorConst(triId uint32, c sdl.Color) {
+  r := float32(c.R)/float32(256)
+  g := float32(c.G)/float32(256)
+  b := float32(c.B)/float32(256)
+  a := float32(c.A)/float32(256)
+
+  d.Color.Set4Const(triId, r, g, b, a)
+}
+
 func (d *DrawData) SyncAndBind() {
   d.Pos.sync()
   d.Type.sync()
   d.Color.sync()
   d.TCoord.sync()
+  // skin is synced upon init
 
   d.Pos.bind()
   d.Type.bind()
@@ -391,6 +449,8 @@ func (d *DrawData) SyncAndBind() {
   gl.BindVertexArray(d.Type.vao)
   gl.BindVertexArray(d.Color.vao)
   gl.BindVertexArray(d.TCoord.vao)*/
+
+  d.Skin.bind()
 }
 
 func (d *DrawData) GetSize() (int, int) {
@@ -400,4 +460,8 @@ func (d *DrawData) GetSize() (int, int) {
 func (d *DrawData) SyncSize(window *sdl.Window) {
   w, h := window.GetSize()
   d.W, d.H = int(w), int(h)
+}
+
+func (d *DrawData) Dirty() bool {
+  return d.Pos.dirty || d.Type.dirty || d.TCoord.dirty || d.Color.dirty
 }

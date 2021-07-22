@@ -21,7 +21,6 @@ const (
 type App struct {
   name string
 
-  dirty bool
   x int
   y int
 
@@ -29,34 +28,55 @@ type App struct {
   drawCh chan bool
   body   *Body
   window *sdl.Window
-  framebuffers [2]uint32
+  framebuffers [2]uint32 // for windows thumbnail drawing
   program uint32
-  dd      *DrawData
 
   ctx    sdl.GLContext
   debug  *os.File
+
+  dd      *DrawData
+  state   AppState
 }
 
-func NewApp(name string) *App {
+type AppState struct {
+  active   Element
+  cursor   int
+  lastDown Element
+  outside  bool
+}
+
+func newAppState() AppState {
+  return AppState{
+    nil,
+    -1,
+    nil,
+    false,
+  }
+}
+
+func NewApp(name string, skin Skin) *App {
   debug, err := os.Create(name + ".log")
   if err != nil {
     panic(err)
   }
 
   fmt.Fprintf(debug, "#starting log\n")
+
+  body := NewBody()
+
   return &App{
     name,
-    false,
     0, 0,
     &sync.Mutex{},
     make(chan bool),
-    NewBody(),
+    body,
     nil,
     [2]uint32{0, 0},
     0,
-    NewDrawData(),
     nil,
     debug,
+    NewDrawData(skin),
+    newAppState(),
   }
 }
 
@@ -139,15 +159,44 @@ func (app *App) loopEvents() error {
       }
       break
     case *sdl.MouseMotionEvent:
+      if !app.state.outside {
+        app.UpdateActive(int(event.X), int(event.Y))
+      }
       break
+    case *sdl.MouseButtonEvent:
+      if event.Button == sdl.BUTTON_LEFT {
+        if event.Type == sdl.MOUSEBUTTONDOWN {
+          app.state.lastDown = app.state.active
+          app.TriggerEvent("mousedown", NewMouseEvent(int(event.X), int(event.Y)))
+        } else if event.Type == sdl.MOUSEBUTTONUP {
+          if !app.state.outside {
+            if app.state.lastDown != nil {
+              tmp := app.state.active
+              app.state.active = app.state.lastDown
 
+              app.TriggerEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
+
+              app.state.active = tmp
+            }
+
+            app.TriggerEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
+          } else {
+            app.state.active = app.state.lastDown
+
+            app.TriggerEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
+
+            app.state.active = nil
+          }
+          app.state.lastDown = nil
+        }
+      }
+      break
     case *sdl.QuitEvent:
       running = false
       break
     case *sdl.TextInputEvent:
       app.body.IncrementBGColor()
-      fmt.Println("sending data into draw ch")
-      app.drawCh <- true
+      app.Draw()
       break
     case *sdl.KeyboardEvent:
       break
@@ -168,6 +217,20 @@ func (app *App) loopEvents() error {
       case sdl.WINDOWEVENT_RESTORED:
         app.OnShowOrResize()
         break
+      case sdl.WINDOWEVENT_LEAVE:
+        if !app.state.outside {
+          app.TriggerEvent("mouseleave", NewMouseEvent(-1, -1))
+        }
+        app.state.active = nil
+        app.state.outside = true
+        app.state.cursor = -1
+        break
+      case sdl.WINDOWEVENT_ENTER:
+        if app.mouseInWindow() {
+          app.state.outside = false
+          app.UpdateActive(-1, -1)
+        }
+        break
       }
     default:
       fmt.Println("event: ", reflect.TypeOf(event_).String())
@@ -179,11 +242,125 @@ func (app *App) loopEvents() error {
   return nil
 }
 
+func (app *App) UpdateActive(x, y int) {
+  if x < 0 {
+    x_, y_, _ := sdl.GetMouseState()
+
+    x = int(x_)
+    y = int(y_)
+  }
+
+  oldActive := app.state.active
+  if oldActive == nil {
+    oldActive = app.body
+  }
+
+  newActive, isSameOrChildOfOld := findActive(oldActive, x, y)
+
+  // trigger mouse leave event if new active isn't child of old
+  if app.state.active != nil && !isSameOrChildOfOld {
+    evt := NewMouseEvent(x, y)
+    if app.state.active.Parent() != nil {
+      evt.stopBubblingWhenElementReached(app.state.active.Parent())
+    }
+    app.TriggerEvent("mouseleave", evt)
+  }
+
+  if app.state.active == nil {
+    evt := NewMouseEvent(x, y)
+    app.state.active = newActive
+    app.TriggerEvent("mouseenter", evt)
+  } else if app.state.active != newActive {
+    evt := NewMouseEvent(x, y)
+
+    ca := commonAncestor(app.state.active, newActive)
+
+    evt.stopBubblingWhenElementReached(ca)
+
+    app.state.active = newActive
+    if ca != newActive {
+      app.TriggerEvent("mouseenter", evt)
+    }
+  }
+
+  if app.state.active.Cursor() != app.state.cursor {
+    app.state.cursor = app.state.active.Cursor()
+
+    if app.state.cursor >= 0 && app.state.cursor < sdl.NUM_SYSTEM_CURSORS {
+      sdl.ShowCursor(sdl.ENABLE)
+
+      oldCursor := sdl.GetCursor()
+
+      c := sdl.CreateSystemCursor((sdl.SystemCursor)(app.state.cursor))
+
+      sdl.SetCursor(c)
+
+      sdl.FreeCursor(oldCursor) // free the previous
+    } else {
+      panic("not custom cursors defined yet")
+    }
+  }
+}
+
+// the window enter or leave events might be called spuriously
+func (app *App) mouseInWindow() bool {
+  x0, y0 := app.window.GetPosition()
+  w, h := app.window.GetSize()
+
+  x, y, _ := sdl.GetGlobalMouseState()
+
+  r := Rect{int(x0), int(y0), int(w), int(h)}
+
+  b := r.Hit(int(x), int(y))
+
+  return b
+}
+
 func (app *App) OnShowOrResize() {
   app.dd.SyncSize(app.window)
 
   app.body.OnResize(Rect{0, 0, app.dd.W, app.dd.H})
 
+  if app.mouseInWindow() {
+    app.UpdateActive(-1, -1)
+  }
+
+  app.DrawIfDirty()
+}
+
+func (app *App) TriggerEvent(name string, evt *Event) {
+  //fmt.Printf("triggering %s event, %d %d, %p\n", name, evt.X, evt.Y, app.state.active)
+
+  e := app.state.active 
+  for e != nil {
+    l := e.GetEventListener(name)
+    
+    if l != nil {
+      l(evt)
+    }
+
+    if evt.stopBubbling {
+      break
+    }
+
+    // bubble
+    e = e.Parent()
+
+    if evt.stopBubblingElement == e {
+      break
+    }
+  }
+
+  app.DrawIfDirty()
+}
+
+func (app *App) DrawIfDirty() {
+  if app.dd.Dirty() {
+    app.Draw()
+  }
+}
+
+func (app *App) Draw() {
   app.drawCh <- true
 }
 
@@ -204,8 +381,7 @@ func (app *App) detectOffscreenBecomesVisible() {
     app.y = int(y)
 
     if bX || bY {
-      fmt.Println("detected offscreen becoming visible")
-      app.drawCh <- true
+      app.Draw()
     }
 
     sdl.Delay(RENDER_LOOP_INTERVAL)
@@ -246,53 +422,13 @@ func (app *App) render() {
     panic(err)
   }
 
-  fmt.Println("compiled program ok")
-
   app.dd.InitGL(app.program)
-
-  fmt.Println("created draw data ok")
-
-  /*l := float32(-0.9)
-  r := float32(0.9)
-  t := float32(0.9)
-  b := float32(-0.9)
-
-  // TODO: move this into element
-  testTri := app.dd.Alloc(2)
-  fmt.Println("testTris: ", testTri)
-  app.dd.Pos.Set3(testTri[0], 0, l, b, -0.5)
-  app.dd.Pos.Set3(testTri[0], 1, r, b, -0.5)
-  app.dd.Pos.Set3(testTri[0], 2, l, t, -0.5)
-
-  app.dd.Type.Set1Const(testTri[0], VTYPE_PLAIN)
-
-  app.dd.Color.Set4(testTri[0], 0, 1.0, 0, 0, 1.0);
-  app.dd.Color.Set4(testTri[0], 1, 0, 1.0, 0, 1.0);
-  app.dd.Color.Set4(testTri[0], 2, 0, 0, 1.0, 1.0);
-
-  app.dd.TCoord.Set2(testTri[0], 0, 0.0, 0.0);
-  app.dd.TCoord.Set2(testTri[0], 1, 0.0, 0.0);
-  app.dd.TCoord.Set2(testTri[0], 2, 0.0, 0.0);
-
-  app.dd.Pos.Set3(testTri[1], 0, r, t, -0.5)
-  app.dd.Pos.Set3(testTri[1], 1, r, b, -0.5)
-  app.dd.Pos.Set3(testTri[1], 2, l, t, -0.5)
-
-  app.dd.Type.Set1Const(testTri[1], VTYPE_HIDDEN)
-
-  app.dd.Color.Set4(testTri[1], 0, 1.0, 1.0, 0, 1.0);
-  app.dd.Color.Set4(testTri[1], 1, 0, 1.0, 0, 1.0);
-  app.dd.Color.Set4(testTri[1], 2, 0, 0, 1.0, 1.0);
-
-  app.dd.TCoord.Set2(testTri[1], 0, 0.0, 0.0);
-  app.dd.TCoord.Set2(testTri[1], 1, 0.0, 0.0);
-  app.dd.TCoord.Set2(testTri[1], 2, 0.0, 0.0);*/
 
   //gl.CreateFramebuffers(1, &(app.framebuffers[0]))
   //gl.CreateFramebuffers(1, &(app.framebuffers[1]))
 
-  //gl.GenFramebuffers(1, &(app.framebuffers[0]))
-  //gl.GenFramebuffers(1, &(app.framebuffers[1]))
+  gl.GenFramebuffers(1, &(app.framebuffers[0]))
+  gl.GenFramebuffers(1, &(app.framebuffers[1]))
 
   x, y := app.window.GetPosition()
   app.x = int(x)

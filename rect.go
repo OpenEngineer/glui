@@ -15,3 +15,7 @@ func (r Rect) Right() int {
 func (r Rect) Bottom() int {
   return r.Y + r.H
 }
+
+func (r Rect) Hit(x, y int) bool {
+  return (x >= r.X) && (x < r.Right()) && (y >= r.Y) && (y < r.Bottom())
+}
