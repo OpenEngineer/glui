@@ -1,4 +1,4 @@
-cmds = main
+cmds = main glyph_maker
 
 export build = $(abspath ./build)
 
