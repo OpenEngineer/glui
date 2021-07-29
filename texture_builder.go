@@ -109,24 +109,28 @@ func (tb *TextureBuilder) growDown() {
 }
 
 func (tb *TextureBuilder) ToImage(fname string) error {
+  return DataToImage(tb.data, tb.width, tb.height, fname)
+}
+
+func DataToImage(data []byte, width, height int, fname string) error {
   f, err := os.Create(fname)
   if err != nil {
     return err
   }
 
-  r := image.Rect(0, 0, tb.width, tb.height)
+  r := image.Rect(0, 0, width, height)
 
   img := image.NewRGBA(r)
 
-  for i := 0; i < tb.width; i++ {
-    for j := 0; j < tb.height; j++ {
-      src := i*tb.height + j
+  for i := 0; i < width; i++ {
+    for j := 0; j < height; j++ {
+      src := i*height + j
 
       c := color.RGBA{
-        tb.data[src*4+0], 
-        tb.data[src*4+1], 
-        tb.data[src*4+2], 
-        tb.data[src*4+3],
+        data[src*4+0], 
+        data[src*4+1], 
+        data[src*4+2], 
+        data[src*4+3],
       }
 
       img.Set(i, j, c)

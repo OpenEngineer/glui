@@ -29,7 +29,8 @@ type App struct {
   body   *Body
   window *sdl.Window
   framebuffers [2]uint32 // for windows thumbnail drawing
-  program uint32
+  program1 uint32
+  program2 uint32
 
   ctx    sdl.GLContext
   debug  *os.File
@@ -54,7 +55,7 @@ func newAppState() AppState {
   }
 }
 
-func NewApp(name string, skin Skin) *App {
+func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
   debug, err := os.Create(name + ".log")
   if err != nil {
     panic(err)
@@ -63,6 +64,10 @@ func NewApp(name string, skin Skin) *App {
   fmt.Fprintf(debug, "#starting log\n")
 
   body := NewBody()
+
+  if glyphs == nil {
+    glyphs = make(map[string]*Glyph)
+  }
 
   return &App{
     name,
@@ -73,9 +78,10 @@ func NewApp(name string, skin Skin) *App {
     nil,
     [2]uint32{0, 0},
     0,
+    0,
     nil,
     debug,
-    NewDrawData(skin),
+    NewDrawData(skin, glyphs),
     newAppState(),
   }
 }
@@ -102,7 +108,7 @@ func (app *App) run() error {
     app.name, 
     sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
     0, 0, 
-    sdl.WINDOW_SHOWN | sdl.WINDOW_RESIZABLE | sdl.WINDOW_OPENGL | sdl.WINDOW_MAXIMIZED,
+    sdl.WINDOW_SHOWN | sdl.WINDOW_RESIZABLE | sdl.WINDOW_OPENGL | sdl.WINDOW_MAXIMIZED | sdl.WINDOW_ALLOW_HIGHDPI,
   )
   if err != nil {
     return err
@@ -416,13 +422,19 @@ func (app *App) render() {
     panic(err)
   }
 
-  app.program, err = compileProgram()
+  app.program1, err = compileProgram1()
   if err != nil {
-    fmt.Fprintf(app.debug, "failed to compile OpenGL program: %s\n", err.Error())
+    fmt.Fprintf(app.debug, "failed to compile OpenGL program1: %s\n", err.Error())
     panic(err)
   }
 
-  app.dd.InitGL(app.program)
+  app.program2, err = compileProgram2()
+  if err != nil {
+    fmt.Fprintf(app.debug, "failed to compile OpenGL program2: %s\n", err.Error())
+    panic(err)
+  }
+
+  app.dd.InitGL(app.program1, app.program2)
 
   //gl.CreateFramebuffers(1, &(app.framebuffers[0]))
   //gl.CreateFramebuffers(1, &(app.framebuffers[1]))
@@ -501,7 +513,7 @@ func (app *App) draw() {
     return
   }
 
-  w, h := app.dd.GetSize()
+  w, h := app.dd.GetDrawableSize()
 
   gl.Viewport(0, 0, int32(w), int32(h))
 
@@ -534,10 +546,22 @@ func (app *App) drawInner() {
 
   gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-  gl.UseProgram(app.program)
-  app.dd.SyncAndBind()
+  gl.Enable(gl.BLEND)
 
-  gl.DrawArrays(gl.TRIANGLES, 0, int32(app.dd.Len())*3)
+  gl.BlendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+
+  gl.UseProgram(app.program1)
+
+  app.dd.P1.SyncAndBind()
+
+  gl.DrawArrays(gl.TRIANGLES, 0, int32(app.dd.P1.Len())*3)
+
+
+  gl.UseProgram(app.program2)
+
+  app.dd.P2.SyncAndBind()
+
+  gl.DrawArrays(gl.TRIANGLES, 0, int32(app.dd.P2.Len())*3)
 }
 
 func (app *App) drawThumbnail(w int, h int, dst unsafe.Pointer) {

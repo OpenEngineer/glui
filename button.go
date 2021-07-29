@@ -9,14 +9,14 @@ type Button struct {
 
   // first 2 tris form the hear to the button
   tris []uint32
-  dd *DrawData
+  dd   *DrawData
 
   down bool
   inside bool
 }
 
 func NewButton(dd *DrawData) *Button {
-  tris := dd.Alloc(9*2)
+  tris := dd.P1.Alloc(9*2)
 
   e := &Button{newElementData(), tris, dd, false, false}
 
@@ -70,14 +70,14 @@ func (e *Button) onMouseEnter(evt *Event) {
 }
 
 func (e *Button) setTypesAndTCoords(pressed bool) {
-  t := e.dd.Skin.ButtonBorderThickness()
+  t := e.dd.P1.Skin.ButtonBorderThickness()
 
   if pressed {
-    x0, y0 := e.dd.Skin.ButtonPressedOrigin()
+    x0, y0 := e.dd.P1.Skin.ButtonPressedOrigin()
 
     e.setTypesAndTCoordsInner(x0, y0, t)
   } else {
-    x0, y0 := e.dd.Skin.ButtonOrigin()
+    x0, y0 := e.dd.P1.Skin.ButtonOrigin()
 
     e.setTypesAndTCoordsInner(x0, y0, t)
   }
@@ -105,25 +105,25 @@ func (e *Button) setTypesAndTCoordsInner(x0, y0 int, t int) {
       tri1 := e.tris[(i*3 + j)*2 + 1]
 
       if (i == 1 && j == 1) {
-        e.dd.Type.Set1Const(tri0, VTYPE_PLAIN)
-        e.dd.SetColorConst(tri0, e.dd.Skin.BGColor())
-        e.dd.TCoord.Set2Const(tri0, 0.0, 0.0)
+        e.dd.P1.Type.Set1Const(tri0, VTYPE_PLAIN)
+        e.dd.P1.SetColorConst(tri0, e.dd.P1.Skin.BGColor())
+        e.dd.P1.TCoord.Set2Const(tri0, 0.0, 0.0)
 
-        e.dd.Type.Set1Const(tri1, VTYPE_PLAIN)
-        e.dd.SetColorConst(tri1, e.dd.Skin.BGColor())
-        e.dd.TCoord.Set2Const(tri1, 0.0, 0.0)
+        e.dd.P1.Type.Set1Const(tri1, VTYPE_PLAIN)
+        e.dd.P1.SetColorConst(tri1, e.dd.P1.Skin.BGColor())
+        e.dd.P1.TCoord.Set2Const(tri1, 0.0, 0.0)
       } else {
-        e.dd.Type.Set1Const(tri0, VTYPE_SKIN)
-        e.dd.Color.Set4Const(tri0, 1.0, 1.0, 1.0, 1.0)
-        e.dd.SetSkinCoord(tri0, 0, x[i], y[j])
-        e.dd.SetSkinCoord(tri0, 1, x[i+1], y[j])
-        e.dd.SetSkinCoord(tri0, 2, x[i], y[j+1])
+        e.dd.P1.Type.Set1Const(tri0, VTYPE_SKIN)
+        e.dd.P1.Color.Set4Const(tri0, 1.0, 1.0, 1.0, 1.0)
+        e.dd.P1.SetSkinCoord(tri0, 0, x[i], y[j])
+        e.dd.P1.SetSkinCoord(tri0, 1, x[i+1], y[j])
+        e.dd.P1.SetSkinCoord(tri0, 2, x[i], y[j+1])
 
-        e.dd.Type.Set1Const(tri1, VTYPE_SKIN)
-        e.dd.Color.Set4Const(tri1, 1.0, 1.0, 1.0, 1.0)
-        e.dd.SetSkinCoord(tri1, 0, x[i+1], y[j+1])
-        e.dd.SetSkinCoord(tri1, 1, x[i+1], y[j])
-        e.dd.SetSkinCoord(tri1, 2, x[i], y[j+1])
+        e.dd.P1.Type.Set1Const(tri1, VTYPE_SKIN)
+        e.dd.P1.Color.Set4Const(tri1, 1.0, 1.0, 1.0, 1.0)
+        e.dd.P1.SetSkinCoord(tri1, 0, x[i+1], y[j+1])
+        e.dd.P1.SetSkinCoord(tri1, 1, x[i+1], y[j])
+        e.dd.P1.SetSkinCoord(tri1, 2, x[i], y[j+1])
       }
     }
   }
@@ -134,7 +134,7 @@ func (e *Button) OnResize(rect Rect) {
   height := 50
   left   := 10
 
-  t := e.dd.Skin.ButtonBorderThickness()
+  t := e.dd.P1.Skin.ButtonBorderThickness()
 
   var (
     x [4]int
@@ -158,13 +158,13 @@ func (e *Button) OnResize(rect Rect) {
       tri0 := e.tris[(i*3 + j)*2 + 0]
       tri1 := e.tris[(i*3 + j)*2 + 1]
 
-      e.dd.SetPos(tri0, 0, x[i], y[j], 0.5)
-      e.dd.SetPos(tri0, 1, x[i+1], y[j], 0.5)
-      e.dd.SetPos(tri0, 2, x[i], y[j+1], 0.5)
+      e.dd.P1.SetPos(tri0, 0, x[i], y[j], 0.5)
+      e.dd.P1.SetPos(tri0, 1, x[i+1], y[j], 0.5)
+      e.dd.P1.SetPos(tri0, 2, x[i], y[j+1], 0.5)
 
-      e.dd.SetPos(tri1, 0, x[i+1], y[j+1], 0.5)
-      e.dd.SetPos(tri1, 1, x[i+1], y[j], 0.5)
-      e.dd.SetPos(tri1, 2, x[i], y[j+1], 0.5)
+      e.dd.P1.SetPos(tri1, 0, x[i+1], y[j+1], 0.5)
+      e.dd.P1.SetPos(tri1, 1, x[i+1], y[j], 0.5)
+      e.dd.P1.SetPos(tri1, 2, x[i], y[j+1], 0.5)
     }
   }
 }

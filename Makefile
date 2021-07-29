@@ -1,4 +1,4 @@
-cmds = main glyph_maker
+cmds = glyph_maker glyph_tester main 
 
 export build = $(abspath ./build)
 
@@ -6,8 +6,8 @@ build_windows_amd64=$(abspath ./build/windows_amd64)
 build_darwin_amd64=$(abspath ./build/darwin_amd64)
 
 dsts=$(addprefix $(build)/,$(cmds))
-dsts_windows_amd64=$(addprefix $(build_windows_amd64)/,$(cmds))
-dsts_darwin_amd64=$(addprefix $(build_darwin_amd64)/,$(cmds))
+dsts_windows_amd64=$(addprefix $(build_windows_amd64)/,main)
+dsts_darwin_amd64=$(addprefix $(build_darwin_amd64)/,main)
 
 pkg=$(shell find . -name \*.go)
 
@@ -29,7 +29,7 @@ $(dsts): $$(shell find ./cmd/$$(notdir $$@) -name \*.go) $(pkg) | $(build)
 #export GOGCCFLAGS="-mwindows"; \
 #export CGO_CFLAGS="-mwindows"; \
 
-ms_flags=-ldflags -H=windowsgui
+#ms_flags=-ldflags -H=windowsgui
 
 $(dsts_windows_amd64): $$(shell find ./cmd/$$(notdir $$@) -name \*.go) $(pkg) | $(build_windows_amd64)
 	export CC=x86_64-w64-mingw32-gcc; \

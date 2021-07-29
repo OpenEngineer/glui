@@ -1,0 +1,55 @@
+{
+  "fonts": [
+    {
+      "path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "name": "dejavusans"
+    },
+    {
+      "path": "/usr/share/fonts/truetype/freefont/FreeSerif.ttf",
+      "name": "freeserif"
+    }
+  ],
+  "glyphs": [
+    {
+      "name": "floppy",
+      "svg": "M5,3A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5.5L18.5,3H17V9A1,1 0 0,1 16,10H8A1,1 0 0,1 7,9V3H5M12,4V9H15V4H12M7,12H17A1,1 0 0,1 18,13V19H6V13A1,1 0 0,1 7,12Z"
+    },
+    {
+      "index": 97,
+      "font": 0
+    },
+    {"index": 98, "font": 0},
+    {"index": 99, "font": 0},
+    {"index": 100,"font": 0}, 
+    {"index": 101,"font": 0},
+    {"index": 102,"font": 0},
+    {"index": 103,"font": 0},
+    {"index": 104,"font": 0},
+    {"index": 105,"font": 0},
+    {"index": 106,"font": 0},
+    {"index": 107,"font": 0},
+    {"index": 108,"font": 0},
+    {"index": 109,"font": 0},
+    {"index": 110,"font": 0},
+    {"index": 111,"font": 0},
+    {"index": 112,"font": 0},
+    {"index": 113,"font": 0},
+    {"index": 114,"font": 0},
+    {"index": 115,"font": 0},
+    {"index": 116,"font": 0},
+    {"index": 117,"font": 0},
+    {"index": 118,"font": 0},
+    {"index": 119,"font": 0},
+    {"index": 120,"font": 0},
+    {"index": 121,"font": 0},
+    {"index": 122,"font": 0},
+    {
+      "index": 113,
+      "font": 1
+    },
+    {
+      "index": 71,
+      "font": 0
+    }
+  ]
+}

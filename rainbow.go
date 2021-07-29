@@ -10,7 +10,7 @@ type Rainbow struct {
 }
 
 func NewRainbow(dd *DrawData) *Rainbow {
-  tris := dd.Alloc(2)
+  tris := dd.P1.Alloc(2)
   tri0 := tris[0]
   tri1 := tris[1]
 
@@ -27,21 +27,21 @@ func (e *Rainbow) AppendChild(child Element) {
 }
 
 func (e *Rainbow) setTypesAndColors() {
-  e.dd.Type.Set1Const(e.tri0, VTYPE_PLAIN)
+  e.dd.P1.Type.Set1Const(e.tri0, VTYPE_PLAIN)
 
-  e.dd.Color.Set4(e.tri0, 0, 1.0, 0, 0, 1.0);
-  e.dd.Color.Set4(e.tri0, 1, 0, 1.0, 0, 1.0);
-  e.dd.Color.Set4(e.tri0, 2, 0, 0, 1.0, 1.0);
+  e.dd.P1.Color.Set4(e.tri0, 0, 1.0, 0, 0, 1.0);
+  e.dd.P1.Color.Set4(e.tri0, 1, 0, 1.0, 0, 1.0);
+  e.dd.P1.Color.Set4(e.tri0, 2, 0, 0, 1.0, 1.0);
 
-  e.dd.TCoord.Set2Const(e.tri0, 0.0, 0.0);
+  e.dd.P1.TCoord.Set2Const(e.tri0, 0.0, 0.0);
 
-  e.dd.Type.Set1Const(e.tri1, VTYPE_PLAIN)
+  e.dd.P1.Type.Set1Const(e.tri1, VTYPE_PLAIN)
 
-  e.dd.Color.Set4(e.tri1, 0, 1.0, 1.0, 0, 1.0);
-  e.dd.Color.Set4(e.tri1, 1, 0, 1.0, 0, 1.0);
-  e.dd.Color.Set4(e.tri1, 2, 0, 0, 1.0, 1.0);
+  e.dd.P1.Color.Set4(e.tri1, 0, 1.0, 1.0, 0, 1.0);
+  e.dd.P1.Color.Set4(e.tri1, 1, 0, 1.0, 0, 1.0);
+  e.dd.P1.Color.Set4(e.tri1, 2, 0, 0, 1.0, 1.0);
 
-  e.dd.TCoord.Set2Const(e.tri1, 0.0, 0.0);
+  e.dd.P1.TCoord.Set2Const(e.tri1, 0.0, 0.0);
 }
 
 func (e *Rainbow) OnResize(rect Rect) {
@@ -55,11 +55,11 @@ func (e *Rainbow) OnResize(rect Rect) {
 
   e.bb = Rect{l, t, r - l, b - t}
 
-  e.dd.SetPos(e.tri0, 0, l, b, 0.5)
-  e.dd.SetPos(e.tri0, 1, r, b, 0.5)
-  e.dd.SetPos(e.tri0, 2, l, t, 0.5)
+  e.dd.P1.SetPos(e.tri0, 0, l, b, 0.5)
+  e.dd.P1.SetPos(e.tri0, 1, r, b, 0.5)
+  e.dd.P1.SetPos(e.tri0, 2, l, t, 0.5)
 
-  e.dd.SetPos(e.tri1, 0, r, t, 0.5)
-  e.dd.SetPos(e.tri1, 1, r, b, 0.5)
-  e.dd.SetPos(e.tri1, 2, l, t, 0.5)
+  e.dd.P1.SetPos(e.tri1, 0, r, t, 0.5)
+  e.dd.P1.SetPos(e.tri1, 1, r, b, 0.5)
+  e.dd.P1.SetPos(e.tri1, 2, l, t, 0.5)
 }
