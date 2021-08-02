@@ -4,7 +4,7 @@ package glui
 
 // #cgo CFLAGS: -I/usr/share/mingw-w64/include -D_WIN32_WINNT=0x0601
 // #cgo LDFLAGS: /usr/x86_64-w64-mingw32/lib/libdwmapi.a /usr/x86_64-w64-mingw32/lib/libgdi32.a
-// #include "ms.h" 
+// #include "os_windows.h" 
 import "C"
 
 import (

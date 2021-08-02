@@ -68,4 +68,6 @@ func (e *Body) OnTick(tick uint64) {
   if tick%10 == 0{
     fmt.Println("10th tick: ", tick)
   }
+
+  e.ElementData.OnTick(tick)
 }
