@@ -4,7 +4,6 @@ import (
   "errors"
   "fmt"
   "os"
-  "reflect"
   "sync"
   "unsafe"
 
@@ -13,9 +12,10 @@ import (
 )
 
 const (
-  START_DELAY = 10 // ms
-  EVENT_LOOP_INTERVAL = 13 // ms
-  RENDER_LOOP_INTERVAL = 13 // ms
+  START_DELAY             = 10 // ms
+  EVENT_LOOP_INTERVAL     = 13 // ms
+  ANIMATION_LOOP_INTERVAL = 16 // ms
+  RENDER_LOOP_INTERVAL    = 16 // ms
 )
 
 type App struct {
@@ -25,6 +25,7 @@ type App struct {
   y int
 
   drawCh chan bool
+  eventCh chan interface{}
   body   *Body
   window *sdl.Window
   framebuffers [2]uint32 // for windows thumbnail drawing
@@ -72,6 +73,7 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
     name,
     0, 0,
     make(chan bool),
+    make(chan interface{}),
     body,
     nil,
     [2]uint32{0, 0},
@@ -127,7 +129,7 @@ func (app *App) run() error {
   m := &sync.Mutex{}
 
   go func(m_ *sync.Mutex) {
-    app.render(m)
+    app.initRenderLoop(m)
   }(m)
 
   sdl.Delay(START_DELAY)
@@ -137,115 +139,15 @@ func (app *App) run() error {
   m.Unlock()
 
   go func() {
-    app.detectOffscreenBecomesVisible()
+    app.emitAnimationTicks()
   }()
 
-  return app.loopEvents()
-}
+  go func() {
+    app.initEventLoop() // serializes all the events
+  }()
 
-func (app *App) getScreenSize() (int, int, error) {
-  dm, err := sdl.GetCurrentDisplayMode(0)
-  if err != nil {
-    return 0, 0, err
-  }
-
-  return int(dm.W), int(dm.H), nil
-}
-
-func (app *App) loopEvents() error {
-  running := true
-  for running {
-    event_ := sdl.WaitEvent()
-
-    // most common events first
-    switch event := event_.(type) {
-    case *sdl.SysWMEvent:
-      if err := HandleSysWMEvent(app, event); err != nil{
-        return err
-      }
-      break
-    case *sdl.MouseMotionEvent:
-      if !app.state.outside {
-        app.UpdateActive(int(event.X), int(event.Y))
-      }
-      break
-    case *sdl.MouseButtonEvent:
-      if event.Button == sdl.BUTTON_LEFT {
-        if event.Type == sdl.MOUSEBUTTONDOWN {
-          app.state.lastDown = app.state.active
-          app.TriggerEvent("mousedown", NewMouseEvent(int(event.X), int(event.Y)))
-        } else if event.Type == sdl.MOUSEBUTTONUP {
-          if !app.state.outside {
-            if app.state.lastDown != nil {
-              tmp := app.state.active
-              app.state.active = app.state.lastDown
-
-              app.TriggerEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
-
-              app.state.active = tmp
-            }
-
-            app.TriggerEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
-          } else {
-            app.state.active = app.state.lastDown
-
-            app.TriggerEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
-
-            app.state.active = nil
-          }
-          app.state.lastDown = nil
-        }
-      }
-      break
-    case *sdl.QuitEvent:
-      running = false
-      break
-    case *sdl.TextInputEvent:
-      app.body.IncrementBGColor()
-      app.Draw()
-      break
-    case *sdl.KeyboardEvent:
-      break
-    case *sdl.WindowEvent:
-      switch event.Event {
-      case sdl.WINDOWEVENT_SHOWN:
-        app.OnShowOrResize()
-        break
-      case sdl.WINDOWEVENT_EXPOSED:
-        app.OnShowOrResize()
-        break
-      case sdl.WINDOWEVENT_RESIZED:
-        app.OnShowOrResize()
-        break
-      case sdl.WINDOWEVENT_MAXIMIZED:
-        app.OnShowOrResize()
-        break
-      case sdl.WINDOWEVENT_RESTORED:
-        app.OnShowOrResize()
-        break
-      case sdl.WINDOWEVENT_LEAVE:
-        if !app.state.outside {
-          app.TriggerEvent("mouseleave", NewMouseEvent(-1, -1))
-        }
-        app.state.active = nil
-        app.state.outside = true
-        app.state.cursor = -1
-        break
-      case sdl.WINDOWEVENT_ENTER:
-        if app.mouseInWindow() {
-          app.state.outside = false
-          app.UpdateActive(-1, -1)
-        }
-        break
-      }
-    default:
-      fmt.Println("event: ", reflect.TypeOf(event_).String())
-    }
-
-    //sdl.Delay(EVENT_LOOP_INTERVAL)
-  }
-
-  return nil
+  // this is the main thread and must be used to detect user events
+  return app.detectUserEvents()
 }
 
 func (app *App) UpdateActive(x, y int) {
@@ -370,31 +272,7 @@ func (app *App) Draw() {
   app.drawCh <- true
 }
 
-func (app *App) detectOffscreenBecomesVisible() {
-  for true {
-    x, y := app.window.GetPosition()
-    w := app.dd.W
-    h := app.dd.H
-    W, H, err := app.getScreenSize()
-    if err != nil {
-      panic(err)
-    }
-
-    bX := someOffscreenBecameVisible(app.x, int(x), int(w), int(W))
-    bY := someOffscreenBecameVisible(app.y, int(y), int(h), int(H))
-
-    app.x = int(x)
-    app.y = int(y)
-
-    if bX || bY {
-      app.Draw()
-    }
-
-    sdl.Delay(RENDER_LOOP_INTERVAL)
-  }
-}
-
-func (app *App) render(m *sync.Mutex) {
+func (app *App) initRenderLoop(m *sync.Mutex) {
   m.Lock()
 
   ctx, err := app.window.GLCreateContext()
@@ -482,29 +360,6 @@ func (app *App) render(m *sync.Mutex) {
   }
 
   sdl.GLDeleteContext(ctx)
-}
-
-func someOffscreenBecameVisible(oldX int, x int, w int, W int) bool {
-  b := false
-
-  if x < 0.0 && x + w > 0.0 {
-    if x > oldX {
-      b = true
-    }
-  }
-
-  if x < W && x + w > W {
-    if x < oldX {
-      b = true
-    }
-  }
-
-  // DEBUG
-  //if x != oldX {
-    //b = true
-  //}
-
-  return b
 }
 
 func (app *App) draw() {

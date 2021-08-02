@@ -1,6 +1,8 @@
 package glui
 
 import (
+  "fmt"
+
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -60,4 +62,10 @@ func (e *Body) OnResize(maxWidth, maxHeight int) (int, int) {
   }
 
   e.bb = this*/
+}
+
+func (e *Body) OnTick(tick uint64) {
+  if tick%10 == 0{
+    fmt.Println("10th tick: ", tick)
+  }
 }
