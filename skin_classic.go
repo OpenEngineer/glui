@@ -61,7 +61,7 @@ func (s *ClassicSkin) BGColor() sdl.Color {
 func (s *ClassicSkin) twoPxOutsetBorder(c0 byte, c1 byte, c2 byte, c3 byte) []byte {
   d := make([]byte, 25*4)
 
-  // left and top side are white
+  // left and top side
   for i := 0; i < 4; i++ {
     setColor(d, i, c0, c0, c0, 0xff)
     setColor(d, i*5, c0, c0, c0, 0xff)
@@ -99,6 +99,17 @@ func (s *ClassicSkin) ButtonPressed() []byte {
 
   flipX(d, 5, 5)
   flipY(d, 5, 5)
+
+  return d
+}
+
+func (s *ClassicSkin) Input() []byte {
+  d := s.twoPxOutsetBorder(0x80, 0x00, 0xc0, 0xff)
+
+  i := 2
+  j := 2
+
+  setColor(d, i*5 + j, 0xff, 0xff, 0xff, 0xff)
 
   return d
 }

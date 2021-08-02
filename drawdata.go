@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-
   "github.com/veandco/go-sdl2/sdl"
   "github.com/go-gl/gl/v4.1-core/gl"
 )
@@ -294,6 +292,12 @@ func (b *DrawPassData) Dealloc(offsets []uint32) {
   }
 }
 
+func (b *Float32Buffer) Get(triId uint32, vertexId uint32, compId uint32) float32 {
+  offset := (triId*3 + vertexId)*uint32(b.nComp)
+
+  return b.data[offset + compId]
+}
+
 func (b *Float32Buffer) Set(triId uint32, vertexId uint32, compId uint32, value float32) {
   offset := (triId*3 + vertexId)*uint32(b.nComp)
 
@@ -465,6 +469,30 @@ func (d *DrawPassData) SetPos(triId uint32, vertexId uint32, x_ int, y_ int, z f
   d.Pos.Set3(triId, vertexId, x, y, z)
 }
 
+func (d *DrawPassData) translatePos(triId uint32, vertexId uint32, dx float32, dy float32) {
+  xStart := d.Pos.Get(triId, vertexId, 0)
+  yStart := d.Pos.Get(triId, vertexId, 1)
+
+  d.Pos.Set(triId, vertexId, 0, xStart+dx)
+  d.Pos.Set(triId, vertexId, 1, yStart+dy)
+}
+
+func (d *DrawPassData) TranslatePos(triId uint32, vertexId uint32, dx_ int, dy_ int) {
+  dx := 2.0*float32(dx_)/float32(d.W)
+  dy := -2.0*float32(dy_)/float32(d.H)
+
+  d.translatePos(triId, vertexId, dx, dy)
+}
+
+func (d *DrawPassData) TranslateTri(triId uint32, dx_ int, dy_ int) {
+  dx := 2.0*float32(dx_)/float32(d.W)
+  dy := -2.0*float32(dy_)/float32(d.H)
+
+  d.translatePos(triId, 0, dx, dy)
+  d.translatePos(triId, 1, dx, dy)
+  d.translatePos(triId, 2, dx, dy)
+}
+
 func (d *DrawPassData) SetPosF(triId uint32, vertexId uint32, x_ float64, y_ float64, z float32) {
   x := 2.0*float32(x_)/float32(d.W) - 1.0
   y := 1.0 - 2.0*float32(y_)/float32(d.H)
@@ -564,7 +592,7 @@ func (d *DrawData) GetDrawableSize() (int, int) {
 
 func (d *DrawData) SyncSize(window *sdl.Window) {
   w, h := window.GLGetDrawableSize()
-  fmt.Println("drawable size: ", w, h)
+  //fmt.Println("drawable size: ", w, h) // DEBUG
   d.W, d.H = int(w), int(h)
 
   d.P1.W, d.P1.H = d.W, d.H 

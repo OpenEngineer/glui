@@ -17,9 +17,13 @@ type SkinMap struct {
 
   buttonX int
   buttonY int
-  buttonN int
+  buttonT int
   buttonPressedX int
   buttonPressedY int
+
+  inputX int
+  inputY int
+  inputT int
 
   loc uint32
   tid uint32
@@ -34,34 +38,53 @@ func NewSkinMap(s Skin) *SkinMap {
   return d
 }
 
-func (sd *SkinMap) genData(s Skin) {
+func (sm *SkinMap) genData(s Skin) {
   tb := NewTextureBuilder(4, 128, 128)
 
+  sm.genButtonData(s, tb)
+
+  sm.genInputData(s, tb)
+
+  //if err := tb.ToImage("debug.png"); err != nil {
+    //panic(err)
+  //}
+
+  sm.data = tb.data
+  sm.width = tb.width
+  sm.height = tb.height
+}
+
+func (sm *SkinMap) genButtonData(s Skin, tb *TextureBuilder) {
   button := s.Button()
   sqrtN := math.Sqrt(float64(len(button)/4))
   if math.Mod(sqrtN, 1.0) != 0.0 {
     panic("button border skin incorrect size")
   }
 
-  nButton := (int(sqrtN) - 1)/2
+  tButton := (int(sqrtN) - 1)/2
 
-  sd.buttonX, sd.buttonY = tb.Build(button, 2*nButton+1, 2*nButton+1)
-  sd.buttonN = nButton
+  sm.buttonX, sm.buttonY = tb.Build(button, 2*tButton+1, 2*tButton+1)
+  sm.buttonT = tButton
 
   buttonPressed := s.ButtonPressed()
   if len(buttonPressed) != len(button) {
     panic("buttonPressed not same length as button")
   }
 
-  sd.buttonPressedX, sd.buttonPressedY = tb.Build(buttonPressed, 2*nButton+1, 2*nButton+1)
+  sm.buttonPressedX, sm.buttonPressedY = tb.Build(buttonPressed, 2*tButton+1, 2*tButton+1)
+}
 
-  //if err := tb.ToImage("debug.png"); err != nil {
-    //panic(err)
-  //}
+func (sm *SkinMap) genInputData(s Skin, tb *TextureBuilder) {
+  input := s.Input()
+  sqrtN := math.Sqrt(float64(len(input)/4))
+  if math.Mod(sqrtN, 1.0) != 0.0 {
+    panic("button border skin incorrect size")
+  }
 
-  sd.data = tb.data
-  sd.width = tb.width
-  sd.height = tb.height
+  tInput := (int(sqrtN) - 1)/2
+
+  sm.inputX, sm.inputY = tb.Build(input, 2*tInput+1, 2*tInput+1)
+  sm.inputT = tInput
 }
 
 func (s *SkinMap) InitGL(loc uint32) {
@@ -96,9 +119,33 @@ func (s *SkinMap) ButtonPressedOrigin() (int, int) {
 }
 
 func (s *SkinMap) ButtonBorderThickness() int {
-  return s.buttonN
+  return s.buttonT
 }
 
 func (s *SkinMap) BGColor() sdl.Color {
   return s.skin.BGColor()
+}
+
+func (s *SkinMap) InputOrigin() (int, int) {
+  return s.inputX, s.inputY
+}
+
+func (s *SkinMap) InputBorderThickness() int {
+  return s.inputT
+}
+
+func (s *SkinMap) InputBGColor() sdl.Color {
+  i, j := s.InputOrigin()
+
+  i += s.inputT
+  j += s.inputT
+
+  k := i*s.height + j
+
+  r := s.data[k*4+0]
+  g := s.data[k*4+1]
+  b := s.data[k*4+2]
+  a := s.data[k*4+3]
+
+  return sdl.Color{r, g, b, a}
 }

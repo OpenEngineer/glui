@@ -20,11 +20,7 @@ func NewRainbow(dd *DrawData) *Rainbow {
   return e
 }
 
-func (e *Rainbow) AppendChild(child Element) {
-  e.ElementData.appendChild(child)
-
-  child.RegisterParent(e)
-}
+//go:generate ./A Rainbow
 
 func (e *Rainbow) setTypesAndColors() {
   e.dd.P1.Type.Set1Const(e.tri0, VTYPE_PLAIN)
@@ -44,16 +40,12 @@ func (e *Rainbow) setTypesAndColors() {
   e.dd.P1.TCoord.Set2Const(e.tri1, 0.0, 0.0);
 }
 
-func (e *Rainbow) OnResize(rect Rect) {
-  margin := 10
+func (e *Rainbow) OnResize(maxWidth, maxHeight int) (int, int) {
+  l := 0
+  r := maxWidth
 
-  l := rect.X + margin
-  r := rect.Right() - margin
-
-  t := rect.Y + margin
-  b := rect.Bottom() - margin
-
-  e.bb = Rect{l, t, r - l, b - t}
+  t := 0
+  b := 300
 
   e.dd.P1.SetPos(e.tri0, 0, l, b, 0.5)
   e.dd.P1.SetPos(e.tri0, 1, r, b, 0.5)
@@ -62,4 +54,13 @@ func (e *Rainbow) OnResize(rect Rect) {
   e.dd.P1.SetPos(e.tri1, 0, r, t, 0.5)
   e.dd.P1.SetPos(e.tri1, 1, r, b, 0.5)
   e.dd.P1.SetPos(e.tri1, 2, l, t, 0.5)
+
+  return e.InitBB(maxWidth, b)
+}
+
+func (e *Rainbow) Translate(dx, dy int) {
+  e.dd.P1.TranslateTri(e.tri0, dx, dy)
+  e.dd.P1.TranslateTri(e.tri1, dx, dy)
+
+  e.ElementData.Translate(dx, dy)
 }

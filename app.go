@@ -24,7 +24,6 @@ type App struct {
   x int
   y int
 
-  mutex  *sync.Mutex
   drawCh chan bool
   body   *Body
   window *sdl.Window
@@ -72,7 +71,6 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
   return &App{
     name,
     0, 0,
-    &sync.Mutex{},
     make(chan bool),
     body,
     nil,
@@ -126,15 +124,17 @@ func (app *App) run() error {
 
   app.window.Maximize()
 
-  go func() {
-    app.render()
-  }()
+  m := &sync.Mutex{}
+
+  go func(m_ *sync.Mutex) {
+    app.render(m)
+  }(m)
 
   sdl.Delay(START_DELAY)
 
-  app.mutex.Lock()
+  m.Lock()
 
-  app.mutex.Unlock()
+  m.Unlock()
 
   go func() {
     app.detectOffscreenBecomesVisible()
@@ -325,7 +325,7 @@ func (app *App) mouseInWindow() bool {
 func (app *App) OnShowOrResize() {
   app.dd.SyncSize(app.window)
 
-  app.body.OnResize(Rect{0, 0, app.dd.W, app.dd.H})
+  app.body.OnResize(app.dd.W, app.dd.H)
 
   if app.mouseInWindow() {
     app.UpdateActive(-1, -1)
@@ -394,8 +394,8 @@ func (app *App) detectOffscreenBecomesVisible() {
   }
 }
 
-func (app *App) render() {
-  app.mutex.Lock()
+func (app *App) render(m *sync.Mutex) {
+  m.Lock()
 
   ctx, err := app.window.GLCreateContext()
   if err != nil {
@@ -453,7 +453,7 @@ func (app *App) render() {
 
   //app.draw()
 
-  app.mutex.Unlock()
+  m.Unlock()
 
   for true {
     //fmt.Println("in render loop")

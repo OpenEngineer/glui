@@ -31,6 +31,10 @@ func (r Rect) Hit(x, y int) bool {
   return (x >= r.X) && (x < r.Right()) && (y >= r.Y) && (y < r.Bottom())
 }
 
+func (r Rect) Translate(x, y int) Rect {
+  return Rect{r.X + x, r.Y + y, r.W, r.H}
+}
+
 func (r RectF) Right() float64 {
   return r.X + r.W
 }

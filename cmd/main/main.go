@@ -7,19 +7,22 @@ import (
 func main() {
   app := glui.NewApp("test", &glui.ClassicSkin{}, MakeGlyphs())
 
-  rainbow1 := glui.NewRainbow(app.DrawData())
-  app.Body().AppendChild(rainbow1)
+  dd := app.DrawData()
 
-  rainbow2 := glui.NewRainbow(app.DrawData())
-  app.Body().AppendChild(rainbow2)
+  rainbow1 := glui.NewRainbow(dd)
+  rainbow2 := glui.NewRainbow(dd)
 
-  button1 := glui.NewButton(app.DrawData())
-  app.Body().AppendChild(button1)
+  body := app.Body()
+  body.Padding(10)
+  body.Spacing(10)
 
-  content := "it is often useful to perform premultiplied alpha blending a slight modification"
-
-  text := glui.NewText(app.DrawData(), content, "dejavusans", 10)
-  app.Body().AppendChild(text)
+  body.A(rainbow1, rainbow2, dd.Button().A(
+      dd.Inline(glui.CENTER, glui.CENTER, 0).A(
+        dd.Sans("Submit", 10),
+      ),
+    ), 
+    dd.Input(),
+  )
 
   app.Run()
 }

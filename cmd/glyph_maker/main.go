@@ -47,20 +47,20 @@ var (
 // the value of the first pixel of each col is implicitely 0, any unspecified pixels are either 0 or 255 (whichever value is closer to the previously specified pixel)
 
 type Config struct {
-  Fonts  []FontsConfig  `json:"fonts"`
-  Glyphs []GlyphsConfig `json:"glyphs"`
+  Fonts []FontsConfig `json:"fonts"`
+  Icons []IconsConfig `json:"icons"`
 }
 
 type FontsConfig struct {
-  Path string `json:"path"`
-  Name string `json:"name"`
+  Name   string    `json:"name"`
+  Path   string    `json:"path"`
+  IncludeAllAscii bool `json:"include-all-ascii"`
+  Glyphs []float64 `json:"glyphs"`
 }
 
-type GlyphsConfig struct {
-  Font  float64 `json:"font"`
-  Svg   string  `json:"svg"`
-  Index float64 `json:"index"`
+type IconsConfig struct {
   Name  string  `json:"name"`
+  Path  string  `json:"path"`
 }
 
 type Kerning struct {
@@ -125,9 +125,11 @@ func mainInner(c *cli.Context) error {
     return err
   }
 
+  uniqueNames := make(map[string]bool)
+  glyphs := make([]*Glyph, 0)
+
   // read the fonts using canvas fonts
-  fonts := make([]*fontlib.SFNT, len(cfg.Fonts))
-  for i, fontCfg := range cfg.Fonts {
+  for _, fontCfg := range cfg.Fonts {
     if fontCfg.Name == "" {
       return errors.New("font name unset")
     }
@@ -146,67 +148,70 @@ func mainInner(c *cli.Context) error {
       return err
     }
 
-    fonts[i], err = fontlib.ParseFont(b, 0)
+    font, err := fontlib.ParseFont(b, 0)
     if err != nil {
       return err
     }
-  }
 
-  uniqueNames := make(map[string]bool)
+    if fontCfg.IncludeAllAscii {
+      tmp := fontCfg.Glyphs[:]
 
-  glyphs := make([]*Glyph, len(cfg.Glyphs))
-  for i, glyphCfg := range cfg.Glyphs {
-    if glyphCfg.Svg == "" {
-      if glyphCfg.Name != "" {
-        return errors.New("unexpected glyph name")
-      }
+      for i := 33; i < 127; i++ {
+        found := false
+        for _, gIdF := range tmp {
+          if int(gIdF) == i {
+            found = true
+            break
+          }
+        }
 
-      idx := rune(glyphCfg.Index)
-
-      f := int(glyphCfg.Font)
-
-      if f < 0 || f >= len(fonts) {
-        return errors.New("bad font index")
-      }
-
-      name := fmt.Sprintf("%s:%d", cfg.Fonts[f].Name, idx)
-      if _, ok := uniqueNames[name]; ok {
-        return errors.New("glyph name " + name + " already used")
-      }
-
-      uniqueNames[name] = true
-
-      glyphs[i], err = createFontGlyph(fonts[f], idx, name)
-      if err != nil {
-        return err
-      }
-    } else {
-      if glyphCfg.Name == "" {
-        return errors.New("glyph name unset")
-      }
-
-      if glyphCfg.Index != 0.0 {
-        return errors.New("can't have both svg and index")
-      }
-
-      if glyphCfg.Font != 0.0 {
-        return errors.New("can't have both svg and font")
-      }
-
-      name := glyphCfg.Name
-      if _, ok := uniqueNames[name]; ok {
-        return errors.New("glyph name " + name + " already used")
-      }
-
-      uniqueNames[name] = true
-
-      g := glyphCfg.Svg
-
-      glyphs[i], err = createSvgGlyph(g, name)
-      if err != nil {
-        return err
+        if !found {
+          fontCfg.Glyphs = append(fontCfg.Glyphs, float64(i))
+        }
       }
     }
+
+    for _, gIdF := range fontCfg.Glyphs {
+      gId := rune(gIdF)
+
+      name := fmt.Sprintf("%s:%d", fontCfg.Name, gId)
+      if _, ok := uniqueNames[name]; ok {
+        return errors.New("glyph name " + name + " already used")
+      }
+      uniqueNames[name] = true
+
+      glyph, err := createFontGlyph(font, gId, name)
+      if err != nil {
+        return err
+      }
+
+      glyphs = append(glyphs, glyph)
+    }
+  }
+
+  // icons
+  for _, iconCfg := range cfg.Icons {
+    if iconCfg.Path == "" {
+      return errors.New("icon path unset")
+    }
+
+    if iconCfg.Name == "" {
+      return errors.New("icon name unset")
+    }
+
+    name := iconCfg.Name
+    if _, ok := uniqueNames[name]; ok {
+      return errors.New("glyph name " + name + " already used")
+    }
+
+    uniqueNames[name] = true
+
+    glyph, err := createSvgGlyph(iconCfg.Path, name)
+    if err != nil {
+      return err
+    }
+
+    glyphs = append(glyphs, glyph)
   }
 
   return glyphsToSource(glyphs, PACKAGE_NAME)

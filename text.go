@@ -2,6 +2,7 @@ package glui
 
 import (
   "fmt"
+  "math"
 
   "github.com/veandco/go-sdl2/sdl"
 )
@@ -11,14 +12,14 @@ type Text struct {
 
   content string
   font    string
-  size    int
+  size    float64
 
   // 2 tris per character (whitespace obviously doesnt get any tris)
   tris []uint32
   dd   *DrawData
 }
 
-func NewText(dd *DrawData, content string, font string, size int) *Text {
+func NewText(dd *DrawData, content string, font string, size float64) *Text {
   e := &Text{newElementData(), "", font, size, []uint32{}, dd}
 
   e.SetContent(content)
@@ -26,7 +27,7 @@ func NewText(dd *DrawData, content string, font string, size int) *Text {
   return e
 }
 
-func (e *Text) AppendChild(child Element) {
+func (e *Text) A(children ...Element) Element {
   panic("text can't have children")
 }
 
@@ -84,15 +85,15 @@ func isWhitespace(r rune) bool {
   return r == ' ' || r == '\n' || r == '\t'
 }
 
-// remember: rect is in window integer coordinates, with top left corner as origin
-func (e *Text) OnResize(rect Rect) {
-  baseline := float64(rect.Y + e.size)
-  space := float64(e.size)
+// TODO: multiline depending on maxWidth
+func (e *Text) OnResize(maxWidth, maxHeight int) (int, int) {
+  baseline := e.size
 
-  x := float64(rect.X)
+  x := 0.0
 
   refG := e.dd.P2.Glyphs.GetGlyph(fmt.Sprintf("%s:%d", e.font, 'a'))
   refScale := refG.Scale
+  space := refG.Advance*e.size/float64(GlyphResolution)
 
   i := 0
   runes := []rune(e.content)
@@ -105,7 +106,7 @@ func (e *Text) OnResize(rect Rect) {
 
       g := e.dd.P2.Glyphs.GetGlyph(fmt.Sprintf("%s:%d", e.font, c))
 
-      size := float64(e.size)*refScale/g.Scale
+      size := e.size*refScale/g.Scale
       scale := size/float64(GlyphResolution)
       //size = float64(e.size) // DEBUG
 
@@ -152,4 +153,14 @@ func (e *Text) OnResize(rect Rect) {
       i++
     }
   }
+
+  return e.ElementData.InitBB(int(math.Ceil(x)), int(e.size))
+}
+
+func (e *Text) Translate(dx, dy int) {
+  for _, tri := range e.tris {
+    e.dd.P2.TranslateTri(tri, dx, dy)
+  }
+
+  e.ElementData.Translate(dx, dy)
 }

@@ -23,6 +23,7 @@ mac: $(dsts_darwin_amd64)
 
 $(dsts): $$(shell find ./cmd/$$(notdir $$@) -name \*.go) $(pkg) | $(build)
 	export CGO_ENABLE=1; \
+	go generate; \
 	cd $(dir $<); \
 	go build -o $(abspath $@) $(build_flags)
 

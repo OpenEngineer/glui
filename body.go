@@ -19,15 +19,12 @@ func NewBody() *Body {
   }
 }
 
+//go:generate ./A Body
+
 func (e *Body) RegisterParent(_ Element) {
   panic("can't register body parent")
 }
 
-func (e *Body) AppendChild(child Element) {
-  e.ElementData.appendChild(child)
-
-  child.RegisterParent(e)
-}
 
 func (e *Body) BGColor() sdl.Color {
   return e.bgColor
@@ -42,17 +39,25 @@ func (e *Body) IncrementBGColor() {
   e.bgColor = sdl.Color{c, c, c, 255}
 }
 
-func (e *Body) OnResize(this Rect) {
+func (e *Body) OnResize(maxWidth, maxHeight int) (int, int) {
+  e.bb = Rect{0, 0, maxWidth, maxHeight}
+
+  e.ElementData.resizeChildren(maxWidth, maxHeight)
+
+  return e.InitBB(maxWidth, maxHeight)
+
   // default block positioning
-  n := len(e.children)
+  /*n := len(e.children)
 
   if n > 0 {
-    h := this.H/n
+    h := maxHeight/n
 
     for i := 0; i < n; i++ {
-      e.children[i].OnResize(Rect{this.X, this.Y + h*i, this.W, h})
+      child := e.children[i]
+
+      child.OnResize(maxWidth, h)Rect{this.X, this.Y + h*i, this.W, h})
     }
   }
 
-  e.bb = this
+  e.bb = this*/
 }
