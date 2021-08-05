@@ -94,7 +94,48 @@ void main() {
 }
 
 func vertexShader2() string {
-  return vertexShader1()
+  var b strings.Builder
+  
+  b.WriteString("#version 410\n")
+
+  writeVertexTypes(&b)
+
+  b.WriteString(`
+in vec3 aPos;
+in float aType;
+in float aParam;
+in vec4 aColor;
+in vec2 aTCoord;
+
+out float vDepth;
+out float vType;
+out float vParam;
+out vec4  vColor;
+out vec2  vTCoord;
+
+void main() {
+  float z = aPos.z;
+  if (aType == HIDDEN) {
+    z = -10.0;
+  }
+
+  gl_Position = vec4(aPos.xy, z, 1.0);
+  vType = aType;
+  vParam = aParam;
+  vColor = vec4(
+    aColor.x, 
+    aColor.y,
+    aColor.z,
+    aColor.w
+  );
+  vTCoord = aTCoord;
+  vDepth = z;
+}
+`)
+
+  b.WriteString("\x00")
+
+  return b.String()
 }
 
 func fragmentShader2() string {
@@ -110,6 +151,7 @@ func fragmentShader2() string {
   b.WriteString(`
 precision highp float;
 
+in float vDepth;
 in float vType;
 in float vParam;
 in vec4  vColor;
@@ -118,6 +160,7 @@ in vec2  vTCoord;
 uniform sampler2D glyphs;
 
 out vec4 oColor;
+//out float gl_FragDepth;
 
 float calcPixelCoverage(float d, float a) {
   float tana = tan(a);
@@ -177,6 +220,11 @@ void main() {
 
     oColor = vec4(vColor.xyz, alpha);
     //oColor = vec4(0.0, 0.0, 0.0, A);
+
+    gl_FragDepth = (alpha > 0.1) ? vDepth : 2.0;
+    //gl_FragDepth = gl_FragDepth*alpha + 0.55*(1.0-alpha);
+  } else {
+    gl_FragDepth = vDepth;
   }
 }
 `)

@@ -58,9 +58,9 @@ func (e *Rainbow) OnResize(maxWidth, maxHeight int) (int, int) {
   return e.InitBB(maxWidth, b)
 }
 
-func (e *Rainbow) Translate(dx, dy int) {
-  e.dd.P1.TranslateTri(e.tri0, dx, dy)
-  e.dd.P1.TranslateTri(e.tri1, dx, dy)
+func (e *Rainbow) Translate(dx, dy int, dz float32) {
+  e.dd.P1.TranslateTri(e.tri0, dx, dy, dz)
+  e.dd.P1.TranslateTri(e.tri1, dx, dy, dz)
 
-  e.ElementData.Translate(dx, dy)
+  e.ElementData.Translate(dx, dy, dz)
 }

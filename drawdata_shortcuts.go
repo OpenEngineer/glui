@@ -12,8 +12,8 @@ func (d *DrawData) Sans(content string, fontSize int) *Text {
   return NewText(d, content, DEFAULT_SANS, 10)
 }
 
-func (d *DrawData) Inline(hAlign, vAlign Align, spacing int) *Inline {
-  return NewInline(hAlign, vAlign, spacing)
+func (d *DrawData) Hor(hAlign, vAlign Align, spacing int) *Hor {
+  return NewHor(hAlign, vAlign, spacing)
 }
 
 func (d *DrawData) Input() *Input {

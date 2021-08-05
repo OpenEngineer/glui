@@ -7,18 +7,37 @@ import (
 type Button struct {
   ElementData
 
+  width  int
+  height int
+  flat   bool
+  sticky bool
+
   // first 2 tris form the hear to the button
   tris []uint32
   dd   *DrawData
 
   down bool
   inside bool
+  focused bool // explicit tab focus
+  onClick func()
 }
 
 func NewButton(dd *DrawData) *Button {
+  return newButton(dd, false, false)
+}
+
+func NewFlatButton(dd *DrawData) *Button {
+  return newButton(dd, true, false)
+}
+
+func NewStickyFlatButton(dd *DrawData) *Button {
+  return newButton(dd, true, true)
+}
+
+func newButton(dd *DrawData, flat bool, sticky bool) *Button {
   tris := dd.P1.Alloc(9*2)
 
-  e := &Button{newElementData(), tris, dd, false, false}
+  e := &Button{newElementData(), 200, 50, flat, sticky, tris, dd, false, false, false, nil}
 
   e.setTypesAndTCoords(false)
 
@@ -26,6 +45,10 @@ func NewButton(dd *DrawData) *Button {
   e.SetEventListener("mouseup", e.onMouseUp)
   e.SetEventListener("mouseleave", e.onMouseLeave)
   e.SetEventListener("mouseenter", e.onMouseEnter)
+  e.SetEventListener("focus", e.onFocus)
+  e.SetEventListener("blur", e.onBlur)
+  e.SetEventListener("keydown", e.onKeyDown)
+  e.SetEventListener("keyup", e.onKeyUp)
 
   return e
 }
@@ -36,15 +59,27 @@ func (e *Button) Cursor() int {
   return sdl.SYSTEM_CURSOR_HAND
 }
 
+func (e *Button) OnClick(fn func()) {
+  e.onClick = fn
+}
+
+func (e *Button) SetSize(width, height int) {
+  e.width = width
+  e.height = height
+  
+  // TODO: trigger redraw
+}
+
 func (e *Button) setState(down bool, inside bool) {
   curPressed := e.down && e.inside
 
   e.down = down
+  oldInside := e.inside
   e.inside = inside
 
   newPressed := e.down && e.inside
 
-  if curPressed != newPressed {
+  if curPressed != newPressed || (e.flat && e.inside != oldInside) {
     e.setTypesAndTCoords(newPressed)
   }
 }
@@ -55,6 +90,10 @@ func (e *Button) onMouseDown(evt *Event) {
 
 func (e *Button) onMouseUp(evt *Event) {
   e.setState(false, e.inside)
+
+  if e.onClick != nil {
+    e.onClick()
+  }
 }
 
 func (e *Button) onMouseLeave(evt *Event) {
@@ -65,6 +104,48 @@ func (e *Button) onMouseEnter(evt *Event) {
   e.setState(e.down, true)
 }
 
+func (e *Button) onFocus(evt *Event) {
+  if evt.IsKeyboardEvent() {
+    e.focused = true
+
+    e.dd.FocusBox.Show(e.bb)
+  }
+}
+
+func (e *Button) onBlur(evt *Event) {
+  if e.focused {
+    e.focused = false
+
+    e.setState(false, false)
+
+    e.setTypesAndTCoords(false)
+
+    e.dd.FocusBox.Hide()
+  }
+}
+
+func (e *Button) onKeyDown(evt *Event) {
+  if e.focused && (evt.Key == "space" || evt.Key == "return") {
+    curPressed := e.down
+    e.down = true
+
+    if !curPressed {
+      e.setTypesAndTCoords(true)
+    }
+  }
+}
+
+func (e *Button) onKeyUp(evt *Event) {
+  if e.focused && (evt.Key == "space" || evt.Key == "return") {
+    curPressed := e.down
+    e.down = false
+
+    if curPressed {
+      e.setTypesAndTCoords(false)
+    }
+  }
+}
+
 func (e *Button) setTypesAndTCoords(pressed bool) {
   t := e.dd.P1.Skin.ButtonBorderThickness()
 
@@ -72,6 +153,17 @@ func (e *Button) setTypesAndTCoords(pressed bool) {
     x0, y0 := e.dd.P1.Skin.ButtonPressedOrigin()
 
     setBorderElementTypesAndTCoords(e.dd, e.tris, x0, y0, t, e.dd.P1.Skin.BGColor())
+  } else if e.flat {
+    if e.inside {
+      x0, y0 := e.dd.P1.Skin.InsetOrigin()
+
+      setBorderElementTypesAndTCoords(e.dd, e.tris, x0, y0, t, e.dd.P1.Skin.BGColor())
+    } else {
+      for _, tri := range e.tris {
+        e.dd.P1.Type.Set1Const(tri, VTYPE_PLAIN)
+        e.dd.P1.SetColorConst(tri, e.dd.P1.Skin.BGColor())
+      }
+    }
   } else {
     x0, y0 := e.dd.P1.Skin.ButtonOrigin()
 
@@ -104,11 +196,11 @@ func setBorderElementTypesAndTCoords(dd *DrawData, tris []uint32, x0, y0 int, t 
       if (i == 1 && j == 1) {
         dd.P1.Type.Set1Const(tri0, VTYPE_PLAIN)
         dd.P1.SetColorConst(tri0, bgColor)
-        dd.P1.TCoord.Set2Const(tri0, 0.0, 0.0)
+        //dd.P1.TCoord.Set2Const(tri0, 0.0, 0.0)
 
         dd.P1.Type.Set1Const(tri1, VTYPE_PLAIN)
         dd.P1.SetColorConst(tri1, bgColor)
-        dd.P1.TCoord.Set2Const(tri1, 0.0, 0.0)
+        //dd.P1.TCoord.Set2Const(tri1, 0.0, 0.0)
       } else {
         dd.P1.Type.Set1Const(tri0, VTYPE_SKIN)
         dd.P1.Color.Set4Const(tri0, 1.0, 1.0, 1.0, 1.0)
@@ -127,19 +219,16 @@ func setBorderElementTypesAndTCoords(dd *DrawData, tris []uint32, x0, y0 int, t 
 }
 
 func (e *Button) OnResize(maxWidth, maxHeight int) (int, int) {
-  width  := 200
-  height := 50
-
   t := e.dd.P1.Skin.ButtonBorderThickness()
 
-  setBorderElementPos(e.dd, e.tris, width, height, t)
+  setBorderElementPosZ(e.dd, e.tris, e.width, e.height, t, e.z)
 
-  e.ElementData.resizeChildren(width, height)
+  e.ElementData.resizeChildren(e.width, e.height)
 
-  return e.InitBB(width, height)
+  return e.InitBB(e.width, e.height)
 }
 
-func setBorderElementPos(dd *DrawData, tris []uint32, width, height, t int) {
+func setBorderElementPosZ(dd *DrawData, tris []uint32, width, height, t int, z float32) {
   var (
     x [4]int
     y [4]int
@@ -160,21 +249,21 @@ func setBorderElementPos(dd *DrawData, tris []uint32, width, height, t int) {
       tri0 := tris[(i*3 + j)*2 + 0]
       tri1 := tris[(i*3 + j)*2 + 1]
 
-      dd.P1.SetPos(tri0, 0, x[i], y[j], 0.5)
-      dd.P1.SetPos(tri0, 1, x[i+1], y[j], 0.5)
-      dd.P1.SetPos(tri0, 2, x[i], y[j+1], 0.5)
+      dd.P1.SetPos(tri0, 0, x[i], y[j], z)
+      dd.P1.SetPos(tri0, 1, x[i+1], y[j], z)
+      dd.P1.SetPos(tri0, 2, x[i], y[j+1], z)
 
-      dd.P1.SetPos(tri1, 0, x[i+1], y[j+1], 0.5)
-      dd.P1.SetPos(tri1, 1, x[i+1], y[j], 0.5)
-      dd.P1.SetPos(tri1, 2, x[i], y[j+1], 0.5)
+      dd.P1.SetPos(tri1, 0, x[i+1], y[j+1], z)
+      dd.P1.SetPos(tri1, 1, x[i+1], y[j], z)
+      dd.P1.SetPos(tri1, 2, x[i], y[j+1], z)
     }
   }
 }
 
-func (e *Button) Translate(dx, dy int) {
+func (e *Button) Translate(dx, dy int, dz float32) {
   for _, tri := range e.tris {
-    e.dd.P1.TranslateTri(tri, dx, dy)
+    e.dd.P1.TranslateTri(tri, dx, dy, dz)
   }
 
-  e.ElementData.Translate(dx, dy)
+  e.ElementData.Translate(dx, dy, dz)
 }

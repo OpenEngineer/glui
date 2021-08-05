@@ -171,6 +171,12 @@ func mainInner(c *cli.Context) error {
       }
     }
 
+    scales, _, _ := testFontGlyphs(font, fontCfg.Glyphs)
+    minScale, maxScale := calcMinMaxScale(scales)
+    if maxScale > minScale*2.0 {
+      maxScale = minScale*2.0
+    }
+
     for _, gIdF := range fontCfg.Glyphs {
       gId := rune(gIdF)
 
@@ -180,7 +186,7 @@ func mainInner(c *cli.Context) error {
       }
       uniqueNames[name] = true
 
-      glyph, err := createFontGlyph(font, gId, name)
+      glyph, err := createFontGlyph(font, gId, name, maxScale)
       if err != nil {
         return err
       }
@@ -436,7 +442,59 @@ func (g *Glyph) Compress() ([]byte, error) {
   return res, nil
 }
 
-func createFontGlyph(font *fontlib.SFNT, rIdx rune, name string) (*Glyph, error) {
+func testFontGlyphs(font *fontlib.SFNT, rIndices []float64) ([]float64, []float64, []float64) {
+  scale := make([]float64, len(rIndices))
+  x0 := make([]float64, len(rIndices))
+  y0 := make([]float64, len(rIndices))
+
+  for i, rIdx_ := range rIndices {
+    rIdx := rune(rIdx_)
+    gIdx := font.GlyphIndex(rIdx)
+    pTest := &canvaslib.Path{}
+    if err := font.GlyphPath(pTest, gIdx, 0, 0, 0, 1.0, fontlib.NoHinting); err != nil {
+      panic(err)
+    }
+
+    r := pTest.Bounds()
+
+    if r.W < r.H { // narrow rect, horizontally center
+      scale[i] = float64(RESOLUTION - 2*PADDING)/r.H
+      y0[i] = float64(PADDING)
+      x0[i] = (float64(RESOLUTION) - scale[i]*r.W)*0.5
+    } else { // wide tect, vertically center
+      scale[i] = float64(RESOLUTION - 2*PADDING)/r.W
+      y0[i] = (float64(RESOLUTION) - scale[i]*r.H)*0.5
+      x0[i] = float64(PADDING)
+    }
+
+    if rIdx == 44 {
+      fmt.Println("//comma scale: ", scale[i])
+    } else if rIdx == 65 {
+      fmt.Println("//A scale: ", scale[i])
+    }
+  }
+
+  return scale, x0, y0
+}
+
+func calcMinMaxScale(scales []float64) (float64, float64) {
+  minScale := 1.0
+  maxScale := 0.0
+
+  for _, scale := range scales {
+    if scale < minScale {
+      minScale = scale
+    }
+
+    if scale > maxScale {
+      maxScale = scale
+    }
+  }
+
+  return minScale, maxScale
+}
+
+func createFontGlyph(font *fontlib.SFNT, rIdx rune, name string, maxScale float64) (*Glyph, error) {
   gIdx := font.GlyphIndex(rIdx)
 
   /*if strings.HasSuffix(name, "G") {
@@ -450,8 +508,6 @@ func createFontGlyph(font *fontlib.SFNT, rIdx rune, name string) (*Glyph, error)
 
   r := pTest.Bounds()
 
-  pFinal := &canvaslib.Path{}
-
   var (
     scale float64
     x0 float64
@@ -459,12 +515,24 @@ func createFontGlyph(font *fontlib.SFNT, rIdx rune, name string) (*Glyph, error)
   )
   if r.W < r.H { // narrow rect, horizontally center
     scale = float64(RESOLUTION - 2*PADDING)/r.H
+    if scale > maxScale {
+      scale = maxScale
+    }
     y0 = float64(PADDING)
     x0 = (float64(RESOLUTION) - scale*r.W)*0.5
   } else { // wide tect, vertically center
     scale = float64(RESOLUTION - 2*PADDING)/r.W
+    if scale > maxScale {
+      scale = maxScale
+    }
     y0 = (float64(RESOLUTION) - scale*r.H)*0.5
     x0 = float64(PADDING)
+  }
+
+  if rIdx == 44 {
+    fmt.Println("//bounded comma scale: ", scale)
+  } else if rIdx == 65 {
+    fmt.Println("//bounded A scale: ", scale)
   }
 
   if (strings.HasSuffix(name, "q")) {
@@ -473,6 +541,9 @@ func createFontGlyph(font *fontlib.SFNT, rIdx rune, name string) (*Glyph, error)
 
   originX := x0/scale - r.X
   originY := y0/scale - r.Y
+
+  pFinal := &canvaslib.Path{}
+
   if err := font.GlyphPath(pFinal, gIdx, 0, int32(originX), int32(originY), scale, fontlib.NoHinting); err != nil {
     return nil, err
   }

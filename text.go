@@ -13,18 +13,30 @@ type Text struct {
   content string
   font    string
   size    float64
+  color   sdl.Color
 
   // 2 tris per character (whitespace obviously doesnt get any tris)
-  tris []uint32
-  dd   *DrawData
+  tris     []uint32
+  dd       *DrawData
+  refGlyph *Glyph
 }
 
 func NewText(dd *DrawData, content string, font string, size float64) *Text {
-  e := &Text{newElementData(), "", font, size, []uint32{}, dd}
+  refGlyph := dd.P2.Glyphs.GetGlyph(fmt.Sprintf("%s:%d", font, 'a'))
+
+  e := &Text{newElementData(), "", font, size, sdl.Color{0x00, 0x00, 0x00, 0xff}, []uint32{}, dd, refGlyph}
 
   e.SetContent(content)
 
   return e
+}
+
+func (e *Text) SetColor(c sdl.Color) {
+  e.color = c
+
+  for _, tri := range e.tris {
+    e.dd.P2.SetColorConst(tri, c)
+  }
 }
 
 func (e *Text) A(children ...Element) Element {
@@ -52,7 +64,8 @@ func (e *Text) SetContent(content string) {
   if nDiff > 0 {
     e.tris = append(e.tris, e.dd.P2.Alloc(nDiff*2)...)
   } else if nDiff < 0 {
-    e.dd.P2.Dealloc(e.tris[n*2:])
+    remove := e.tris[n*2:]
+    e.dd.P2.Dealloc(remove)
     e.tris = e.tris[0:n*2]
   }
 
@@ -62,8 +75,8 @@ func (e *Text) SetContent(content string) {
 
     e.dd.P2.Type.Set1Const(tri0, VTYPE_GLYPH)
     e.dd.P2.Type.Set1Const(tri1, VTYPE_GLYPH)
-    e.dd.P2.SetColorConst(tri0, sdl.Color{0x00, 0x00, 0x00, 0xff})
-    e.dd.P2.SetColorConst(tri1, sdl.Color{0x00, 0x00, 0x00, 0xff})
+    e.dd.P2.SetColorConst(tri0, e.color)
+    e.dd.P2.SetColorConst(tri1, e.color)
   }
 
   i := 0
@@ -85,15 +98,23 @@ func isWhitespace(r rune) bool {
   return r == ' ' || r == '\n' || r == '\t'
 }
 
+func isDelimiter(r rune) bool {
+  return isWhitespace(r) || r == '"' || r =='\'' || r == '('  || r == ')' || r == '[' || r == ']' || r == '{' || r == '}' || r == '|' || r == ':' || r == ',' || r == ';' || r == '`' || r == '/' || r == '\\' || r == '.' || r == '-'
+}
+
+// useful for mono fonts
+func (e *Text) RefAdvance() float64 {
+  return math.Ceil(e.refGlyph.Advance*e.size/float64(GlyphResolution))
+}
+
 // TODO: multiline depending on maxWidth
 func (e *Text) OnResize(maxWidth, maxHeight int) (int, int) {
   baseline := e.size
 
   x := 0.0
 
-  refG := e.dd.P2.Glyphs.GetGlyph(fmt.Sprintf("%s:%d", e.font, 'a'))
-  refScale := refG.Scale
-  space := refG.Advance*e.size/float64(GlyphResolution)
+  refScale := e.refGlyph.Scale
+  space := math.Ceil(e.refGlyph.Advance*e.size/float64(GlyphResolution))
 
   i := 0
   runes := []rune(e.content)
@@ -119,9 +140,9 @@ func (e *Text) OnResize(maxWidth, maxHeight int) (int, int) {
 
       var advance float64
       if i < len(runes) - 1 {
-        advance = g.GetAdvance(runes[i+1])*scale
+        advance = math.Ceil(g.GetAdvance(runes[i+1])*scale)
       } else {
-        advance = 0
+        advance = math.Ceil(g.Advance*scale)
       }
 
       //advance = size // DEBUG
@@ -142,9 +163,7 @@ func (e *Text) OnResize(maxWidth, maxHeight int) (int, int) {
 
       //r = r.Scale(rInner, rInner.Round())
         
-      z := float32(x)*(0.001)
-
-      e.dd.P2.SetQuadPosF(tri0, tri1, r, z)
+      e.dd.P2.SetQuadPosF(tri0, tri1, r, e.z)
 
       e.dd.P2.Param.Set1Const(tri0, float32(scale))
       e.dd.P2.Param.Set1Const(tri1, float32(scale))
@@ -157,10 +176,13 @@ func (e *Text) OnResize(maxWidth, maxHeight int) (int, int) {
   return e.ElementData.InitBB(int(math.Ceil(x)), int(e.size))
 }
 
-func (e *Text) Translate(dx, dy int) {
+func (e *Text) Translate(dx, dy int, dz float32) {
+  if e.content == "Cut" {
+    fmt.Println("Cut z-index: ", e.dd.P2.Pos.Get(e.tris[0], 0, 2))
+  }
   for _, tri := range e.tris {
-    e.dd.P2.TranslateTri(tri, dx, dy)
+    e.dd.P2.TranslateTri(tri, dx, dy, dz)
   }
 
-  e.ElementData.Translate(dx, dy)
+  e.ElementData.Translate(dx, dy, dz)
 }

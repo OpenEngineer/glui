@@ -70,6 +70,9 @@ type DrawData struct {
 
   P1 DrawPass1Data
   P2 DrawPass2Data
+
+  FocusBox *FocusBox
+  Dialog   *Dialog
 }
 
 func NewFloat32Buffer(nComp int) *Float32Buffer {
@@ -139,11 +142,17 @@ func NewDrawPassData() DrawPassData {
 }
 
 func NewDrawData(s Skin, glyphs map[string]*Glyph) *DrawData {
-  return &DrawData{
+  dd := &DrawData{
     0, 0,
     DrawPass1Data{NewDrawPassData(), NewSkinMap(s)},
     DrawPass2Data{NewDrawPassData(), NewGlyphMap(glyphs)},
+    nil, nil,
   }
+
+  dd.FocusBox = newFocusBox(dd)
+  dd.Dialog   = newDialog(dd)
+
+  return dd
 }
 
 func (d *DrawPassData) InitGL(prog uint32) {
@@ -258,36 +267,40 @@ func (d *DrawPassData) Alloc(nTris int) []uint32 {
   return offsets
 }
 
-func (b *DrawPassData) Dealloc(offsets []uint32) {
-  oldFree := b.free
+func (d *DrawPassData) Dealloc(offsets []uint32) {
+  for _, tri := range offsets {
+    d.Type.Set1Const(tri, VTYPE_HIDDEN)
+  }
 
-  b.free = make([]uint32, len(oldFree) + len(offsets))
+  oldFree := d.free
+
+  d.free = make([]uint32, len(oldFree) + len(offsets))
 
   i := 0
   j := 0
   k := 0
 
-  for ;i < len(oldFree) && j < len(offsets); {
+  for ;i < len(oldFree) || j < len(offsets); {
     if i == len(oldFree) {
-      b.free[k] = offsets[j]
+      d.free[k] = offsets[j]
       j++
       k++
     } else if j == len(offsets) {
-      b.free[k] = oldFree[i]
+      d.free[k] = oldFree[i]
       i++
       k++
     } else if oldFree[i] < offsets[j] {
-      b.free[k] = oldFree[i]
+      d.free[k] = oldFree[i]
       i++
       k++
     } else {
-      b.free[k] = offsets[j]
+      d.free[k] = offsets[j]
       j++
       k++
     }
   }
 
-  if k != len(b.free) {
+  if k != len(d.free) {
     panic("k should be == len(b.free)")
   }
 }
@@ -469,28 +482,37 @@ func (d *DrawPassData) SetPos(triId uint32, vertexId uint32, x_ int, y_ int, z f
   d.Pos.Set3(triId, vertexId, x, y, z)
 }
 
-func (d *DrawPassData) translatePos(triId uint32, vertexId uint32, dx float32, dy float32) {
-  xStart := d.Pos.Get(triId, vertexId, 0)
-  yStart := d.Pos.Get(triId, vertexId, 1)
+func (d *DrawPassData) translatePos(triId uint32, vertexId uint32, dx float32, dy float32, dz float32) {
+  if dx != 0.0 {
+    xStart := d.Pos.Get(triId, vertexId, 0)
+    d.Pos.Set(triId, vertexId, 0, xStart+dx)
+  }
 
-  d.Pos.Set(triId, vertexId, 0, xStart+dx)
-  d.Pos.Set(triId, vertexId, 1, yStart+dy)
+  if dy != 0.0 {
+    yStart := d.Pos.Get(triId, vertexId, 1)
+    d.Pos.Set(triId, vertexId, 1, yStart+dy)
+  }
+
+  if dz != 0.0 {
+    zStart := d.Pos.Get(triId, vertexId, 2)
+    d.Pos.Set(triId, vertexId, 2, zStart+dz)
+  }
 }
 
-func (d *DrawPassData) TranslatePos(triId uint32, vertexId uint32, dx_ int, dy_ int) {
+func (d *DrawPassData) TranslatePos(triId uint32, vertexId uint32, dx_ int, dy_ int, dz float32) {
   dx := 2.0*float32(dx_)/float32(d.W)
   dy := -2.0*float32(dy_)/float32(d.H)
 
-  d.translatePos(triId, vertexId, dx, dy)
+  d.translatePos(triId, vertexId, dx, dy, dz)
 }
 
-func (d *DrawPassData) TranslateTri(triId uint32, dx_ int, dy_ int) {
+func (d *DrawPassData) TranslateTri(triId uint32, dx_ int, dy_ int, dz float32) {
   dx := 2.0*float32(dx_)/float32(d.W)
   dy := -2.0*float32(dy_)/float32(d.H)
 
-  d.translatePos(triId, 0, dx, dy)
-  d.translatePos(triId, 1, dx, dy)
-  d.translatePos(triId, 2, dx, dy)
+  d.translatePos(triId, 0, dx, dy, dz)
+  d.translatePos(triId, 1, dx, dy, dz)
+  d.translatePos(triId, 2, dx, dy, dz)
 }
 
 func (d *DrawPassData) SetPosF(triId uint32, vertexId uint32, x_ float64, y_ float64, z float32) {

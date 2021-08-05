@@ -25,6 +25,13 @@ type SkinMap struct {
   inputY int
   inputT int
 
+  focusX int
+  focusY int
+  focusT int
+
+  insetX int
+  insetY int
+
   loc uint32
   tid uint32
 }
@@ -45,9 +52,13 @@ func (sm *SkinMap) genData(s Skin) {
 
   sm.genInputData(s, tb)
 
-  //if err := tb.ToImage("debug.png"); err != nil {
-    //panic(err)
-  //}
+  sm.genFocusData(s, tb)
+
+  sm.genInsetData(s, tb)
+
+  if err := tb.ToImage("skin.png"); err != nil {
+    panic(err)
+  }
 
   sm.data = tb.data
   sm.width = tb.width
@@ -78,13 +89,42 @@ func (sm *SkinMap) genInputData(s Skin, tb *TextureBuilder) {
   input := s.Input()
   sqrtN := math.Sqrt(float64(len(input)/4))
   if math.Mod(sqrtN, 1.0) != 0.0 {
-    panic("button border skin incorrect size")
+    panic("input border skin incorrect size")
   }
 
   tInput := (int(sqrtN) - 1)/2
 
   sm.inputX, sm.inputY = tb.Build(input, 2*tInput+1, 2*tInput+1)
   sm.inputT = tInput
+}
+
+func (sm *SkinMap) genFocusData(s Skin, tb *TextureBuilder) {
+  focus := s.Focus()
+  sqrtN := math.Sqrt(float64(len(focus)/4))
+  if math.Mod(sqrtN, 1.0) != 0.0 {
+    panic("focus skin incorrect size")
+  }
+
+  tFocus := (int(sqrtN) - 1)/2
+
+  sm.focusX, sm.focusY = tb.Build(focus, 2*tFocus+1, 2*tFocus+1)
+  sm.focusT = tFocus
+}
+
+func (sm *SkinMap) genInsetData(s Skin, tb *TextureBuilder) {
+  inset := s.Inset()
+  sqrtN := math.Sqrt(float64(len(inset)/4))
+  if math.Mod(sqrtN, 1.0) != 0.0 {
+    panic("button border skin incorrect size")
+  }
+
+  tInset := (int(sqrtN) - 1)/2
+
+  sm.insetX, sm.insetY = tb.Build(inset, 2*tInset+1, 2*tInset+1)
+
+  if sm.buttonT != tInset {
+    panic("inset border should be same size as button border")
+  }
 }
 
 func (s *SkinMap) InitGL(loc uint32) {
@@ -126,6 +166,10 @@ func (s *SkinMap) BGColor() sdl.Color {
   return s.skin.BGColor()
 }
 
+func (s *SkinMap) SelColor() sdl.Color {
+  return s.skin.SelColor()
+}
+
 func (s *SkinMap) InputOrigin() (int, int) {
   return s.inputX, s.inputY
 }
@@ -148,4 +192,16 @@ func (s *SkinMap) InputBGColor() sdl.Color {
   a := s.data[k*4+3]
 
   return sdl.Color{r, g, b, a}
+}
+
+func (s *SkinMap) FocusOrigin() (int, int) {
+  return s.focusX, s.focusY
+}
+
+func (s *SkinMap) FocusThickness() int {
+  return s.focusT
+}
+
+func (s *SkinMap) InsetOrigin() (int, int) {
+  return s.insetX, s.insetY
 }

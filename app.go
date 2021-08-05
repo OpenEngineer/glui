@@ -39,18 +39,27 @@ type App struct {
 }
 
 type AppState struct {
-  active   Element
-  cursor   int
-  lastDown Element
-  outside  bool
+  mouseElement   Element
+  focusElement   Element
+  cursor         int
+  lastDown       Element
+  outside        bool
+  lastUpX        int
+  lastUpY        int
+  upCount        int // limited to three
+  lastTick       uint64
+  lastUpTick     uint64
 }
 
 func newAppState() AppState {
   return AppState{
     nil,
+    nil,
     -1,
     nil,
     false,
+    0,0,0,
+    0,0,
   }
 }
 
@@ -62,7 +71,9 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
 
   fmt.Fprintf(debug, "#starting log\n")
 
-  body := NewBody()
+  dd := NewDrawData(skin, glyphs)
+  body := NewBody(dd)
+  body.A(dd.Dialog)
 
   if glyphs == nil {
     glyphs = make(map[string]*Glyph)
@@ -80,7 +91,7 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
     0,
     nil,
     debug,
-    NewDrawData(skin, glyphs),
+    dd,
     newAppState(),
   }
 }
@@ -149,7 +160,7 @@ func (app *App) run() error {
   return app.detectUserEvents()
 }
 
-func (app *App) UpdateActive(x, y int) {
+func (app *App) updateMouseElement(x, y int) {
   if x < 0 {
     x_, y_, _ := sdl.GetMouseState()
 
@@ -157,41 +168,53 @@ func (app *App) UpdateActive(x, y int) {
     y = int(y_)
   }
 
-  oldActive := app.state.active
-  if oldActive == nil {
-    oldActive = app.body
+  oldMouseElement := app.state.mouseElement
+  if oldMouseElement == nil {
+    oldMouseElement = app.body
   }
 
-  newActive, isSameOrChildOfOld := findActive(oldActive, x, y)
+  newMouseElement, isSameOrChildOfOld := findHitElement(oldMouseElement, x, y)
 
-  // trigger mouse leave event if new active isn't child of old
-  if app.state.active != nil && !isSameOrChildOfOld {
+  // trigger mouse leave event if new mouseElement isn't child of old
+  if app.state.mouseElement != nil && !isSameOrChildOfOld {
     evt := NewMouseEvent(x, y)
-    if app.state.active.Parent() != nil {
-      evt.stopBubblingWhenElementReached(app.state.active.Parent())
-    }
-    app.TriggerEvent("mouseleave", evt)
+
+    ca := commonAncestor(app.state.mouseElement, newMouseElement)
+    evt.stopBubblingWhenElementReached(ca)
+
+    app.triggerHitEvent("mouseleave", evt)
   }
 
-  if app.state.active == nil {
+  if app.state.mouseElement == nil {
     evt := NewMouseEvent(x, y)
-    app.state.active = newActive
-    app.TriggerEvent("mouseenter", evt)
-  } else if app.state.active != newActive {
+    app.state.mouseElement = newMouseElement
+    app.triggerHitEvent("mouseenter", evt)
+  } else if app.state.mouseElement != newMouseElement {
     evt := NewMouseEvent(x, y)
 
-    ca := commonAncestor(app.state.active, newActive)
+    ca := commonAncestor(app.state.mouseElement, newMouseElement)
 
     evt.stopBubblingWhenElementReached(ca)
 
-    app.state.active = newActive
-    if ca != newActive {
-      app.TriggerEvent("mouseenter", evt)
+    app.state.mouseElement = newMouseElement
+    if ca != newMouseElement {
+      app.triggerHitEvent("mouseenter", evt)
     }
   }
 
-  if app.state.active.Cursor() != app.state.cursor {
-    app.state.cursor = app.state.active.Cursor()
+  cursor := -1
+  e := app.state.mouseElement
+  for cursor < 0 && e != nil {
+    cursor = e.Cursor()
+    e = e.Parent()
+  }
+
+  if cursor < 0 {
+    cursor = sdl.SYSTEM_CURSOR_ARROW
+  }
+
+  if cursor != app.state.cursor {
+    app.state.cursor = cursor
 
     if app.state.cursor >= 0 && app.state.cursor < sdl.NUM_SYSTEM_CURSORS {
       sdl.ShowCursor(sdl.ENABLE)
@@ -221,54 +244,6 @@ func (app *App) mouseInWindow() bool {
   b := r.Hit(int(x), int(y))
 
   return b
-}
-
-func (app *App) OnShowOrResize() {
-  app.dd.SyncSize(app.window)
-
-  app.body.OnResize(app.dd.W, app.dd.H)
-
-  if app.mouseInWindow() {
-    app.UpdateActive(-1, -1)
-  }
-
-  app.DrawIfDirty()
-}
-
-func (app *App) TriggerEvent(name string, evt *Event) {
-  //fmt.Printf("triggering %s event, %d %d, %p\n", name, evt.X, evt.Y, app.state.active)
-
-  e := app.state.active 
-  for e != nil {
-    l := e.GetEventListener(name)
-    
-    if l != nil {
-      l(evt)
-    }
-
-    if evt.stopBubbling {
-      break
-    }
-
-    // bubble
-    e = e.Parent()
-
-    if evt.stopBubblingElement == e {
-      break
-    }
-  }
-
-  app.DrawIfDirty()
-}
-
-func (app *App) DrawIfDirty() {
-  if app.dd.Dirty() {
-    app.Draw()
-  }
-}
-
-func (app *App) Draw() {
-  app.drawCh <- true
 }
 
 func (app *App) initRenderLoop(m *sync.Mutex) {

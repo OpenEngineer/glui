@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -13,11 +11,11 @@ type Body struct {
 }
 
 // windows can't be made transparent like this sadly, so alpha stays 255
-func NewBody() *Body {
+func NewBody(dd *DrawData) *Body {
   return &Body{
     newElementData(),
     0,
-    sdl.Color{0,0,0,255},
+    dd.P1.Skin.BGColor(),
   }
 }
 
@@ -62,12 +60,4 @@ func (e *Body) OnResize(maxWidth, maxHeight int) (int, int) {
   }
 
   e.bb = this*/
-}
-
-func (e *Body) OnTick(tick uint64) {
-  if tick%10 == 0{
-    fmt.Println("10th tick: ", tick)
-  }
-
-  e.ElementData.OnTick(tick)
 }

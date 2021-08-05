@@ -1,12 +1,7 @@
 package glui
 
-import (
-  "github.com/veandco/go-sdl2/sdl"
-)
-
 type Element interface {
   RegisterParent(parent Element)
-  //A(e ...Element) Element // short for "AppendChildren", returns self
 
   Parent() Element
   Children() []Element
@@ -19,7 +14,8 @@ type Element interface {
   OnTick(tick uint64)
 
   Hit(x, y int) bool
-  Translate(dx, dy int)
+  Translate(dx, dy int, dz float32)
+  SetZ(z float32)
 
   GetEventListener(name string) EventListener // returns nil if no EventListener specified
 }
@@ -34,6 +30,7 @@ type ElementData struct {
   // basic positioning settings
   padding [4]int
   spacing int
+  z       float32
 }
 
 func newElementData() ElementData {
@@ -44,11 +41,20 @@ func newElementData() ElementData {
     make(map[string]EventListener),
     [4]int{0, 0, 0, 0},
     0,
+    0.5,
   }
 }
 
 func (e *ElementData) Cursor() int {
-  return sdl.SYSTEM_CURSOR_ARROW
+  return -1
+}
+
+func (e *ElementData) SetZ(z float32) {
+  e.z = z
+
+  for _, child := range e.children {
+    child.SetZ(z)
+  }
 }
 
 func (e *ElementData) appendChild(child Element) {
@@ -119,9 +125,9 @@ func (e *ElementData) InitBB(w, h int) (int, int) {
   return w, h
 }
 
-func (e *ElementData) Translate(dx, dy int) {
+func (e *ElementData) Translate(dx, dy int, dz float32) {
   for _, child := range e.children {
-    child.Translate(dx, dy)
+    child.Translate(dx, dy, dz)
   }
 
   e.bb = e.bb.Translate(dx, dy)
@@ -135,7 +141,7 @@ func (e *ElementData) resizeChildren(maxWidth, maxHeight int) {
   for _, child := range e.children {
     _, dy := child.OnResize(maxWidth - e.padding[1] - e.padding[3], maxHeight - y - e.padding[2])
 
-    child.Translate(e.padding[3], y)
+    child.Translate(e.padding[3], y, 0.0)
 
     y += dy + e.spacing
   }

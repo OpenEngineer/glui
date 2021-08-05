@@ -7,6 +7,17 @@ import (
   "github.com/go-gl/gl/v4.1-core/gl"
 )
 
+func (app *App) DrawIfDirty() {
+  if app.dd.Dirty() {
+    fmt.Println("drawing...")
+    app.Draw()
+  }
+}
+
+func (app *App) Draw() {
+  app.drawCh <- true
+}
+
 func (app *App) draw() {
   if err := app.window.GLMakeCurrent(app.ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
@@ -47,15 +58,16 @@ func (app *App) drawInner() {
   gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
   gl.Enable(gl.BLEND)
-
   gl.BlendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+
+  gl.Enable(gl.DEPTH_TEST)
+  gl.DepthFunc(gl.LESS)
 
   gl.UseProgram(app.program1)
 
   app.dd.P1.SyncAndBind()
 
   gl.DrawArrays(gl.TRIANGLES, 0, int32(app.dd.P1.Len())*3)
-
 
   gl.UseProgram(app.program2)
 
