@@ -125,8 +125,8 @@ func (app *App) initEventLoop() {
       }
       break
     case *sdl.MouseButtonEvent:
-      if app.dd.Dialog.isVisible() && !app.dd.Dialog.Hit(int(event.X), int(event.Y)) {
-        app.dd.Dialog.Hide()
+      if app.dd.Menu.isVisible() && !app.dd.Menu.Hit(int(event.X), int(event.Y)) {
+        app.dd.Menu.Hide()
       }
 
       if event.Type == sdl.MOUSEBUTTONDOWN {

@@ -73,7 +73,7 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
 
   dd := NewDrawData(skin, glyphs)
   body := NewBody(dd)
-  body.A(dd.Dialog)
+  body.A(dd.Menu)
 
   if glyphs == nil {
     glyphs = make(map[string]*Glyph)

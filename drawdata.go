@@ -72,7 +72,7 @@ type DrawData struct {
   P2 DrawPass2Data
 
   FocusBox *FocusBox
-  Dialog   *Dialog
+  Menu   *Menu
 }
 
 func NewFloat32Buffer(nComp int) *Float32Buffer {
@@ -150,7 +150,7 @@ func NewDrawData(s Skin, glyphs map[string]*Glyph) *DrawData {
   }
 
   dd.FocusBox = newFocusBox(dd)
-  dd.Dialog   = newDialog(dd)
+  dd.Menu   = newMenu(dd)
 
   return dd
 }

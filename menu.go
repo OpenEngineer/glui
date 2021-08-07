@@ -7,7 +7,7 @@ import (
 const HIDE_SHIFT = 2.0
 
 // styled the same as a button, and can be filled with arbitrary children
-type Dialog struct {
+type Menu struct {
   ElementData
 
   tris []uint32
@@ -19,21 +19,21 @@ type Dialog struct {
   onHide func()
 }
 
-func newDialog(dd *DrawData) *Dialog {
+func newMenu(dd *DrawData) *Menu {
   tris := dd.P1.Alloc(9*2)
 
-  e := &Dialog{newElementData(), tris, dd, false, nil}
+  e := &Menu{newElementData(), tris, dd, false, nil}
 
   e.setTypesAndTCoords()
 
   return e
 }
 
-func (e *Dialog) isVisible() bool {
+func (e *Menu) isVisible() bool {
   return e.visible
 }
 
-func (e *Dialog) setTypesAndTCoords() {
+func (e *Menu) setTypesAndTCoords() {
   t := e.dd.P1.Skin.ButtonBorderThickness()
 
   x0, y0 := e.dd.P1.Skin.ButtonOrigin()
@@ -43,11 +43,11 @@ func (e *Dialog) setTypesAndTCoords() {
   e.Hide()
 }
 
-func (e *Dialog) OnHide(fn func()) {
+func (e *Menu) OnHide(fn func()) {
   e.onHide = fn
 }
 
-func (e *Dialog) A(children ...Element) Element {
+func (e *Menu) A(children ...Element) Element {
   for _, child := range children {
     if !e.visible {
       child.Translate(0, 0, HIDE_SHIFT)
@@ -60,7 +60,7 @@ func (e *Dialog) A(children ...Element) Element {
   return e
 }
 
-func (e *Dialog) Hide() {
+func (e *Menu) Hide() {
   if e.visible {
     // delete all children
     e.ElementData.Translate(0, 0, HIDE_SHIFT)
@@ -78,7 +78,7 @@ func (e *Dialog) Hide() {
   }
 }
 
-func (e *Dialog) OnResize(maxWidth, maxHeight int) (int, int) {
+func (e *Menu) OnResize(maxWidth, maxHeight int) (int, int) {
   if e.visible {
     //e.Show(Rect{0, 0, maxWidth, maxHeight})
 
@@ -88,7 +88,7 @@ func (e *Dialog) OnResize(maxWidth, maxHeight int) (int, int) {
   return 0, 0
 }
 
-func (e *Dialog) Show(r Rect) {
+func (e *Menu) Show(r Rect) {
   fmt.Println("attempting to show dialog")
 
   t := e.dd.P1.Skin.ButtonBorderThickness()
@@ -128,11 +128,11 @@ func (e *Dialog) Show(r Rect) {
   e.visible = true
 }
 
-func (e *Dialog) Clear() {
+func (e *Menu) Clear() {
   // this method actually needs to do something
 }
 
-func (e *Dialog) Translate(dx, dy int, dz float32) {
+func (e *Menu) Translate(dx, dy int, dz float32) {
   fmt.Println("dialog z-index: ", e.dd.P1.Pos.Get(e.tris[0], 0, 2))
   for _, tri := range e.tris {
     e.dd.P1.TranslateTri(tri, dx, dy, dz)

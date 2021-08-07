@@ -24,6 +24,9 @@ type ElementData struct {
   parent       Element
   children     []Element
 
+  dd   *DrawData
+  tris []uint32
+
   bb           Rect
   evtListeners map[string]EventListener // only one eventlistener per event type
 

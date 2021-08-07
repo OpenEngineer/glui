@@ -232,7 +232,7 @@ func (e *Input) onMouseMove(evt *Event) {
 func (e *Input) onRightClick(evt *Event) {
   e.fillRightClickMenu()
 
-  e.dd.Dialog.Show(Rect{evt.X, evt.Y, 70, 100})
+  e.dd.Menu.Show(Rect{evt.X, evt.Y, 70, 100})
 
   e.menuVisible = true
 }
@@ -469,11 +469,11 @@ func (e *Input) refreshVBar() {
 }
 
 func (e *Input) fillRightClickMenu() {
-  e.dd.Dialog.Clear()
-  e.dd.Dialog.Padding(5)
-  e.dd.Dialog.Spacing(0)
+  e.dd.Menu.Clear()
+  e.dd.Menu.Padding(5)
+  e.dd.Menu.Spacing(0)
 
-  if len(e.dd.Dialog.Children()) == 0 {
+  if len(e.dd.Menu.Children()) == 0 {
     cutButton := NewFlatButton(e.dd)
     cutButton.A(NewHor(START, CENTER, 0).A(e.dd.Sans("Cut", 10)))
     cutButton.SetSize(60, 30)
@@ -483,7 +483,7 @@ func (e *Input) fillRightClickMenu() {
       if e.hasSel() {
         e.cutSel()
       }
-      e.dd.Dialog.Hide()
+      e.dd.Menu.Hide()
     })
 
     copyButton := NewFlatButton(e.dd)
@@ -495,7 +495,7 @@ func (e *Input) fillRightClickMenu() {
       if e.hasSel() {
         e.copySel()
       }
-      e.dd.Dialog.Hide()
+      e.dd.Menu.Hide()
     })
 
     pasteButton := NewFlatButton(e.dd)
@@ -505,10 +505,10 @@ func (e *Input) fillRightClickMenu() {
     pasteButton.SetZ(-0.5)
     pasteButton.OnClick(func() {
       e.insertClipboard()
-      e.dd.Dialog.Hide()
+      e.dd.Menu.Hide()
     })
 
-    e.dd.Dialog.A(cutButton, copyButton, pasteButton)
+    e.dd.Menu.A(cutButton, copyButton, pasteButton)
   }
 }
 
@@ -545,7 +545,7 @@ func (e *Input) OnResize(maxWidth, maxHeight int) (int, int) {
 
   if e.menuVisible {
     // origin is handled by translate
-    e.dd.Dialog.Show(Rect{0, 0, 70, 100})
+    e.dd.Menu.Show(Rect{0, 0, 70, 100})
   }
 
   return e.width, e.height
@@ -623,7 +623,7 @@ func (e *Input) Translate(dx, dy int, dz float32) {
   }
 
   if e.menuVisible {
-    e.dd.Dialog.Translate(dx, dy, 0.0)
+    e.dd.Menu.Translate(dx, dy, 0.0)
   }
 }
 
