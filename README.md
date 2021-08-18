@@ -10,10 +10,12 @@ Tab to prev/next element with a `"focus"`
 
 # Types of elements
 
-* Button
-* Input
+* Body
+* Hor
 * Text
 * Icon
+* Button
+* Input
 
 # DWMPeekPreview
 

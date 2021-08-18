@@ -29,7 +29,7 @@ func glyphTextureSize(nGlyphs int) int {
   return size
 }
 
-func NewGlyphMap(glyphs map[string]*Glyph) *GlyphMap {
+func newGlyphMap(glyphs map[string]*Glyph) *GlyphMap {
   texSize := glyphTextureSize(len(glyphs))
   
   data := make([]byte, texSize*texSize*4)

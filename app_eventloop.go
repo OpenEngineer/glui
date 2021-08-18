@@ -16,7 +16,7 @@ type animationEvent struct {
 }
 
 // runs on main loop, must handle quit, and wm events
-func (app *App) detectUserEvents() error {
+func (app *App) forwardSystemAndUserEvents() error {
   running := true
   for running {
     event_ := sdl.WaitEvent()
@@ -49,7 +49,7 @@ func (app *App) getScreenSize() (int, int, error) {
   return int(dm.W), int(dm.H), nil
 }
 
-func (app *App) emitAnimationTicks() {
+func (app *App) emitAnimationEvents() {
   someOffscreenBecameVisible := func(oldX int, x int, w int, W int) bool {
     b := false
 
@@ -72,8 +72,7 @@ func (app *App) emitAnimationTicks() {
 
   for true {
     x, y := app.window.GetPosition()
-    w := app.dd.W
-    h := app.dd.H
+    w,h  := app.root.GetSize()
     W, H, err := app.getScreenSize()
     if err != nil {
       panic(err)
@@ -95,129 +94,39 @@ func (app *App) emitAnimationTicks() {
   }
 }
 
-func (app *App) initEventLoop() {
+func (app *App) initMainEventLoop() {
   for {
     event_ := <- app.eventCh
 
     switch event := event_.(type) {
     case *animationEvent:
-      app.state.lastTick = event.tick
-      app.body.OnTick(event.tick)
-
-      if event.force {
-        app.Draw()
-      } else {
-        app.DrawIfDirty()
-      }
-
+      app.onTick(event)
       break
     case *sdl.MouseMotionEvent:
-      if !app.state.outside {
-        app.updateMouseElement(int(event.X), int(event.Y))
-
-        if app.state.mouseElement != nil {
-          if app.state.lastDown != nil && app.state.lastDown != app.state.mouseElement {
-            app.triggerEvent(app.state.lastDown, "mousemove", NewMouseEvent(int(event.X), int(event.Y)))
-          }
-
-          app.triggerHitEvent("mousemove", NewMouseEvent(int(event.X), int(event.Y)))
-        }
-      }
+      app.onMouseMove(event)
       break
     case *sdl.MouseButtonEvent:
-      if app.dd.Menu.isVisible() && !app.dd.Menu.Hit(int(event.X), int(event.Y)) {
-        app.dd.Menu.Hide()
+      if app.root.Menu.Visible() && !app.root.Menu.IsHit(int(event.X), int(event.Y)) {
+        app.root.Menu.Hide()
       }
 
       if event.Type == sdl.MOUSEBUTTONDOWN {
-        app.state.lastDown = app.state.mouseElement
-
-        if event.Button == sdl.BUTTON_LEFT {
-          app.triggerHitEvent("mousedown", NewMouseEvent(int(event.X), int(event.Y)))
-        } else if event.Button == sdl.BUTTON_RIGHT {
-          app.triggerHitEvent("rightclick", NewMouseEvent(int(event.X), int(event.Y)))
-        }
-
-        newFocusable := findFocusable(app.state.mouseElement)
-
-        blurEvt := NewMouseEvent(int(event.X), int(event.Y))
-        focusEvt := NewMouseEvent(int(event.X), int(event.Y))
-
-        app.changeFocusElement(newFocusable, blurEvt, focusEvt)
+        app.onMouseDown(event)
       } else if event.Type == sdl.MOUSEBUTTONUP {
-        if !app.state.outside && event.Button == sdl.BUTTON_LEFT {
-          if app.state.lastDown != nil && app.state.lastDown != app.state.mouseElement {
-            tmp := app.state.mouseElement
-            app.state.mouseElement = app.state.lastDown
-
-            app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
-
-            app.state.mouseElement = tmp
-          }
-
-          app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
-
-          app.handleMouseUp(int(event.X), int(event.Y))
-        } else {
-          if event.Button == sdl.BUTTON_LEFT {
-            app.state.mouseElement = app.state.lastDown
-
-            app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
-
-            app.handleMouseUp(int(event.X), int(event.Y))
-          }
-
-          app.state.mouseElement = nil
-        }
-
-        app.state.lastDown = nil
+        app.onMouseUp(event)
       }
 
       break
     case *sdl.TextInputEvent:
-      str := event.GetText()
-
-      app.triggerEvent(app.state.focusElement, "textinput", NewTextInputEvent(str))
-
+      app.onTextInput(event)
       break
     case *sdl.KeyboardEvent:
       // tab and shift-tab cycle through the focusable elements
       if event.Keysym.Sym == sdl.K_TAB && event.State == sdl.PRESSED {
-        var newFocusable Element
-
-        shift := event.Keysym.Mod & sdl.KMOD_SHIFT > 0
-        if shift {
-          if app.state.focusElement != nil {
-            newFocusable = findPrevFocusable(app.state.focusElement)
-          } else {
-            newFocusable = findPrevFocusable(app.body)
-          }
-        } else {
-          if app.state.focusElement != nil {
-            newFocusable = findNextFocusable(app.state.focusElement)
-          } else {
-            newFocusable = findNextFocusable(app.body)
-          }
-        }
-
-        blurEvt := NewKeyboardEvent("tab", false, shift, false)
-        focusEvt := NewKeyboardEvent("tab", false, shift, false)
-
-        app.changeFocusElement(newFocusable, blurEvt, focusEvt)
+        app.onTab(event)
       } else {
-        eType, kType, ctrl, shift, alt := extractKeyboardEventDetails(event)
-        if eType != "" && kType != "" {
-          app.triggerEvent(app.state.focusElement, eType, NewKeyboardEvent(kType, ctrl, shift, alt))
-
-          if eType == "keydown" {
-            app.triggerEvent(app.state.focusElement, "keypress", NewKeyboardEvent(kType, ctrl, shift, alt))
-          }
-        } else {
-          fmt.Println("unhandled keyboardevent: ", event.Keysym.Sym)
-        }
+        app.onKeyPress(event)
       }
-
-      app.DrawIfDirty()
 
       break
     case *sdl.WindowEvent:
@@ -238,52 +147,99 @@ func (app *App) initEventLoop() {
         app.onShowOrResize()
         break
       case sdl.WINDOWEVENT_FOCUS_LOST:
-        app.triggerEvent(app.state.focusElement, "blur", NewMouseEvent(-1, -1))
+        app.onBlur()
         break
       case sdl.WINDOWEVENT_FOCUS_GAINED:
-        app.triggerEvent(app.state.focusElement, "focus", NewMouseEvent(-1, -1))
+        app.onFocus()
         break
       case sdl.WINDOWEVENT_LEAVE:
-        if !app.state.outside {
-          app.triggerHitEvent("mouseleave", NewMouseEvent(-1, -1))
-        }
-
-        app.state.mouseElement = nil
-        app.state.outside = true
-        app.state.cursor = -1
-
+        app.onLeave()
         break
       case sdl.WINDOWEVENT_ENTER:
-        if app.mouseInWindow() {
-          app.state.outside = false
-          app.updateMouseElement(-1, -1)
-        }
+        app.onEnter()
         break
       }
 
-      app.DrawIfDirty()
     default:
       fmt.Println("event: ", reflect.TypeOf(event_).String())
     }
+
+    app.DrawIfDirty()
   }
 }
 
-func (app *App) changeFocusElement(newFocusable Element, blurEvt, focusEvt *Event) {
-  if newFocusable != app.state.focusElement {
-    if app.state.focusElement != nil {
-      app.triggerEvent(app.state.focusElement, "blur", blurEvt)
-    }
+func (app *App) onTick(event *animationEvent) {
+  app.state.lastTick = event.tick
 
-    app.state.focusElement = newFocusable
+  app.root.Animate(event.tick)
 
-    if newFocusable != nil {
-      app.triggerEvent(app.state.focusElement, "focus", focusEvt)
+  if event.force {
+    app.Draw()
+  } 
+}
+
+func (app *App) onMouseMove(event *sdl.MouseMotionEvent) {
+  if !app.state.outside {
+    app.updateMouseElement(int(event.X), int(event.Y))
+
+    if app.state.mouseElement != nil {
+      if app.state.lastDown != nil && app.state.lastDown != app.state.mouseElement {
+        app.triggerEvent(app.state.lastDown, "mousemove", NewMouseEvent(int(event.X), int(event.Y)))
+      }
+
+      app.triggerHitEvent("mousemove", NewMouseEvent(int(event.X), int(event.Y)))
     }
   }
+}
+
+func (app *App) onMouseDown(event *sdl.MouseButtonEvent) {
+  app.state.lastDown = app.state.mouseElement
+
+  if event.Button == sdl.BUTTON_LEFT {
+    app.triggerHitEvent("mousedown", NewMouseEvent(int(event.X), int(event.Y)))
+  } else if event.Button == sdl.BUTTON_RIGHT {
+    app.triggerHitEvent("rightclick", NewMouseEvent(int(event.X), int(event.Y)))
+  }
+
+  newFocusable := findFocusable(app.state.mouseElement)
+
+  blurEvt := NewMouseEvent(int(event.X), int(event.Y))
+  focusEvt := NewMouseEvent(int(event.X), int(event.Y))
+
+  app.changeFocusElement(newFocusable, blurEvt, focusEvt)
+}
+
+func (app *App) onMouseUp(event *sdl.MouseButtonEvent) {
+  if !app.state.outside && event.Button == sdl.BUTTON_LEFT {
+    if app.state.lastDown != nil && app.state.lastDown != app.state.mouseElement {
+      tmp := app.state.mouseElement
+      app.state.mouseElement = app.state.lastDown
+
+      app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
+
+      app.state.mouseElement = tmp
+    }
+
+    app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
+
+    app.detectClick(int(event.X), int(event.Y))
+  } else {
+    if event.Button == sdl.BUTTON_LEFT {
+      app.state.mouseElement = app.state.lastDown
+
+      app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
+
+      app.detectClick(int(event.X), int(event.Y))
+    }
+
+    app.state.mouseElement = nil
+  }
+
+  app.state.lastDown = nil
 }
 
 // turn a mouseup into a click, doubleclick or tripleclick
-func (app *App) handleMouseUp(x, y int) {
+func (app *App) detectClick(x, y int) {
   xPrev := app.state.lastUpX
   yPrev := app.state.lastUpY
 
@@ -317,41 +273,78 @@ func (app *App) handleMouseUp(x, y int) {
   app.triggerEvent(app.state.mouseElement, eName, NewMouseEvent(x, y))
 }
 
-func (app *App) triggerEvent(e Element, name string, evt *Event) {
-  for e != nil {
-    l := e.GetEventListener(name)
-    
-    if l != nil {
-      l(evt)
+func (app *App) onTextInput(event *sdl.TextInputEvent) {
+  str := event.GetText()
+
+  app.triggerEvent(app.state.focusElement, "textinput", NewTextInputEvent(str))
+}
+
+func (app *App) onTab(event *sdl.KeyboardEvent) {
+  app.hideMenuIfVisible()
+
+  var newFocusable Element
+
+  shift := event.Keysym.Mod & sdl.KMOD_SHIFT > 0
+  if shift {
+    if app.state.focusElement != nil {
+      newFocusable = findPrevFocusable(app.state.focusElement)
+    } else {
+      newFocusable = findPrevFocusable(app.root.Body)
     }
-
-    if evt.stopBubbling {
-      break
-    }
-
-    // bubble
-    e = e.Parent()
-
-    if evt.stopBubblingElement == e {
-      break
+  } else {
+    if app.state.focusElement != nil {
+      newFocusable = findNextFocusable(app.state.focusElement)
+    } else {
+      newFocusable = findNextFocusable(app.root.Body)
     }
   }
 
-  app.DrawIfDirty()
+  blurEvt := NewKeyboardEvent("tab", false, shift, false)
+  focusEvt := NewKeyboardEvent("tab", false, shift, false)
+
+  app.changeFocusElement(newFocusable, blurEvt, focusEvt)
 }
 
-func (app *App) triggerHitEvent(name string, evt *Event) {
-  app.triggerEvent(app.state.mouseElement, name, evt)
+func (app *App) onKeyPress(event *sdl.KeyboardEvent) {
+  eType, kType, ctrl, shift, alt := extractKeyboardEventDetails(event)
+  if eType != "" && kType != "" {
+    app.triggerEvent(app.state.focusElement, eType, NewKeyboardEvent(kType, ctrl, shift, alt))
+
+    if eType == "keydown" {
+      app.triggerEvent(app.state.focusElement, "keypress", NewKeyboardEvent(kType, ctrl, shift, alt))
+    }
+  } else {
+    fmt.Println("unhandled keyboardevent: ", event.Keysym.Sym)
+  }
 }
 
 func (app *App) onShowOrResize() {
-  app.dd.SyncSize(app.window)
+  app.root.syncSize(app.window)
 
-  app.body.OnResize(app.dd.W, app.dd.H)
+  app.root.ForcePosDirty()
+}
 
-  if app.mouseInWindow() {
-    app.updateMouseElement(-1, -1)
+func (app *App) onBlur() {
+  app.triggerEvent(app.state.focusElement, "blur", NewMouseEvent(-1, -1))
+}
+
+func (app *App) onFocus() {
+  app.triggerEvent(app.state.focusElement, "focus", NewMouseEvent(-1, -1))
+}
+
+func (app *App) onLeave() {
+  if !app.state.outside {
+    app.triggerHitEvent("mouseleave", NewMouseEvent(-1, -1))
   }
 
-  app.DrawIfDirty()
+  app.state.mouseElement = nil
+  app.state.outside = true
+  app.state.cursor = -1
+}
+
+func (app *App) onEnter() {
+  if app.mouseInWindow() {
+    app.state.outside = false
+    app.updateMouseElement(-1, -1)
+  }
 }

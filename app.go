@@ -1,13 +1,11 @@
 package glui
 
 import (
-  "errors"
   "fmt"
   "os"
   "sync"
 
   "github.com/veandco/go-sdl2/sdl"
-  "github.com/go-gl/gl/v4.1-core/gl"
 )
 
 const (
@@ -23,9 +21,10 @@ type App struct {
   x int
   y int
 
-  drawCh chan bool
+  drawCh  chan bool
   eventCh chan interface{}
-  body   *Body
+
+  root   *Root
   window *sdl.Window
   framebuffers [2]uint32 // for windows thumbnail drawing
   program1 uint32
@@ -34,7 +33,6 @@ type App struct {
   ctx    sdl.GLContext
   debug  *os.File
 
-  dd      *DrawData
   state   AppState
 }
 
@@ -71,39 +69,42 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
 
   fmt.Fprintf(debug, "#starting log\n")
 
-  dd := NewDrawData(skin, glyphs)
-  body := NewBody(dd)
-  body.A(dd.Menu)
-
   if glyphs == nil {
     glyphs = make(map[string]*Glyph)
   }
+
+  skinMap := newSkinMap(skin)
+  glyphMap := newGlyphMap(glyphs)
+  root := newRoot(skinMap, glyphMap)
 
   return &App{
     name,
     0, 0,
     make(chan bool),
     make(chan interface{}),
-    body,
+    root,
     nil,
     [2]uint32{0, 0},
     0,
     0,
     nil,
     debug,
-    dd,
     newAppState(),
   }
+}
+
+func (app *App) Root() *Root {
+  return app.root
+}
+
+func (app *App) Body() *Body {
+  return app.root.Body
 }
 
 func (app *App) Run() {
   if err := app.run(); err != nil {
     fmt.Fprintf(os.Stderr, "%s\n", err.Error())
   }
-}
-
-func (app *App) Body() *Body {
-  return app.body
 }
 
 func (app *App) run() error {
@@ -139,7 +140,7 @@ func (app *App) run() error {
   m := &sync.Mutex{}
 
   go func(m_ *sync.Mutex) {
-    app.initRenderLoop(m)
+    app.initDrawLoop(m)
   }(m)
 
   sdl.Delay(START_DELAY)
@@ -149,193 +150,15 @@ func (app *App) run() error {
   m.Unlock()
 
   go func() {
-    app.emitAnimationTicks()
+    app.emitAnimationEvents()
   }()
 
+  // both animation and system/user events are serialized by a separate thread
   go func() {
-    app.initEventLoop() // serializes all the events
+    app.initMainEventLoop()
   }()
 
-  // this is the main thread and must be used to detect user events
-  return app.detectUserEvents()
-}
-
-func (app *App) updateMouseElement(x, y int) {
-  if x < 0 {
-    x_, y_, _ := sdl.GetMouseState()
-
-    x = int(x_)
-    y = int(y_)
-  }
-
-  oldMouseElement := app.state.mouseElement
-  if oldMouseElement == nil {
-    oldMouseElement = app.body
-  }
-
-  newMouseElement, isSameOrChildOfOld := findHitElement(oldMouseElement, x, y)
-
-  // trigger mouse leave event if new mouseElement isn't child of old
-  if app.state.mouseElement != nil && !isSameOrChildOfOld {
-    evt := NewMouseEvent(x, y)
-
-    ca := commonAncestor(app.state.mouseElement, newMouseElement)
-    evt.stopBubblingWhenElementReached(ca)
-
-    app.triggerHitEvent("mouseleave", evt)
-  }
-
-  if app.state.mouseElement == nil {
-    evt := NewMouseEvent(x, y)
-    app.state.mouseElement = newMouseElement
-    app.triggerHitEvent("mouseenter", evt)
-  } else if app.state.mouseElement != newMouseElement {
-    evt := NewMouseEvent(x, y)
-
-    ca := commonAncestor(app.state.mouseElement, newMouseElement)
-
-    evt.stopBubblingWhenElementReached(ca)
-
-    app.state.mouseElement = newMouseElement
-    if ca != newMouseElement {
-      app.triggerHitEvent("mouseenter", evt)
-    }
-  }
-
-  cursor := -1
-  e := app.state.mouseElement
-  for cursor < 0 && e != nil {
-    cursor = e.Cursor()
-    e = e.Parent()
-  }
-
-  if cursor < 0 {
-    cursor = sdl.SYSTEM_CURSOR_ARROW
-  }
-
-  if cursor != app.state.cursor {
-    app.state.cursor = cursor
-
-    if app.state.cursor >= 0 && app.state.cursor < sdl.NUM_SYSTEM_CURSORS {
-      sdl.ShowCursor(sdl.ENABLE)
-
-      oldCursor := sdl.GetCursor()
-
-      c := sdl.CreateSystemCursor((sdl.SystemCursor)(app.state.cursor))
-
-      sdl.SetCursor(c)
-
-      sdl.FreeCursor(oldCursor) // free the previous
-    } else {
-      panic("not custom cursors defined yet")
-    }
-  }
-}
-
-// the window enter or leave events might be called spuriously
-func (app *App) mouseInWindow() bool {
-  x0, y0 := app.window.GetPosition()
-  w, h := app.window.GetSize()
-
-  x, y, _ := sdl.GetGlobalMouseState()
-
-  r := Rect{int(x0), int(y0), int(w), int(h)}
-
-  b := r.Hit(int(x), int(y))
-
-  return b
-}
-
-func (app *App) initRenderLoop(m *sync.Mutex) {
-  m.Lock()
-
-  ctx, err := app.window.GLCreateContext()
-  if err != nil {
-    fmt.Fprintf(app.debug, "unable to create context: %s\n", err.Error())
-    panic(err)
-  }
-
-  app.ctx = ctx
-
-  if err := app.window.GLMakeCurrent(ctx); err != nil {
-    fmt.Fprintf(app.debug, "unable to make current in render: %s\n", err.Error())
-    panic(err)
-  }
-
-  if err := gl.Init(); err != nil {
-    fmt.Fprintf(app.debug, "render gl.Init error: %s\n", err.Error())
-    panic(err)
-  }
-
-  glVersion := gl.GoStr(gl.GetString(gl.VERSION))
-  if glVersion == "" {
-    err := errors.New("empty OpenGL version")
-    fmt.Fprintf(app.debug, "%s\n", err.Error())
-    panic(err)
-  }
-
-  app.program1, err = compileProgram1()
-  if err != nil {
-    fmt.Fprintf(app.debug, "failed to compile OpenGL program1: %s\n", err.Error())
-    panic(err)
-  }
-
-  app.program2, err = compileProgram2()
-  if err != nil {
-    fmt.Fprintf(app.debug, "failed to compile OpenGL program2: %s\n", err.Error())
-    panic(err)
-  }
-
-  app.dd.InitGL(app.program1, app.program2)
-
-  //gl.CreateFramebuffers(1, &(app.framebuffers[0]))
-  //gl.CreateFramebuffers(1, &(app.framebuffers[1]))
-
-  gl.GenFramebuffers(1, &(app.framebuffers[0]))
-  gl.GenFramebuffers(1, &(app.framebuffers[1]))
-
-  x, y := app.window.GetPosition()
-  app.x = int(x)
-  app.y = int(y)
-
-  if err := app.window.GLMakeCurrent(nil); err != nil {
-    fmt.Fprintf(app.debug, "unable to unmake current in render: %s\n", err.Error())
-    return
-  }
-
-  //app.draw()
-
-  m.Unlock()
-
-  for true {
-    //fmt.Println("in render loop")
-    //for _ = range app.drawCh {
-    //}
-    <- app.drawCh
-
-    app.draw()
-
-    sdl.Delay(RENDER_LOOP_INTERVAL)
-
-    /*draining := true
-    for draining {
-      select {
-      case <- app.drawCh:
-        continue
-      default:
-        draining = false
-        break
-      }
-    }*/
-
-    //}
-    //default:
-    //fmt.Println("nothing done in render loop")
-  }
-
-  sdl.GLDeleteContext(ctx)
-}
-
-func (app *App) DrawData() *DrawData {
-  return app.dd
+  // here we are in the main thread and must this thread must be used to detect 
+  //  system and user events, which are forwarded into the main event loop (separate thread)
+  return app.forwardSystemAndUserEvents()
 }

@@ -1,6 +1,9 @@
 package glui
 
 import (
+  "fmt"
+  "strings"
+
   "github.com/veandco/go-sdl2/sdl"
   "github.com/go-gl/gl/v4.1-core/gl"
 )
@@ -71,8 +74,8 @@ type DrawData struct {
   P1 DrawPass1Data
   P2 DrawPass2Data
 
-  FocusBox *FocusBox
-  Menu   *Menu
+  FocusRect *FocusRect
+  Menu      *Menu
 }
 
 func NewFloat32Buffer(nComp int) *Float32Buffer {
@@ -117,7 +120,7 @@ func (b *UInt8Buffer) InitGL(location uint32) {
   b.dirty = true
 }
 
-func NewDrawPassData() DrawPassData {
+func newDrawPassData() DrawPassData {
   free := make([]uint32, N_INIT_TRIS)
   for i := 0; i < N_INIT_TRIS; i++ {
     free[i] = uint32(i)
@@ -141,18 +144,12 @@ func NewDrawPassData() DrawPassData {
   }
 }
 
-func NewDrawData(s Skin, glyphs map[string]*Glyph) *DrawData {
-  dd := &DrawData{
-    0, 0,
-    DrawPass1Data{NewDrawPassData(), NewSkinMap(s)},
-    DrawPass2Data{NewDrawPassData(), NewGlyphMap(glyphs)},
-    nil, nil,
-  }
+func newDrawPass1Data(skin *SkinMap) *DrawPass1Data {
+  return &DrawPass1Data{newDrawPassData(), skin}
+}
 
-  dd.FocusBox = newFocusBox(dd)
-  dd.Menu   = newMenu(dd)
-
-  return dd
+func newDrawPass2Data(glyphs *GlyphMap) *DrawPass2Data {
+  return &DrawPass2Data{newDrawPassData(), glyphs}
 }
 
 func (d *DrawPassData) InitGL(prog uint32) {
@@ -181,11 +178,6 @@ func (d *DrawPass2Data) InitGL(prog uint32) {
 
   glyphLoc := gl.GetUniformLocation(prog, gl.Str("glyphs\x00"))
   d.Glyphs.InitGL(uint32(glyphLoc))
-}
-
-func (d *DrawData) InitGL(prog1 uint32, prog2 uint32) {
-  d.P1.InitGL(prog1)
-  d.P2.InitGL(prog2)
 }
 
 // number of tris
@@ -316,6 +308,7 @@ func (b *Float32Buffer) Set(triId uint32, vertexId uint32, compId uint32, value 
 
   b.data[offset + compId] = value
 
+  // dirty even if value is the same, so we can use that as a kind of forceRecalcPos trigger
   b.dirty = true
 }
 
@@ -402,6 +395,28 @@ func (b *Float32Buffer) Set4Const(triId uint32, value0 float32, value1 float32, 
   b.data[(offset + 2)*uint32(b.nComp) + 3] = value3
 
   b.dirty = true
+}
+
+func (b *Float32Buffer) dumpComp(compId int) string {
+  var sb strings.Builder
+
+  nTris := len(b.data)/b.nComp
+
+  sb.WriteString("[")
+  
+  for triId := 0; triId < nTris; triId++ {
+    c := b.data[triId*b.nComp + compId]
+
+    sb.WriteString(fmt.Sprintf("%g", c))
+
+    if triId < nTris - 1 {
+      sb.WriteString(", ")
+    }
+  }
+
+  sb.WriteString("]")
+
+  return sb.String()
 }
 
 func (b *UInt8Buffer) Set(triId uint32, vertexId uint32, compId uint32, value uint8) {
@@ -600,6 +615,8 @@ func (d *DrawPass1Data) SyncAndBind() {
   d.DrawPassData.SyncAndBind()
 
   d.Skin.bind()
+
+  fmt.Println("bound P1:", d.Len(), d.Type.data, d.Pos.dumpComp(2))
 }
 
 func (d *DrawPass2Data) SyncAndBind() {
@@ -608,23 +625,10 @@ func (d *DrawPass2Data) SyncAndBind() {
   d.Glyphs.bind()
 }
 
-func (d *DrawData) GetDrawableSize() (int, int) {
-  return d.P1.W, d.P1.H
-}
-
-func (d *DrawData) SyncSize(window *sdl.Window) {
-  w, h := window.GLGetDrawableSize()
-  //fmt.Println("drawable size: ", w, h) // DEBUG
-  d.W, d.H = int(w), int(h)
-
-  d.P1.W, d.P1.H = d.W, d.H 
-  d.P2.W, d.P2.H = d.W, d.H
-}
-
-func (d *DrawPassData) Dirty() bool {
+func (d *DrawPassData) dirty() bool {
   return d.Pos.dirty || d.Type.dirty || d.Param.dirty || d.TCoord.dirty || d.Color.dirty
 }
 
-func (d *DrawData) Dirty() bool {
-  return d.P1.Dirty() || d.P2.Dirty()
+func (d *DrawPassData) posDirty() bool {
+  return d.Type.dirty // a change of type indicates that some elements became visible/hidden, and thus affect positioning of siblings etc.
 }

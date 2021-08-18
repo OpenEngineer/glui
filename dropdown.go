@@ -5,24 +5,20 @@ type Dropdown struct {
   button *Button
 }
 
-func NewDropdown(dd *DrawData) *Dropdown {
-  button := NewButton(dd)
+func NewDropdown(root *Root) *Dropdown {
+  button := NewButton(root)
 
-  text := dd.Sans("Choose unit", 10)
+  text := NewSans(root, "Choose unit", 10)
 
-  arrow := NewIcon(dd, "arrow-down-drop", 10)
+  arrow := NewIcon(root, "arrow-down-drop", 10)
 
-  button.A(dd.Hor(STRETCH, CENTER, 0).Padding(0, 10).A(text, arrow))
+  button.A(NewHor(root, STRETCH, CENTER, 0).Padding(0, 10).A(text, arrow))
 
   return &Dropdown{button}
 }
 
 func (e *Dropdown) RegisterParent(parent Element) {
   e.button.RegisterParent(parent)
-}
-
-func (e *Dropdown) Cursor() int {
-  return e.button.Cursor()
 }
 
 func (e *Dropdown) Parent() Element {
@@ -33,26 +29,58 @@ func (e *Dropdown) Children() []Element {
   return e.button.Children()
 }
 
-func (e *Dropdown) OnResize(maxWidth, maxHeight int) (int, int) {
-  return e.button.OnResize(maxWidth, maxHeight)
+func (e *Dropdown) Cursor() int {
+  return e.button.Cursor()
 }
 
-func (e *Dropdown) OnTick(tick uint64) {
-  e.button.OnTick(tick)
+func (e *Dropdown) Tooltip() string {
+  return e.button.Tooltip()
 }
 
-func (e *Dropdown) Hit(x, y int) bool {
+func (e *Dropdown) CalcDepth(stack *ElementStack) {
+  e.button.CalcDepth(stack)
+}
+
+func (e *Dropdown) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
+  return e.button.CalcPos(maxWidth, maxHeight, maxZIndex)
+}
+
+func (e *Dropdown) Animate(tick uint64) {
+  e.button.Animate(tick)
+}
+
+func (e *Dropdown) Rect() Rect {
+  return e.button.Rect()
+}
+
+func (e *Dropdown) ZIndex() int {
+  return e.button.ZIndex()
+}
+
+func (e *Dropdown) Hit(x, y int) int {
   return e.button.Hit(x, y)
 }
 
-func (e *Dropdown) Translate(dx, dy int, dz float32) {
-  e.button.Translate(dx, dy, dz)
+func (e *Dropdown) Translate(dx, dy int) {
+  e.button.Translate(dx, dy)
 }
 
-func (e *Dropdown) SetZ(z float32) {
-  e.button.SetZ(z)
+func (e *Dropdown) Visible() bool {
+  return e.button.Visible()
+}
+
+func (e *Dropdown) Hide() {
+  e.button.Hide()
+}
+
+func (e *Dropdown) Show() {
+  e.button.Show()
 }
 
 func (e *Dropdown) GetEventListener(name string) EventListener {
   return e.button.GetEventListener(name)
+}
+
+func (e *Dropdown) Delete() {
+  e.button.Delete()
 }

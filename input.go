@@ -9,12 +9,11 @@ import (
   "github.com/veandco/go-sdl2/sdl"
 )
 
+//go:generate ./gen_element Input "CalcDepth On Padding"
+
 // overflow not (yet) allowed
 type Input struct {
   ElementData
-
-  tris []uint32
-  dd   *DrawData
 
   width       int
   height      int
@@ -35,22 +34,16 @@ type Input struct {
   menuVisible bool
 }
 
-func NewInput(dd *DrawData) *Input {
-  tris := dd.P1.Alloc(10*2) // so first 18 tris are used for border, tri 18 and 19 are used for vertical bar
-
+func NewInput(root *Root) *Input {
   e := &Input{
-    newElementData(), 
-    tris, 
-    dd, 
-    200,
-    50,
-    dd.P1.Skin.InputBorderThickness(),
+    NewElementData(root, 10*2, 0), 
+    200, 50,
+    root.P1.Skin.InputBorderThickness(),
     25,
-    NewText(dd, "", "dejavumono", 10), 
-    NewText(dd, "", "dejavumono", 10),
+    NewText(root, "", "dejavumono", 10), 
+    NewText(root, "", "dejavumono", 10),
     "", 
-    0, 
-    0,
+    0, 0,
     false, 
     false,
     false, 
@@ -66,16 +59,16 @@ func NewInput(dd *DrawData) *Input {
 
   e.setTypesAndTCoords()
 
-  e.SetEventListener("keypress",  e.onKeyPress)
-  e.SetEventListener("textinput", e.onTextInput)
-  e.SetEventListener("focus",     e.onFocus)
-  e.SetEventListener("blur",      e.onBlur)
-  e.SetEventListener("mousedown", e.onMouseDown)
-  e.SetEventListener("mousemove", e.onMouseMove)
-  e.SetEventListener("mouseup",   e.onMouseUp)
-  e.SetEventListener("doubleclick", e.onDoubleClick)
-  e.SetEventListener("tripleclick", e.onTripleClick)
-  e.SetEventListener("rightclick", e.onRightClick)
+  e.On("keypress",    e.onKeyPress)
+  e.On("textinput",   e.onTextInput)
+  e.On("focus",       e.onFocus)
+  e.On("blur",        e.onBlur)
+  e.On("mousedown",   e.onMouseDown)
+  e.On("mousemove",   e.onMouseMove)
+  e.On("mouseup",     e.onMouseUp)
+  e.On("doubleclick", e.onDoubleClick)
+  e.On("tripleclick", e.onTripleClick)
+  e.On("rightclick",  e.onRightClick)
 
   return e
 }
@@ -232,13 +225,19 @@ func (e *Input) onMouseMove(evt *Event) {
 func (e *Input) onRightClick(evt *Event) {
   e.fillRightClickMenu()
 
-  e.dd.Menu.Show(Rect{evt.X, evt.Y, 70, 100})
+  e.Root.Menu.ShowAt(
+    e, 
+    float64(evt.X - e.rect.X)/float64(e.rect.W),
+    float64(evt.Y - e.rect.Y)/float64(e.rect.H),
+    70,
+    80,
+  )
 
   e.menuVisible = true
 }
 
 func (e *Input) mousePosToCol(evt *Event) int {
-  relX := evt.X - e.bb.X
+  relX := evt.X - e.rect.X
 
   // RIGHT ALIGN
 
@@ -406,7 +405,7 @@ func (e *Input) onFocus(evt *Event) {
   e.refreshVBar()
   e.sync()
 
-  e.dd.FocusBox.Show(e.bb)
+  e.Root.FocusRect.Show(e)
 }
 
 func (e *Input) onBlur(evt *Event) {
@@ -415,47 +414,31 @@ func (e *Input) onBlur(evt *Event) {
   e.sync()
   e.hideVBar()
 
-  e.dd.FocusBox.Hide()
+  e.Root.FocusRect.Hide()
 }
 
 func (e *Input) Cursor() int {
   return sdl.SYSTEM_CURSOR_IBEAM
 }
 
-func (e *Input) setTypesAndTCoords() {
-  x0, y0 := e.dd.P1.Skin.InputOrigin()
+func (e *Input) Show() {
+  showBorderedElement(e.Root, e.p1Tris)
+}
 
-  setBorderElementTypesAndTCoords(e.dd, e.tris, x0, y0, e.borderT, e.dd.P1.Skin.InputBGColor())
+func (e *Input) setTypesAndTCoords() {
+  x0, y0 := e.Root.P1.Skin.InputOrigin()
+
+  setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, e.borderT, e.Root.P1.Skin.InputBGColor())
+
   e.setVBarTypeAndColor()
 }
 
-func (e *Input) sync() {
-  if e.hasSel() && e.focused {
-    e.text.SetContent(e.value[0:e.selStart()] + strings.Repeat(" ", e.selWidth()) + e.value[e.selEnd():])
-    e.selText.SetContent(strings.Repeat(" ", e.selStart()) + e.getSelText() + strings.Repeat(" ", len(e.value) - e.selEnd()))
-  } else {
-    e.text.SetContent(e.value)
-    e.selText.SetContent(strings.Repeat(" ", len(e.value)))
-  }
-
-  for _, textElem := range []*Text{e.text, e.selText} {
-    textWidth, textHeight := textElem.OnResize(e.width - e.padding[1] - e.padding[3] - 2*e.borderT, 0)
-
-    // RIGHT ALIGN
-    textElem.Translate(
-      e.bb.X + e.width - e.borderT - textWidth - e.padding[1], 
-      e.bb.Y + (e.height - textHeight)/2, 0.0) 
-  }
-
-  e.syncVBarPos()
-}
-
 func (e *Input) setVBarTypeAndColor() {
-  tri0 := e.tris[18]
-  tri1 := e.tris[19]
+  tri0 := e.p1Tris[18]
+  tri1 := e.p1Tris[19]
 
-  e.dd.P1.Color.Set4Const(tri0, 0.0, 0.0, 0.0, 1.0)
-  e.dd.P1.Color.Set4Const(tri1, 0.0, 0.0, 0.0, 1.0)
+  e.Root.P1.Color.Set4Const(tri0, 0.0, 0.0, 0.0, 1.0)
+  e.Root.P1.Color.Set4Const(tri1, 0.0, 0.0, 0.0, 1.0)
 
   e.hideVBar()
 }
@@ -469,86 +452,61 @@ func (e *Input) refreshVBar() {
 }
 
 func (e *Input) fillRightClickMenu() {
-  e.dd.Menu.Clear()
-  e.dd.Menu.Padding(5)
-  e.dd.Menu.Spacing(0)
+  e.Root.Menu.ClearChildren()
+  e.Root.Menu.Padding(5)
+  e.Root.Menu.Spacing(0)
 
-  if len(e.dd.Menu.Children()) == 0 {
-    cutButton := NewFlatButton(e.dd)
-    cutButton.A(NewHor(START, CENTER, 0).A(e.dd.Sans("Cut", 10)))
-    cutButton.SetSize(60, 30)
-    cutButton.Padding(0, 10)
-    cutButton.SetZ(-0.5)
+  if len(e.Root.Menu.Children()) == 0 {
+    cutButton := NewFlatButton(e.Root)
+    cutButton.A(NewHor(e.Root, START, CENTER, 0).A(NewSans(e.Root, "Cut", 10)))
+    cutButton.Size(60, 30).Padding(0, 10)
     cutButton.OnClick(func() {
       if e.hasSel() {
         e.cutSel()
       }
-      e.dd.Menu.Hide()
+      e.Root.Menu.Hide()
     })
 
-    copyButton := NewFlatButton(e.dd)
-    copyButton.A(NewHor(START, CENTER, 0).A(e.dd.Sans("Copy", 10)))
-    copyButton.SetSize(60, 30)
-    copyButton.Padding(0, 10)
-    copyButton.SetZ(-0.5)
+    copyButton := NewFlatButton(e.Root)
+    copyButton.A(NewHor(e.Root, START, CENTER, 0).A(NewSans(e.Root, "Copy", 10)))
+    copyButton.Size(60, 30).Padding(0, 10)
     copyButton.OnClick(func() {
       if e.hasSel() {
         e.copySel()
       }
-      e.dd.Menu.Hide()
+      e.Root.Menu.Hide()
     })
 
-    pasteButton := NewFlatButton(e.dd)
-    pasteButton.A(NewHor(START, CENTER, 0).A(e.dd.Sans("Paste", 10)))
-    pasteButton.SetSize(60, 30)
-    pasteButton.Padding(0, 10)
-    pasteButton.SetZ(-0.5)
+    pasteButton := NewFlatButton(e.Root)
+    pasteButton.A(NewHor(e.Root, START, CENTER, 0).A(NewSans(e.Root, "Paste", 10)))
+    pasteButton.Size(60, 30).Padding(0, 10)
     pasteButton.OnClick(func() {
       e.insertClipboard()
-      e.dd.Menu.Hide()
+      e.Root.Menu.Hide()
     })
 
-    e.dd.Menu.A(cutButton, copyButton, pasteButton)
+    e.Root.Menu.A(cutButton, copyButton, pasteButton)
   }
 }
 
 func (e *Input) showVBar() {
-  tri0 := e.tris[18]
-  tri1 := e.tris[19]
+  tri0 := e.p1Tris[18]
+  tri1 := e.p1Tris[19]
 
-  e.dd.P1.Type.Set1Const(tri0, VTYPE_PLAIN)
-  e.dd.P1.Type.Set1Const(tri1, VTYPE_PLAIN)
+  e.Root.P1.Type.Set1Const(tri0, VTYPE_PLAIN)
+  e.Root.P1.Type.Set1Const(tri1, VTYPE_PLAIN)
 
   e.currentVBar = true
 }
 
 func (e *Input) hideVBar() {
-  tri0 := e.tris[18]
-  tri1 := e.tris[19]
+  tri0 := e.p1Tris[18]
+  tri1 := e.p1Tris[19]
 
-  e.dd.P1.Type.Set1Const(tri0, VTYPE_HIDDEN)
-  e.dd.P1.Type.Set1Const(tri1, VTYPE_HIDDEN)
+  e.Root.P1.Type.Set1Const(tri0, VTYPE_HIDDEN)
+  e.Root.P1.Type.Set1Const(tri1, VTYPE_HIDDEN)
 
   e.currentVBar = false
-}
-
-func (e *Input) OnResize(maxWidth, maxHeight int) (int, int) {
-  setBorderElementPosZ(e.dd, e.tris, e.width, e.height, e.borderT, e.z)
-
-  e.InitBB(e.width, e.height)
-
-  e.sync()
-
-  if e.focused {
-    e.dd.FocusBox.Show(Rect{0, 0, e.width, e.height})
-  }
-
-  if e.menuVisible {
-    // origin is handled by translate
-    e.dd.Menu.Show(Rect{0, 0, 70, 100})
-  }
-
-  return e.width, e.height
 }
 
 func (e *Input) selStart() int {
@@ -579,55 +537,69 @@ func (e *Input) getSelText() string {
   return e.value[e.selStart():e.selEnd()]
 }
 
-func (e *Input) syncVBarPos() {
-  y0 := e.bb.Y + e.height/2 - e.barHeight/2
+func (e *Input) calcVBarPos(maxZIndex int) {
+  z := e.Z(maxZIndex)
+
+  y0 := e.rect.Y + e.height/2 - e.barHeight/2
 
   // Right Aligned
-  x0 := e.bb.X + e.width - e.padding[1] - e.borderT - 
+  x0 := e.rect.X + e.width - e.padding[1] - e.borderT - 
     int(math.Ceil(float64(len(e.value) - e.selStart())*e.text.RefAdvance()))
 
-  tri0 := e.tris[18]
-  tri1 := e.tris[19]
+  tri0 := e.p1Tris[18]
+  tri1 := e.p1Tris[19]
 
   var vBarWidth int
 
   if e.col0 == e.col1 {
     vBarWidth = 1
 
-    e.dd.P1.SetColorConst(tri0, sdl.Color{0, 0, 0, 255})
-    e.dd.P1.SetColorConst(tri1, sdl.Color{0, 0, 0, 255})
+    // TODO: move this into show etc.
+    e.Root.P1.SetColorConst(tri0, sdl.Color{0, 0, 0, 255})
+    e.Root.P1.SetColorConst(tri1, sdl.Color{0, 0, 0, 255})
     
-    e.dd.P1.SetQuadPos(tri0, tri1, Rect{x0, y0, vBarWidth, e.barHeight}, 0.4)
+    e.Root.P1.SetQuadPos(tri0, tri1, Rect{x0, y0, vBarWidth, e.barHeight}, z)
   } else {
     vBarWidth = e.selWidth()*int(e.text.RefAdvance())
 
-    e.dd.P1.SetColorConst(tri0, e.dd.P1.Skin.SelColor())
-    e.dd.P1.SetColorConst(tri1, e.dd.P1.Skin.SelColor())
+    // TODO: move this into show etc.
+    e.Root.P1.SetColorConst(tri0, e.Root.P1.Skin.SelColor())
+    e.Root.P1.SetColorConst(tri1, e.Root.P1.Skin.SelColor())
   }
 
-  e.dd.P1.SetQuadPos(tri0, tri1, Rect{x0, y0, vBarWidth, e.barHeight}, 0.4)
+  e.Root.P1.SetQuadPos(tri0, tri1, Rect{x0, y0, vBarWidth, e.barHeight}, z)
 }
 
-func (e *Input) Translate(dx, dy int, dz float32) {
-  for _, tri := range e.tris {
-    e.dd.P1.TranslateTri(tri, dx, dy, dz)
-  }
-
-  e.ElementData.Translate(dx, dy, dz)
-
-  e.text.Translate(dx, dy, dz)
-  e.selText.Translate(dx, dy, dz)
-
-  if e.focused {
-    e.dd.FocusBox.Translate(dx, dy, dz)
-  }
-
-  if e.menuVisible {
-    e.dd.Menu.Translate(dx, dy, 0.0)
+func (e *Input) sync() {
+  if e.hasSel() && e.focused {
+    e.text.SetContent(e.value[0:e.selStart()] + strings.Repeat(" ", e.selWidth()) + e.value[e.selEnd():])
+    e.selText.SetContent(strings.Repeat(" ", e.selStart()) + e.getSelText() + strings.Repeat(" ", len(e.value) - e.selEnd()))
+  } else {
+    e.text.SetContent(e.value)
+    e.selText.SetContent(strings.Repeat(" ", len(e.value)))
   }
 }
 
-func (e *Input) OnTick(tick uint64) {
+func (e *Input) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
+  w, h := e.GetSize()
+
+  e.SetBorderedElementPos(e.width, e.height, e.borderT, maxZIndex)
+
+  for _, textElem := range []*Text{e.text, e.selText} {
+    textWidth, textHeight := textElem.CalcPos(e.width - e.padding[1] - e.padding[3] - 2*e.borderT, 0, maxZIndex)
+
+    // RIGHT ALIGN
+    textElem.Translate(
+      e.rect.X + e.width - e.borderT - textWidth - e.padding[1], 
+      e.rect.Y + (e.height - textHeight)/2) 
+  }
+
+  e.calcVBarPos(maxZIndex)
+
+  return e.InitRect(w, h)
+}
+
+func (e *Input) Animate(tick uint64) {
   e.lastTick = tick
 
   if e.focused && !e.hasSel() {

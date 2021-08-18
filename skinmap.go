@@ -36,7 +36,7 @@ type SkinMap struct {
   tid uint32
 }
 
-func NewSkinMap(s Skin) *SkinMap {
+func newSkinMap(s Skin) *SkinMap {
   d := &SkinMap{} // zero construct, because number of fields of SkinMap increases a lot
 
   d.skin = s

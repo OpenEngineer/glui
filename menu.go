@@ -1,142 +1,103 @@
 package glui
 
 import (
-  "fmt"
 )
 
-const HIDE_SHIFT = 2.0
+//go:generate ./gen_element Menu "A CalcDepth Padding Spacing"
 
 // styled the same as a button, and can be filled with arbitrary children
 type Menu struct {
   ElementData
 
-  tris []uint32
-  dd   *DrawData
-
   // state 
-  visible bool
-
-  onHide func()
+  anchor  Element // XXX: what if anchor is deleted?
+  anchorX float64
+  anchorY float64
 }
 
-func newMenu(dd *DrawData) *Menu {
-  tris := dd.P1.Alloc(9*2)
-
-  e := &Menu{newElementData(), tris, dd, false, nil}
+func newMenu(root *Root) *Menu {
+  e := &Menu{
+    NewElementData(root, 9*2, 0),
+    nil,
+    0.0,
+    0.0,
+  }
 
   e.setTypesAndTCoords()
+
+  e.Hide()
 
   return e
 }
 
-func (e *Menu) isVisible() bool {
-  return e.visible
-}
-
 func (e *Menu) setTypesAndTCoords() {
-  t := e.dd.P1.Skin.ButtonBorderThickness()
+  t := e.Root.P1.Skin.ButtonBorderThickness()
 
-  x0, y0 := e.dd.P1.Skin.ButtonOrigin()
+  x0, y0 := e.Root.P1.Skin.ButtonOrigin()
 
-  setBorderElementTypesAndTCoords(e.dd, e.tris, x0, y0, t, e.dd.P1.Skin.BGColor())
+  setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, e.Root.P1.Skin.BGColor())
 
   e.Hide()
 }
 
-func (e *Menu) OnHide(fn func()) {
-  e.onHide = fn
-}
+// anchorX, anchorY are between 0.0 and 1.0
+// anchorX, anchorY specify a point in the anchor elements rect
+// the positioning of the menu will try to place the target point of the menu as close as 
+//  possible to the anchor point
+func (e *Menu) ShowAt(anchor Element, anchorX, anchorY float64, width, height int) {
+  e.anchor  = anchor
+  e.anchorX = anchorX
+  e.anchorY = anchorY
+  e.width   = width
+  e.height  = height
 
-func (e *Menu) A(children ...Element) Element {
-  for _, child := range children {
-    if !e.visible {
-      child.Translate(0, 0, HIDE_SHIFT)
-    } 
+  e.ElementData.Show()
 
-    e.ElementData.appendChild(child)
-    child.RegisterParent(e)
-  }
-
-  return e
-}
-
-func (e *Menu) Hide() {
-  if e.visible {
-    // delete all children
-    e.ElementData.Translate(0, 0, HIDE_SHIFT)
-
-    for _, tri := range e.tris {
-      e.dd.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
-    }
-
-    e.visible = false
-
-    if e.onHide != nil {
-      e.onHide()
-      e.onHide = nil
-    }
-  }
-}
-
-func (e *Menu) OnResize(maxWidth, maxHeight int) (int, int) {
-  if e.visible {
-    //e.Show(Rect{0, 0, maxWidth, maxHeight})
-
-  }
-
-  // doesnt push any siblings of body
-  return 0, 0
-}
-
-func (e *Menu) Show(r Rect) {
-  fmt.Println("attempting to show dialog")
-
-  t := e.dd.P1.Skin.ButtonBorderThickness()
-
-  z := float32(0.0)
-  if !e.visible {
-    z += HIDE_SHIFT
-  }
-  
-  setBorderElementPosZ(e.dd, e.tris, r.W, r.H, t, z)
-  for i, tri := range e.tris {
+  for i, tri := range e.p1Tris {
     if i == 8 || i == 9 {
-      e.dd.P1.Type.Set1Const(tri, VTYPE_PLAIN)
+      e.Root.P1.Type.Set1Const(tri, VTYPE_PLAIN)
     } else {
-      e.dd.P1.Type.Set1Const(tri, VTYPE_SKIN)
+      e.Root.P1.Type.Set1Const(tri, VTYPE_SKIN)
     }
   }
 
-  e.ElementData.resizeChildren(r.W, r.H)
-
-  e.InitBB(r.W, r.H)
-
-  dz := float32(0.0)
-  if !e.visible {
-    dz = -HIDE_SHIFT
-  }
-
-
-  dx, dy := r.X, r.Y
-  fmt.Println("showing dialog: ", e.visible, dx, dy)
-  for _, tri := range e.tris {
-    e.dd.P1.TranslateTri(tri, dx, dy, dz)
-  }
-
-  e.ElementData.Translate(dx, dy, 0.0)
-
-  e.visible = true
+  e.Root.ForcePosDirty()
 }
 
-func (e *Menu) Clear() {
-  // this method actually needs to do something
-}
-
-func (e *Menu) Translate(dx, dy int, dz float32) {
-  fmt.Println("dialog z-index: ", e.dd.P1.Pos.Get(e.tris[0], 0, 2))
-  for _, tri := range e.tris {
-    e.dd.P1.TranslateTri(tri, dx, dy, dz)
+func (e *Menu) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
+  if !e.Visible() {
+    return 0, 0
   }
 
-  e.ElementData.Translate(dx, dy, dz)
+  t := e.Root.P1.Skin.ButtonBorderThickness()
+
+  w, h := e.GetSize()
+
+  e.SetBorderedElementPos(w, h, t, maxZIndex)
+
+  e.ElementData.CalcPosChildren(w, h, maxZIndex)
+
+  e.InitRect(w, h)
+
+  r := e.anchor.Rect()
+  x, y := r.Pos(e.anchorX, e.anchorY)
+
+  // bound by window
+  W, H := e.Root.GetSize()
+
+  if x < 0 {
+    x = 0
+  } else if x + r.W > W {
+    x = W - r.W
+  }
+
+  if y < 0 {
+    y = 0
+  } else if y + r.H > H {
+    y = H - r.H
+  }
+
+  e.Translate(x, y)
+
+  return 0, 0
 }

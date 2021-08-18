@@ -4,6 +4,8 @@ import (
   "math"
 )
 
+//go:generate ./gen_element Hor "A CalcDepth Padding Spacing"
+
 // special element that is just used for positioning of children
 type Hor struct {
   ElementData
@@ -12,8 +14,12 @@ type Hor struct {
   vAlign  Align
 }
 
-func NewHor(hAlign, vAlign Align, spacing int) *Hor {
-  e := &Hor{newElementData(), hAlign, vAlign}
+func NewHor(root *Root, hAlign, vAlign Align, spacing int) *Hor {
+  e := &Hor{
+    NewElementData(root, 0, 0), 
+    hAlign, 
+    vAlign,
+  }
 
   if vAlign == STRETCH {
     panic("vAlign == STRETCH not supported in Hor")
@@ -24,9 +30,8 @@ func NewHor(hAlign, vAlign Align, spacing int) *Hor {
   return e
 }
 
-//go:generate ./A Hor
-
-func (e *Hor) OnResize(maxWidth, maxHeight int) (int, int) {
+// z is irrelevant here
+func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   // first space the children inline
 
   x := e.padding[3]
@@ -40,11 +45,15 @@ func (e *Hor) OnResize(maxWidth, maxHeight int) (int, int) {
       x += e.spacing
     }
 
-    childW, childH := child.OnResize(maxWidth - x - e.padding[1], maxHeight - e.padding[0] - e.padding[2])
+    childW, childH := child.CalcPos(
+      maxWidth - x - e.padding[1], 
+      maxHeight - e.padding[0] - e.padding[2], 
+      maxZIndex)
+
     childWs[i] = childW
     childHs[i] = childH
 
-    child.Translate(x, 0, 0.0)
+    child.Translate(x, 0)
 
     x += childW
 
@@ -96,15 +105,9 @@ func (e *Hor) OnResize(maxWidth, maxHeight int) (int, int) {
         break
       }
 
-      child.Translate(dx[i], dy, 0.0)
+      child.Translate(dx[i], dy)
     }
   } 
 
-  return e.InitBB(x, maxHeight)
-}
-
-func (e *Hor) Padding(p ...int) *Hor {
-  e.ElementData.Padding(p...)
-
-  return e
+  return e.InitRect(x, maxHeight)
 }

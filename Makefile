@@ -5,6 +5,8 @@ export build = $(abspath ./build)
 build_windows_amd64=$(abspath ./build/windows_amd64)
 build_darwin_amd64=$(abspath ./build/darwin_amd64)
 
+generator=gen_element
+
 dsts=$(addprefix $(build)/,$(cmds))
 dsts_windows_amd64=$(addprefix $(build_windows_amd64)/,main)
 dsts_darwin_amd64=$(addprefix $(build_darwin_amd64)/,main)
@@ -13,13 +15,17 @@ pkg=$(shell find . -name \*.go)
 
 #build_flags=-ldflags="-w -extldflags=-static" 
 
-all: $(dsts)
+all: $(generator) $(dsts)
 
 ms: $(dsts_windows_amd64)
 
 mac: $(dsts_darwin_amd64)
 
 .SECONDEXPANSION:
+
+$(generator): $$(shell find ./cmd/gen_element -name \*.go) | $(build)
+	cd $(dir $<); \
+	go build -o $(abspath $@)
 
 $(dsts): $$(shell find ./cmd/$$(notdir $$@) -name \*.go) $(pkg) | $(build)
 	export CGO_ENABLE=1; \

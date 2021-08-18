@@ -35,6 +35,13 @@ func (r Rect) Translate(x, y int) Rect {
   return Rect{r.X + x, r.Y + y, r.W, r.H}
 }
 
+func (r Rect) Pos(fx, fy float64) (int, int) {
+  x := int(math.Round(float64(r.X) + fx*float64(r.W)))
+  y := int(math.Round(float64(r.Y) + fy*float64(r.H)))
+
+  return x, y
+}
+
 func (r RectF) Right() float64 {
   return r.X + r.W
 }

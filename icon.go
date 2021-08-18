@@ -4,6 +4,8 @@ import (
   "github.com/veandco/go-sdl2/sdl"
 )
 
+//go:generate ./gen_element Icon "CalcDepth"
+
 type Icon struct {
   ElementData
 
@@ -14,22 +16,26 @@ type Icon struct {
   shadow      bool
   shadowColor sdl.Color
 
-  tris  []uint32
-  dd    *DrawData
   glyph *Glyph
 }
 
-func NewIcon(dd *DrawData, name string, size int) *Icon {
-  glyph := dd.P2.Glyphs.GetGlyph(name)
+func NewIcon(root *Root, name string, size int) *Icon {
+  glyph := root.P2.Glyphs.GetGlyph(name)
 
   color := sdl.Color{0x00, 0x00, 0x00, 0xff}
 
   shadowColor := sdl.Color{0xff, 0xff, 0xff, 0xff}
 
   // tri 0 and 1 are used for shadow, 2 and 3 are the actual icon
-  tris := dd.P2.Alloc(2*2)
-
-  e := &Icon{newElementData(), name, size, color, false, shadowColor, tris, dd, glyph}
+  e := &Icon{
+    NewElementData(root, 0, 2*2), 
+    name, 
+    size, 
+    color, 
+    false, 
+    shadowColor, 
+    glyph,
+  }
 
   e.setTypeColorAndTCoord()
 
@@ -37,46 +43,46 @@ func NewIcon(dd *DrawData, name string, size int) *Icon {
 }
 
 func (e *Icon) setTypeColorAndTCoord() {
-  e.dd.P2.Type.Set1Const(e.tris[2], VTYPE_GLYPH)
-  e.dd.P2.Type.Set1Const(e.tris[3], VTYPE_GLYPH)
+  tri0 := e.p2Tris[0]
+  tri1 := e.p2Tris[1]
+  tri2 := e.p2Tris[2]
+  tri3 := e.p2Tris[3]
 
-  e.dd.P2.SetColorConst(e.tris[2], e.mainColor)
-  e.dd.P2.SetColorConst(e.tris[3], e.mainColor)
+  e.Root.P2.Type.Set1Const(tri2, VTYPE_GLYPH)
+  e.Root.P2.Type.Set1Const(tri3, VTYPE_GLYPH)
 
-  e.dd.P2.SetGlyphCoords(e.tris[2], e.tris[3], e.name)
+  e.Root.P2.SetColorConst(tri2, e.mainColor)
+  e.Root.P2.SetColorConst(tri3, e.mainColor)
+
+  e.Root.P2.SetGlyphCoords(tri2, tri3, e.name)
 
   if e.shadow {
-    e.dd.P2.Type.Set1Const(e.tris[0], VTYPE_GLYPH)
-    e.dd.P2.Type.Set1Const(e.tris[1], VTYPE_GLYPH)
+    e.Root.P2.Type.Set1Const(tri0, VTYPE_GLYPH)
+    e.Root.P2.Type.Set1Const(tri1, VTYPE_GLYPH)
   } else {
-    e.dd.P2.Type.Set1Const(e.tris[0], VTYPE_HIDDEN)
-    e.dd.P2.Type.Set1Const(e.tris[1], VTYPE_HIDDEN)
+    e.Root.P2.Type.Set1Const(tri0, VTYPE_HIDDEN)
+    e.Root.P2.Type.Set1Const(tri1, VTYPE_HIDDEN)
   }
 
-  e.dd.P2.SetColorConst(e.tris[0], e.shadowColor)
-  e.dd.P2.SetColorConst(e.tris[1], e.shadowColor)
+  e.Root.P2.SetColorConst(tri0, e.shadowColor)
+  e.Root.P2.SetColorConst(tri1, e.shadowColor)
 
-  e.dd.P2.SetGlyphCoords(e.tris[0], e.tris[1], e.name)
+  e.Root.P2.SetGlyphCoords(tri0, tri1, e.name)
 
   scale := float64(e.size)/float64(GlyphResolution)
-  for _, tri := range e.tris {
-    e.dd.P2.Param.Set1Const(tri, float32(scale))
+  for _, tri := range e.p2Tris {
+    e.Root.P2.Param.Set1Const(tri, float32(scale))
   }
 }
 
-func (e *Icon) OnResize(maxWidth, maxHeight int) (int, int) {
+func (e *Icon) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
+  z := e.Z(maxZIndex)
+  s := e.size
+
   // shadow tris are always set, even if they are hidden
-  e.dd.P2.SetQuadPos(e.tris[2], e.tris[3], Rect{0, 0, e.size, e.size}, 0.5)
+  e.Root.P2.SetQuadPos(e.p2Tris[2], e.p2Tris[3], Rect{0, 0, s, s}, z)
 
-  e.dd.P2.SetQuadPos(e.tris[0], e.tris[1], Rect{2, 2, e.size, e.size}, 0.5)
+  e.Root.P2.SetQuadPos(e.p2Tris[0], e.p2Tris[1], Rect{2, 2, s, s}, z)
 
-  return e.size, e.size
-}
-
-func (e *Icon) Translate(dx, dy int, dz float32) {
-  for _, tri := range e.tris {
-    e.dd.P2.TranslateTri(tri, dx, dy, dz)
-  }
-
-  e.ElementData.Translate(dx, dy, dz)
+  return s, s
 }

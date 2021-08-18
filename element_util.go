@@ -2,14 +2,14 @@ package glui
 
 // returns true if new active element is same as old active element, or is child of old active element
 func findHitElement(e Element, x, y int) (Element, bool) {
-  if e.Hit(x, y) {
+  if z := e.Hit(x, y); z > -1 {
     for {
       childHit := false
       for _, c := range e.Children() {
-        if c.Hit(x, y) {
+        if zc := c.Hit(x, y); zc > z {
           e = c
+          z = zc
           childHit = true
-          break
         }
       }
 
@@ -31,7 +31,7 @@ func findHitElement(e Element, x, y int) (Element, bool) {
 func collectAncestors(a Element) []Element {
   res := make([]Element, 0)
 
-  for {
+  for ; a != nil; {
     a = a.Parent()
 
     if a != nil {
@@ -44,20 +44,17 @@ func collectAncestors(a Element) []Element {
   return res
 }
 
-// should at least resolve to *Body
 func commonAncestor(a Element, b Element) Element {
   if a == b {
     return a
   }
 
-  if _, aIsBody := a.(*Body); aIsBody {
-    return a
-  } else if _, bIsBody := b.(*Body); bIsBody {
-    return b
-  }
-
   aps := collectAncestors(a)
   bps := collectAncestors(b)
+
+  if len(aps) == 0 || len(bps) == 0 {
+    return nil
+  }
 
   for i := 1; i < len(aps) && i < len(bps); i++ {
     if aps[i] != bps[i] {
