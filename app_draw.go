@@ -196,6 +196,7 @@ func (app *App) initDrawLoop(m *sync.Mutex) {
     panic(err)
   }
 
+  app.root.syncSize(app.window)
   app.root.initGL(app.program1, app.program2)
 
   //gl.CreateFramebuffers(1, &(app.framebuffers[0]))

@@ -122,7 +122,7 @@ func (e *ElementData) Parent() Element {
 }
 
 func (e *ElementData) IsHit(x, y int) bool {
-  return e.rect.Hit(x, y)
+  return e.visible && e.rect.Hit(x, y) 
 }
 
 // -1 -> no hit
@@ -150,6 +150,7 @@ func (e *ElementData) Translate(dx, dy int) {
   }
 
   for _, tri := range e.p2Tris {
+    assertReal(float32(dx), "dx in ElementData.Translate")
     e.Root.P2.TranslateTri(tri, dx, dy, 0.0)
   }
 
@@ -206,9 +207,7 @@ func normalizeZIndex(idx int, maxZIndex int) float32 {
 }
 
 func (e *ElementData) Z(maxZIndex int) float32 {
-  //return normalizeZIndex(e.zIndex, maxZIndex)
-
-  return -0.5
+  return normalizeZIndex(e.zIndex, maxZIndex)
 }
 
 func (e *ElementData) SetBorderedElementPos(w, h, t, maxZIndex int) {

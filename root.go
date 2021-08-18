@@ -34,8 +34,12 @@ func newRoot(skin *SkinMap, glyphs *GlyphMap) *Root {
 }
 
 func (e *Root) syncSize(window *sdl.Window) {
-  w, h := window.GLGetDrawableSize()
-  e.w, e.h = int(w), int(h)
+  w_, h_ := window.GLGetDrawableSize()
+  w, h := int(w_), int(h_)
+
+  e.w, e.h = w, h
+  e.P1.w, e.P1.h = w, h
+  e.P2.w, e.P2.h = w, h
 }
 
 func (e *Root) initGL(prog1 uint32, prog2 uint32) {
@@ -103,7 +107,7 @@ func (e *Root) findMouseElement(oldMouseElement Element, x, y int) (Element, boo
   if e.Menu.IsHit(x, y) {
     if oldMouseElement == nil {
       oldMouseElement = e.Menu
-    } else if commonAncestor(oldMouseElement, e.Menu) == nil {
+    } else if !hasAncestor(oldMouseElement, e.Menu) {
       oldMouseElement = e.Menu
 
       newMouseElement, _ := findHitElement(oldMouseElement, x, y)
@@ -115,7 +119,7 @@ func (e *Root) findMouseElement(oldMouseElement Element, x, y int) (Element, boo
   } else {
     if oldMouseElement == nil {
       oldMouseElement = e.Body
-    } else if commonAncestor(oldMouseElement, e.Body) == nil {
+    } else if !hasAncestor(oldMouseElement, e.Body) {
       oldMouseElement = e.Body
 
       newMouseElement, _ := findHitElement(oldMouseElement, x, y)

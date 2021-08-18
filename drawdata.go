@@ -2,6 +2,7 @@ package glui
 
 import (
   "fmt"
+  "math"
   "strings"
 
   "github.com/veandco/go-sdl2/sdl"
@@ -43,8 +44,8 @@ type UInt8Buffer struct {
 }
 
 type DrawPassData struct {
-  W int
-  H int
+  w int
+  h int
 
   free []uint32
 
@@ -65,17 +66,6 @@ type DrawPass2Data struct {
   DrawPassData
 
   Glyphs *GlyphMap
-}
-
-type DrawData struct {
-  W int
-  H int
-
-  P1 DrawPass1Data
-  P2 DrawPass2Data
-
-  FocusRect *FocusRect
-  Menu      *Menu
 }
 
 func NewFloat32Buffer(nComp int) *Float32Buffer {
@@ -419,6 +409,32 @@ func (b *Float32Buffer) dumpComp(compId int) string {
   return sb.String()
 }
 
+func (b *Float32Buffer) dumpLines() string {
+  var sb strings.Builder
+
+  nTris := len(b.data)/b.nComp
+
+  sb.WriteString("[")
+  
+  for triId := 0; triId < nTris; triId++ {
+    sb.WriteString("\n  ")
+
+    for iComp := 0; iComp < b.nComp; iComp++ {
+      c := b.data[triId*b.nComp + iComp]
+      sb.WriteString(fmt.Sprintf("%g", c))
+
+      if iComp < b.nComp - 1 {
+        sb.WriteString(" ")
+      }
+
+    }
+  }
+
+  sb.WriteString("\n]")
+
+  return sb.String()
+}
+
 func (b *UInt8Buffer) Set(triId uint32, vertexId uint32, compId uint32, value uint8) {
   offset := (triId*3 + vertexId)*uint32(b.nComp)
 
@@ -491,39 +507,53 @@ func (b *UInt8Buffer) bind() {
 }
 
 func (d *DrawPassData) SetPos(triId uint32, vertexId uint32, x_ int, y_ int, z float32) {
-  x := 2.0*float32(x_)/float32(d.W) - 1.0
-  y := 1.0 - 2.0*float32(y_)/float32(d.H)
+  x := 2.0*float32(x_)/float32(d.w) - 1.0
+  y := 1.0 - 2.0*float32(y_)/float32(d.h)
 
   d.Pos.Set3(triId, vertexId, x, y, z)
 }
 
+func assertReal(x float32, name string) {
+  if math.IsNaN(float64(x)) {
+    panic(name + " can't be NaN")
+  } else if math.IsInf(float64(x), 0) {
+    panic(name + " can't be Inf")
+  }
+}
+
 func (d *DrawPassData) translatePos(triId uint32, vertexId uint32, dx float32, dy float32, dz float32) {
   if dx != 0.0 {
+    assertReal(dx, "dx")
+
     xStart := d.Pos.Get(triId, vertexId, 0)
     d.Pos.Set(triId, vertexId, 0, xStart+dx)
   }
 
   if dy != 0.0 {
+    assertReal(dy, "dy")
+
     yStart := d.Pos.Get(triId, vertexId, 1)
     d.Pos.Set(triId, vertexId, 1, yStart+dy)
   }
 
   if dz != 0.0 {
+    assertReal(dz, "dz")
+
     zStart := d.Pos.Get(triId, vertexId, 2)
     d.Pos.Set(triId, vertexId, 2, zStart+dz)
   }
 }
 
 func (d *DrawPassData) TranslatePos(triId uint32, vertexId uint32, dx_ int, dy_ int, dz float32) {
-  dx := 2.0*float32(dx_)/float32(d.W)
-  dy := -2.0*float32(dy_)/float32(d.H)
+  dx := 2.0*float32(dx_)/float32(d.w)
+  dy := -2.0*float32(dy_)/float32(d.h)
 
   d.translatePos(triId, vertexId, dx, dy, dz)
 }
 
 func (d *DrawPassData) TranslateTri(triId uint32, dx_ int, dy_ int, dz float32) {
-  dx := 2.0*float32(dx_)/float32(d.W)
-  dy := -2.0*float32(dy_)/float32(d.H)
+  dx := 2.0*float32(dx_)/float32(d.w)
+  dy := -2.0*float32(dy_)/float32(d.h)
 
   d.translatePos(triId, 0, dx, dy, dz)
   d.translatePos(triId, 1, dx, dy, dz)
@@ -531,8 +561,8 @@ func (d *DrawPassData) TranslateTri(triId uint32, dx_ int, dy_ int, dz float32) 
 }
 
 func (d *DrawPassData) SetPosF(triId uint32, vertexId uint32, x_ float64, y_ float64, z float32) {
-  x := 2.0*float32(x_)/float32(d.W) - 1.0
-  y := 1.0 - 2.0*float32(y_)/float32(d.H)
+  x := 2.0*float32(x_)/float32(d.w) - 1.0
+  y := 1.0 - 2.0*float32(y_)/float32(d.h)
 
   d.Pos.Set3(triId, vertexId, x, y, z)
 }
@@ -615,8 +645,6 @@ func (d *DrawPass1Data) SyncAndBind() {
   d.DrawPassData.SyncAndBind()
 
   d.Skin.bind()
-
-  fmt.Println("bound P1:", d.Len(), d.Type.data, d.Pos.dumpComp(2))
 }
 
 func (d *DrawPass2Data) SyncAndBind() {

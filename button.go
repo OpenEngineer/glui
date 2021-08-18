@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -163,7 +161,9 @@ func (e *Button) setTypesAndTCoords(pressed bool) {
   } else {
     x0, y0 := e.Root.P1.Skin.ButtonOrigin()
 
-    setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, e.Root.P1.Skin.BGColor())
+    c := e.Root.P1.Skin.BGColor()
+
+    setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, c)
   }
 }
 
@@ -176,8 +176,6 @@ func (e *Button) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   setBorderedElementPos(e.Root, e.p1Tris, w, h, t, z)
 
   e.ElementData.CalcPosChildren(w, h, maxZIndex)
-
-  fmt.Println("placing button at ", w, h, z)
 
   return e.InitRect(w, h)
 }

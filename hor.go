@@ -45,6 +45,8 @@ func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
       x += e.spacing
     }
 
+    assertReal(float32(x), "xPre in Hor")
+
     childW, childH := child.CalcPos(
       maxWidth - x - e.padding[1], 
       maxHeight - e.padding[0] - e.padding[2], 
@@ -53,10 +55,15 @@ func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     childWs[i] = childW
     childHs[i] = childH
 
+    assertReal(float32(childW), "childW in Hor")
+
+    assertReal(float32(x), "xPre in Hor")
+
     child.Translate(x, 0)
 
     x += childW
 
+    assertReal(float32(x), "xPost in Hor")
     if childH > maxChildH {
       maxChildH = childH
     }

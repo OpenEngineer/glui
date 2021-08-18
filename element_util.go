@@ -52,10 +52,6 @@ func commonAncestor(a Element, b Element) Element {
   aps := collectAncestors(a)
   bps := collectAncestors(b)
 
-  if len(aps) == 0 || len(bps) == 0 {
-    return nil
-  }
-
   for i := 1; i < len(aps) && i < len(bps); i++ {
     if aps[i] != bps[i] {
       return aps[i-1]
@@ -63,10 +59,34 @@ func commonAncestor(a Element, b Element) Element {
   }
 
   if len(aps) < len(bps) {
-    return aps[len(aps)-1]
+    if len(aps) == 0 { 
+      return nil
+    } else {
+      return aps[len(aps)-1]
+    }
   } else {
-    return bps[len(bps)-1]
+    if len(bps) == 0 {
+      return nil
+    } else {
+      return bps[len(bps)-1]
+    }
   }
+}
+
+func hasAncestor(a Element, anc Element) bool {
+  if a == anc {
+    return true
+  }
+
+  aps := collectAncestors(a)
+
+  for _, test := range aps {
+    if test == anc {
+      return true
+    }
+  }
+
+  return false
 }
 
 func focusable(e Element) bool {
