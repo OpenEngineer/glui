@@ -174,7 +174,7 @@ func (app *App) onTick(event *animationEvent) {
   app.root.Animate(event.tick)
 
   if event.force {
-    app.Draw()
+    app.root.ForcePosDirty()
   } 
 }
 
@@ -201,12 +201,14 @@ func (app *App) onMouseDown(event *sdl.MouseButtonEvent) {
     app.triggerHitEvent("rightclick", NewMouseEvent(int(event.X), int(event.Y)))
   }
 
-  newFocusable := findFocusable(app.state.mouseElement)
+  if !hasAncestor(app.state.mouseElement, app.root.Menu) {
+    newFocusable := findFocusable(app.state.mouseElement)
 
-  blurEvt := NewMouseEvent(int(event.X), int(event.Y))
-  focusEvt := NewMouseEvent(int(event.X), int(event.Y))
+    blurEvt := NewMouseEvent(int(event.X), int(event.Y))
+    focusEvt := NewMouseEvent(int(event.X), int(event.Y))
 
-  app.changeFocusElement(newFocusable, blurEvt, focusEvt)
+    app.changeFocusElement(newFocusable, blurEvt, focusEvt)
+  }
 }
 
 func (app *App) onMouseUp(event *sdl.MouseButtonEvent) {

@@ -1,6 +1,7 @@
 package glui
 
 import (
+  "fmt"
 )
 
 //go:generate ./gen_element Menu "A CalcDepth Padding Spacing"
@@ -73,6 +74,7 @@ func (e *Menu) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
 
   w, h := e.GetSize()
 
+  fmt.Println("menu z index: ", e.ZIndex())
   e.SetBorderedElementPos(w, h, t, maxZIndex)
 
   e.ElementData.CalcPosChildren(w, h, maxZIndex)

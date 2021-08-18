@@ -1,6 +1,8 @@
 package glui
 
 import (
+  "fmt"
+
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -46,6 +48,7 @@ func newButton(root *Root, flat bool, sticky bool) *Button {
 
   e.On("mousedown", e.onMouseDown)
   e.On("mouseup", e.onMouseUp)
+  e.On("click", e.onMouseClick)
   e.On("mouseleave", e.onMouseLeave)
   e.On("mouseenter", e.onMouseEnter)
   e.On("focus", e.onFocus)
@@ -83,8 +86,13 @@ func (e *Button) onMouseDown(evt *Event) {
 }
 
 func (e *Button) onMouseUp(evt *Event) {
+  if e.flat {
+    fmt.Println("mouse up triggered")
+  }
   e.setState(false, e.inside)
+}
 
+func (e *Button) onMouseClick(evt *Event) {
   if e.onClick != nil {
     e.onClick()
   }
@@ -168,6 +176,10 @@ func (e *Button) setTypesAndTCoords(pressed bool) {
 }
 
 func (e *Button) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
+  if e.flat {
+    fmt.Println("flat button zIndex: ", e.ZIndex())
+  }
+
   t := e.Root.P1.Skin.ButtonBorderThickness()
 
   w, h := e.GetSize()
@@ -178,4 +190,10 @@ func (e *Button) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   e.ElementData.CalcPosChildren(w, h, maxZIndex)
 
   return e.InitRect(w, h)
+}
+
+func (e *Button) Hide() {
+  e.setState(false, false)
+
+  e.ElementData.Hide()
 }

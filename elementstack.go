@@ -4,12 +4,15 @@ package glui
 type ElementStack struct {
   stack []Element
 
+  offset int
+
   dirty bool
 }
 
 func newElementStack() *ElementStack {
   return &ElementStack{
     make([]Element, 0),
+    0,
     true,
   }
 }
@@ -37,9 +40,9 @@ func (s *ElementStack) Add(e Element, deps []Element) int {
 
   s.stack = append(s.stack, e)
 
-  return id
+  return id + s.offset
 }
 
 func (s *ElementStack) maxZIndex() int {
-  return len(s.stack)
+  return len(s.stack) + s.offset
 }

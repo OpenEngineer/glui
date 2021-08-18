@@ -74,6 +74,10 @@ func (e *Root) CalcDepth() {
 
   stack.dirty = true
 
+  // add some offset for menu, so it definitely lies above all body elements
+  // XXX: why?
+  stack.offset = 2*stack.maxZIndex()
+
   for ; stack.dirty; {
     stack.dirty = false
 

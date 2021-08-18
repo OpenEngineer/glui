@@ -9,7 +9,7 @@ import (
   "github.com/veandco/go-sdl2/sdl"
 )
 
-//go:generate ./gen_element Input "CalcDepth On Padding"
+//go:generate ./gen_element Input "On Padding"
 
 // overflow not (yet) allowed
 type Input struct {
@@ -68,9 +68,6 @@ func NewInput(root *Root) *Input {
   e.On("doubleclick", e.onDoubleClick)
   e.On("tripleclick", e.onTripleClick)
   e.On("rightclick",  e.onRightClick)
-
-  e.AppendChild(e.text)
-  e.AppendChild(e.selText)
 
   return e
 }
@@ -423,7 +420,17 @@ func (e *Input) Cursor() int {
   return sdl.SYSTEM_CURSOR_IBEAM
 }
 
+func (e *Input) Hide() {
+  e.text.Hide()
+  e.selText.Hide()
+
+  e.ElementData.Hide()
+}
+
 func (e *Input) Show() {
+  e.text.Show()
+  e.selText.Show()
+
   showBorderedElement(e.Root, e.p1Tris)
 }
 
@@ -580,6 +587,17 @@ func (e *Input) sync() {
   }
 }
 
+func (e *Input) CalcDepth(stack *ElementStack) {
+  e.zIndex = stack.Add(e, e.closerThan)
+
+  for _, child := range e.Children() {
+    child.CalcDepth(stack)
+  }
+
+  e.text.CalcDepth(stack)
+  e.selText.CalcDepth(stack)
+}
+
 func (e *Input) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   w, h := e.GetSize()
 
@@ -597,6 +615,13 @@ func (e *Input) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   e.calcVBarPos(maxZIndex)
 
   return e.InitRect(w, h)
+}
+
+func (e *Input) Translate(dx, dy int) {
+  e.text.Translate(dx, dy)
+  e.selText.Translate(dx, dy)
+
+  e.ElementData.Translate(dx, dy)
 }
 
 func (e *Input) Animate(tick uint64) {

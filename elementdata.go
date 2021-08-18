@@ -59,18 +59,16 @@ func (e *ElementData) GetSize() (int, int) {
 }
 
 func (e *ElementData) Hide() {
-  if e.visible {
-    for _, tri := range e.p1Tris {
-      e.Root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
-    }
+  for _, tri := range e.p1Tris {
+    e.Root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
+  }
 
-    for _, tri := range e.p2Tris {
-      e.Root.P2.Type.Set1Const(tri, VTYPE_HIDDEN)
-    }
+  for _, tri := range e.p2Tris {
+    e.Root.P2.Type.Set1Const(tri, VTYPE_HIDDEN)
+  }
 
-    for _, child := range e.children {
-      child.Hide()
-    }
+  for _, child := range e.children {
+    child.Hide()
   }
 
   e.visible = false
@@ -150,7 +148,6 @@ func (e *ElementData) Translate(dx, dy int) {
   }
 
   for _, tri := range e.p2Tris {
-    assertReal(float32(dx), "dx in ElementData.Translate")
     e.Root.P2.TranslateTri(tri, dx, dy, 0.0)
   }
 
@@ -184,6 +181,8 @@ func (e *ElementData) Animate(tick uint64) {
 }
 
 func (e *ElementData) Delete() {
+  e.Hide()
+
   e.Root.P1.Dealloc(e.p1Tris)
 
   e.Root.P2.Dealloc(e.p2Tris)

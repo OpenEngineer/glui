@@ -1,10 +1,4 @@
 package glui
-func (e *Input) CalcDepth(stack *ElementStack) {
-  e.zIndex = stack.Add(e, e.closerThan)
-  for _, child := range e.Children() {
-    child.CalcDepth(stack)
-  }
-}
 func (e *Input) On(name string, fn EventListener) *Input {
   e.evtListeners[name] = fn
   return e
