@@ -15,8 +15,6 @@ import (
 type Input struct {
   ElementData
 
-  width       int
-  height      int
   borderT     int
   barHeight   int
 
@@ -37,7 +35,6 @@ type Input struct {
 func NewInput(root *Root) *Input {
   e := &Input{
     NewElementData(root, 10*2, 0), 
-    200, 50,
     root.P1.Skin.InputBorderThickness(),
     25,
     NewText(root, "", "dejavumono", 10), 
@@ -51,6 +48,8 @@ func NewInput(root *Root) *Input {
     0,
     false,
   }
+
+  e.width, e.height = 200, 50
 
   e.selText.SetColor(sdl.Color{0xff, 0xff, 0xff, 0xff})
 
@@ -69,6 +68,9 @@ func NewInput(root *Root) *Input {
   e.On("doubleclick", e.onDoubleClick)
   e.On("tripleclick", e.onTripleClick)
   e.On("rightclick",  e.onRightClick)
+
+  e.AppendChild(e.text)
+  e.AppendChild(e.selText)
 
   return e
 }
@@ -230,7 +232,7 @@ func (e *Input) onRightClick(evt *Event) {
     float64(evt.X - e.rect.X)/float64(e.rect.W),
     float64(evt.Y - e.rect.Y)/float64(e.rect.H),
     70,
-    80,
+    100,
   )
 
   e.menuVisible = true
@@ -538,12 +540,12 @@ func (e *Input) getSelText() string {
 }
 
 func (e *Input) calcVBarPos(maxZIndex int) {
-  z := e.Z(maxZIndex)
+  z := 0.5*(e.Z(maxZIndex) + normalizeZIndex(e.text.ZIndex(), maxZIndex))
 
-  y0 := e.rect.Y + e.height/2 - e.barHeight/2
+  y0 := e.height/2 - e.barHeight/2
 
   // Right Aligned
-  x0 := e.rect.X + e.width - e.padding[1] - e.borderT - 
+  x0 := e.width - e.padding[1] - e.borderT - 
     int(math.Ceil(float64(len(e.value) - e.selStart())*e.text.RefAdvance()))
 
   tri0 := e.p1Tris[18]
@@ -557,8 +559,6 @@ func (e *Input) calcVBarPos(maxZIndex int) {
     // TODO: move this into show etc.
     e.Root.P1.SetColorConst(tri0, sdl.Color{0, 0, 0, 255})
     e.Root.P1.SetColorConst(tri1, sdl.Color{0, 0, 0, 255})
-    
-    e.Root.P1.SetQuadPos(tri0, tri1, Rect{x0, y0, vBarWidth, e.barHeight}, z)
   } else {
     vBarWidth = e.selWidth()*int(e.text.RefAdvance())
 
@@ -590,8 +590,8 @@ func (e *Input) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
 
     // RIGHT ALIGN
     textElem.Translate(
-      e.rect.X + e.width - e.borderT - textWidth - e.padding[1], 
-      e.rect.Y + (e.height - textHeight)/2) 
+      e.width - e.borderT - textWidth - e.padding[1], 
+      (e.height - textHeight)/2)
   }
 
   e.calcVBarPos(maxZIndex)
