@@ -7,7 +7,7 @@ import (
   "github.com/veandco/go-sdl2/sdl"
 )
 
-func (app *App) triggerEvent(e Element, name string, evt *Event) {
+func TriggerEvent(e Element, name string, evt *Event) {
   for e != nil {
     l := e.GetEventListener(name)
     
@@ -29,20 +29,20 @@ func (app *App) triggerEvent(e Element, name string, evt *Event) {
 }
 
 func (app *App) triggerHitEvent(name string, evt *Event) {
-  app.triggerEvent(app.state.mouseElement, name, evt)
+  TriggerEvent(app.state.mouseElement, name, evt)
 }
 
 // XXX: one focus element per root?
 func (app *App) changeFocusElement(newFocusable Element, blurEvt, focusEvt *Event) {
   if newFocusable != app.state.focusElement {
     if app.state.focusElement != nil {
-      app.triggerEvent(app.state.focusElement, "blur", blurEvt)
+      TriggerEvent(app.state.focusElement, "blur", blurEvt)
     }
 
     app.state.focusElement = newFocusable
 
     if newFocusable != nil {
-      app.triggerEvent(app.state.focusElement, "focus", focusEvt)
+      TriggerEvent(app.state.focusElement, "focus", focusEvt)
     }
   }
 }

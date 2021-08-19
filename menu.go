@@ -16,12 +16,6 @@ type Menu struct {
   anchorY float64
 }
 
-type ButtonConfig struct {
-  caption  string
-  enabled  bool
-  callback func()
-}
-
 func newMenu(root *Root) *Menu {
   e := &Menu{
     NewElementData(root, 9*2, 0),
@@ -40,11 +34,7 @@ func newMenu(root *Root) *Menu {
 }
 
 func (e *Menu) setTypesAndTCoords() {
-  t := e.Root.P1.Skin.ButtonBorderThickness()
-
-  x0, y0 := e.Root.P1.Skin.ButtonOrigin()
-
-  setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, e.Root.P1.Skin.BGColor())
+  e.SetButtonStyle()
 
   e.Hide()
 }
@@ -111,36 +101,14 @@ func (e *Menu) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   return 0, 0
 }
 
-/*func (e *Menu) AddButton(caption string, enabled bool, callback func()) {
-  button := NewFlatButton(e.Root)
-  button.Size(60, 30).Padding(0, 10)
-
-  content := NewHor(e.Root, START, CENTER, 0)
-  button.A(content)
-
-  if enabled {
-    content.A(NewSans(e.Root, caption, 10))
-    button.OnClick(func() {
-      callback()
-
-      e.Hide()
-    })
-  } else {
-    content.A(NewSansCaption(e.Root, caption, 10))
-    button.Disable()
-  }
-
-  e.A(button)
-}*/
-
 func (e *Menu) ClearChildren() {
   e.height = 2*e.Root.P1.Skin.ButtonBorderThickness()
 
   e.ElementData.ClearChildren()
 }
 
-func (e *Menu) AddButton(caption string, enabled bool, height int, callback func()) {
-  button := newMenuButton(e.Root, caption, func() {
+func (e *Menu) AddButton(caption string, enabled bool, selected bool, height int, callback func()) {
+  button := newMenuButton(e, caption, func() {
     callback()
     e.Hide()
   }).Padding(0, 10)
@@ -151,35 +119,103 @@ func (e *Menu) AddButton(caption string, enabled bool, height int, callback func
     button.Disable()
   }
 
+  if selected {
+    button.Select()
+  }
+
   e.A(button)
 
   e.height += height
 }
 
-func (e *Menu) FillWithButtons(cfgs []ButtonConfig) {
-  e.ClearChildren()
-  e.Padding(5)
-  e.Spacing(0)
+func (e *Menu) IsOwnedBy(el Element) bool {
+  return e.anchor == el && e.Visible()
+}
 
-  for _, cfg := range cfgs {
-    button := NewFlatButton(e.Root)
-    button.Size(60, 30).Padding(0, 10)
+func (e *Menu) loopMenuButtons(fn func(i int, mb *menuButton)) int {
+  c := 0
 
-    content := NewHor(e.Root, START, CENTER, 0)
-    button.A(content)
-
-    if cfg.enabled {
-      content.A(NewSans(e.Root, cfg.caption, 10))
-      button.OnClick(func() {
-        cfg.callback()
-
-        e.Hide()
-      })
-    } else {
-      content.A(NewSansCaption(e.Root, cfg.caption, 10))
-      button.Disable()
+  for _, child_ := range e.children {
+    if child, ok := child_.(*menuButton); ok && child.enabled {
+      fn(c, child)
+      c += 1
     }
-
-    e.A(button)
   }
+
+  return c
+}
+
+func (e *Menu) countMenuButtons() int {
+  return e.loopMenuButtons(func(i int, mb *menuButton) {})
+}
+
+func (e *Menu) SelectedIndex() int {
+  found := -1
+
+  e.loopMenuButtons(func(i int, mb *menuButton) {
+    if found == -1 && mb.Selected() {
+      found = i
+    }
+  })
+
+  return found
+}
+
+func (e *Menu) unselectOtherMenuButtons(b *menuButton) {
+  e.loopMenuButtons(func(_ int, mb *menuButton) {
+    if mb != b {
+      mb.Unselect()
+    }
+  })
+}
+
+func (e *Menu) SelectNext() {
+  oldSel := e.SelectedIndex()
+
+  e.loopMenuButtons(func(i int, mb *menuButton) {
+    if oldSel == -1 {
+      mb.Select()
+      oldSel = -2
+    } else if i == oldSel + 1 {
+      mb.Select()
+    } else {
+      mb.Unselect()
+    }
+  })
+}
+
+func (e *Menu) SelectPrev() {
+  oldSel := e.SelectedIndex()
+
+  if oldSel == -1 {
+    c := e.countMenuButtons()
+
+    e.loopMenuButtons(func(i int, mb *menuButton) {
+      if i == c -1 {
+        mb.Select()
+      } else {
+        mb.Unselect()
+      }
+    })
+  } else if oldSel == 0 {
+    e.unselectOtherMenuButtons(nil)
+  } else {
+    e.loopMenuButtons(func(i int, mb *menuButton) {
+      if i == oldSel - 1 {
+        mb.Select()
+      } else {
+        mb.Unselect()
+      }
+    })
+  }
+}
+
+func (e *Menu) ClickSelected() {
+  e.loopMenuButtons(func(i int, mb *menuButton) {
+    if mb.Selected() {
+      mb.onClick()
+    }
+  })
+  
+  e.Hide()
 }

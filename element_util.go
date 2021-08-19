@@ -89,8 +89,12 @@ func hasAncestor(a Element, anc Element) bool {
   return false
 }
 
+func hasEvent(e Element, name string) bool {
+  return e.GetEventListener(name) != nil
+}
+
 func focusable(e Element) bool {
-  return e.GetEventListener("focus") != nil
+  return hasEvent(e, "focus")
 }
 
 func findFocusable(e_ Element) Element {

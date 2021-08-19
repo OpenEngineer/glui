@@ -109,8 +109,13 @@ func (app *App) initMainEventLoop(m *sync.Mutex) {
       app.onMouseMove(event)
       break
     case *sdl.MouseButtonEvent:
-      if app.root.Menu.Visible() && !app.root.Menu.IsHit(int(event.X), int(event.Y)) {
-        app.root.Menu.Hide()
+      if app.root.Menu.Visible() && !app.root.Menu.IsHit(int(event.X), int(event.Y)) && !app.root.Menu.IsOwnedBy(app.state.mouseElement) {
+        if hasEvent(app.root.Menu.anchor, "mousebuttonoutsidemenu") {
+          TriggerEvent(app.root.Menu.anchor, "mousebuttonoutsidemenu", 
+            NewMouseEvent(int(event.X), int(event.Y)))
+        } else {
+          app.root.Menu.Hide()
+        }
       }
 
       if event.Type == sdl.MOUSEBUTTONDOWN {
@@ -197,7 +202,7 @@ func (app *App) onMouseMove(event *sdl.MouseMotionEvent) {
 
     if app.state.mouseElement != nil {
       if app.state.lastDown != nil && app.state.lastDown != app.state.mouseElement {
-        app.triggerEvent(app.state.lastDown, "mousemove", NewMouseEvent(int(event.X), int(event.Y)))
+        TriggerEvent(app.state.lastDown, "mousemove", NewMouseEvent(int(event.X), int(event.Y)))
       }
 
       app.triggerHitEvent("mousemove", NewMouseEvent(int(event.X), int(event.Y)))
@@ -290,15 +295,13 @@ func (app *App) detectClick(x, y int) {
     eName = "tripleclick"
   }
 
-  app.triggerEvent(app.state.mouseElement, eName, NewMouseEvent(x, y))
+  TriggerEvent(app.state.mouseElement, eName, NewMouseEvent(x, y))
 }
 
 func (app *App) onTextInput(event *sdl.TextInputEvent) {
-  app.hideMenuIfVisible()
-
   str := event.GetText()
 
-  app.triggerEvent(app.state.focusElement, "textinput", NewTextInputEvent(str))
+  TriggerEvent(app.state.focusElement, "textinput", NewTextInputEvent(str))
 }
 
 func (app *App) onTab(event *sdl.KeyboardEvent) {
@@ -330,18 +333,12 @@ func (app *App) onTab(event *sdl.KeyboardEvent) {
 func (app *App) onKeyPress(event *sdl.KeyboardEvent) {
   eType, kType, ctrl, shift, alt := extractKeyboardEventDetails(event)
   if eType != "" && kType != "" {
-    if kType != "down" && kType != "up" {
-      app.hideMenuIfVisible()
-    }
-
-    app.triggerEvent(app.state.focusElement, eType, NewKeyboardEvent(kType, ctrl, shift, alt))
+    TriggerEvent(app.state.focusElement, eType, NewKeyboardEvent(kType, ctrl, shift, alt))
 
     if eType == "keydown" {
-      app.triggerEvent(app.state.focusElement, "keypress", NewKeyboardEvent(kType, ctrl, shift, alt))
+      TriggerEvent(app.state.focusElement, "keypress", NewKeyboardEvent(kType, ctrl, shift, alt))
     }
   } else {
-    app.hideMenuIfVisible()
-
     fmt.Println("unhandled keyboardevent ", event.Keysym.Sym)
   }
 }
@@ -353,11 +350,11 @@ func (app *App) onShowOrResize() {
 }
 
 func (app *App) onBlur() {
-  app.triggerEvent(app.state.focusElement, "blur", NewMouseEvent(-1, -1))
+  TriggerEvent(app.state.focusElement, "blur", NewMouseEvent(-1, -1))
 }
 
 func (app *App) onFocus() {
-  app.triggerEvent(app.state.focusElement, "focus", NewMouseEvent(-1, -1))
+  TriggerEvent(app.state.focusElement, "focus", NewMouseEvent(-1, -1))
 }
 
 func (app *App) onLeave() {

@@ -77,3 +77,7 @@ func (e *FocusRect) CalcPos(maxWidth, maxHeight, maxZIndex int) {
 func (e *FocusRect) Animate(tick uint64) {
   // doesnt do anything yet
 }
+
+func (e *FocusRect) IsOwnedBy(el Element) bool {
+  return e.anchor == el
+}

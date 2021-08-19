@@ -42,6 +42,31 @@ func (r Rect) Pos(fx, fy float64) (int, int) {
   return x, y
 }
 
+func (r Rect) Merge(other Rect) Rect {
+  x0 := r.X
+  if other.X < x0 {
+    x0 = other.X
+  }
+
+  y0 := r.Y
+  if other.Y < y0 {
+    y0 = other.Y
+  }
+
+  x1 := r.Right()
+  if other.Right() > x1 {
+    x1 = other.Right()
+  }
+
+  y1 := r.Bottom()
+  if other.Bottom() > y1 {
+    y1 = other.Bottom()
+  }
+
+
+  return Rect{x0, y0, x1 - x0, y1 - y0}
+}
+
 func (r RectF) Right() float64 {
   return r.X + r.W
 }

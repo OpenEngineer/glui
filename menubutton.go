@@ -10,19 +10,23 @@ import (
 type menuButton struct {
   ElementData
 
+  menu    *Menu
   caption *Caption
 
   // state
-  focused bool
+  selected bool
 
   onClick func()
 }
 
-func newMenuButton(root *Root, captionText string, callback func()) *menuButton {
+func newMenuButton(menu *Menu, captionText string, callback func()) *menuButton {
+  root := menu.Root
+
   caption := NewSansCaption(root, captionText, 10)
 
   e := &menuButton{
     NewElementData(root, 2, 0),
+    menu,
     caption,
     false,
     callback,
@@ -45,7 +49,7 @@ func newMenuButton(root *Root, captionText string, callback func()) *menuButton 
 func (e *menuButton) setTypesAndColor() {
   var c sdl.Color
 
-  if e.focused && e.enabled {
+  if e.selected && e.enabled {
     c = e.Root.P1.Skin.SelColor()
     e.caption.SetColor(sdl.Color{0xff, 0xff, 0xff, 0xff})
   } else {
@@ -59,20 +63,34 @@ func (e *menuButton) setTypesAndColor() {
   }
 }
 
-func (e *menuButton) setState(focused bool) {
-  if e.enabled && e.focused != focused {
-    e.focused = focused
+func (e *menuButton) setState(selected bool) {
+  if e.enabled && e.selected != selected {
+    e.selected = selected
 
     e.setTypesAndColor()
   }
 }
 
 func (e *menuButton) onMouseEnter(evt *Event) {
-  e.setState(true)
+  e.menu.unselectOtherMenuButtons(e)
+
+  e.Select()
 }
 
 func (e *menuButton) onMouseLeave(evt *Event) {
+  e.Unselect()
+}
+
+func (e *menuButton) Select() {
+  e.setState(true)
+}
+
+func (e *menuButton) Unselect() {
   e.setState(false)
+}
+
+func (e *menuButton) Selected() bool {
+  return e.selected
 }
 
 func (e *menuButton) onMouseClick(evt *Event) {

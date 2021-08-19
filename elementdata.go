@@ -224,6 +224,28 @@ func (e *ElementData) Z(maxZIndex int) float32 {
   return normalizeZIndex(e.zIndex, maxZIndex)
 }
 
+func (e *ElementData) SetButtonStyle() {
+  x0, y0 := e.Root.P1.Skin.ButtonOrigin()
+
+  c := e.Root.P1.Skin.BGColor()
+
+  t := e.Root.P1.Skin.ButtonBorderThickness()
+
+  setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, c)
+}
+
 func (e *ElementData) SetBorderedElementPos(w, h, t, maxZIndex int) {
   setBorderedElementPos(e.Root, e.p1Tris, w, h, t, e.Z(maxZIndex))
+}
+
+func (e *ElementData) SetButtonPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
+  t := e.Root.P1.Skin.ButtonBorderThickness()
+
+  w, h := e.GetSize()
+
+  e.SetBorderedElementPos(w, h, t, maxZIndex)
+
+  e.CalcPosChildren(w, h, maxZIndex)
+
+  return e.InitRect(w, h)
 }

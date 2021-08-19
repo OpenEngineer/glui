@@ -15,7 +15,6 @@ type Button struct {
   // state
   down    bool
   inside  bool
-  focused bool // explicit tab focus
 
   onClick func()
 }
@@ -36,7 +35,7 @@ func newButton(root *Root, flat bool, sticky bool) *Button {
   e := &Button{
     NewElementData(root, 9*2, 0), 
     flat, sticky, 
-    false, false, false, 
+    false, false,
     nil,
   }
 
@@ -117,18 +116,18 @@ func (e *Button) onMouseEnter(evt *Event) {
   e.setState(e.down, true)
 }
 
+func (e *Button) focused() bool {
+  return e.Root.FocusRect.IsOwnedBy(e)
+}
+
 func (e *Button) onFocus(evt *Event) {
   if evt.IsKeyboardEvent() {
-    e.focused = true
-
     e.Root.FocusRect.Show(e)
   }
 }
 
 func (e *Button) onBlur(evt *Event) {
-  if e.focused {
-    e.focused = false
-
+  if e.focused() {
     e.setState(false, false)
 
     e.setTypesAndTCoords(false)
@@ -138,7 +137,7 @@ func (e *Button) onBlur(evt *Event) {
 }
 
 func (e *Button) onKeyDown(evt *Event) {
-  if e.focused && (evt.Key == "space" || evt.Key == "return") {
+  if evt.Key == "space" || evt.Key == "return" {
     curPressed := e.down
     e.down = true
 
@@ -149,7 +148,7 @@ func (e *Button) onKeyDown(evt *Event) {
 }
 
 func (e *Button) onKeyUp(evt *Event) {
-  if e.focused && (evt.Key == "space" || evt.Key == "return") {
+  if evt.Key == "space" || evt.Key == "return" {
     curPressed := e.down
     e.down = false
 
@@ -157,6 +156,10 @@ func (e *Button) onKeyUp(evt *Event) {
       e.setTypesAndTCoords(false)
     }
   }
+}
+
+func (e *Button) Show() {
+  e.setTypesAndTCoords(e.down && e.inside)
 }
 
 func (e *Button) setTypesAndTCoords(pressed bool) {
@@ -178,25 +181,12 @@ func (e *Button) setTypesAndTCoords(pressed bool) {
       }
     }
   } else {
-    x0, y0 := e.Root.P1.Skin.ButtonOrigin()
-
-    c := e.Root.P1.Skin.BGColor()
-
-    setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, c)
+    e.SetButtonStyle()
   }
 }
 
 func (e *Button) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
-  t := e.Root.P1.Skin.ButtonBorderThickness()
-
-  w, h := e.GetSize()
-  z := e.Z(maxZIndex)
-
-  setBorderedElementPos(e.Root, e.p1Tris, w, h, t, z)
-
-  e.ElementData.CalcPosChildren(w, h, maxZIndex)
-
-  return e.InitRect(w, h)
+  return e.SetButtonPos(maxWidth, maxHeight, maxZIndex)
 }
 
 func (e *Button) Hide() {

@@ -24,12 +24,10 @@ type Input struct {
   value       string // not necessarily the same as text (in case of overflow)
   col0        int // defaults to end of string
   col1        int // end of selection, same as col0 for no selection
-  focused     bool
   mouseDown   bool
   currentVBar bool
   lastTick    uint64
   vBarTick    uint64
-  menuVisible bool
 }
 
 func NewInput(root *Root) *Input {
@@ -42,11 +40,9 @@ func NewInput(root *Root) *Input {
     "", 
     0, 0,
     false, 
-    false,
     false, 
     0, 
     0,
-    false,
   }
 
   e.width, e.height = 400, 50
@@ -73,6 +69,18 @@ func NewInput(root *Root) *Input {
 }
 
 func (e *Input) onKeyPress(evt *Event) {
+  if e.menuVisible() {
+    if evt.Key == "down" {
+      e.Root.Menu.SelectNext()
+    } else if evt.Key == "up" {
+      e.Root.Menu.SelectPrev()
+    } else if evt.Key == "space" || evt.Key == "return" {
+      e.Root.Menu.ClickSelected()
+    } else {
+      e.Root.Menu.Hide()
+    }
+  }
+
   switch {
   case evt.Key == "backspace":
     n := len(e.value)
@@ -230,8 +238,6 @@ func (e *Input) onRightClick(evt *Event) {
     float64(evt.Y - e.rect.Y)/float64(e.rect.H),
     70,
   )
-
-  e.menuVisible = true
 }
 
 func (e *Input) mousePosToCol(evt *Event) int {
@@ -397,9 +403,15 @@ func (e *Input) insertText(text string) {
   e.sync()
 }
 
-func (e *Input) onFocus(evt *Event) {
-  e.focused = true
+func (e *Input) menuVisible() bool {
+  return e.Root.Menu.IsOwnedBy(e)
+}
 
+func (e *Input) focused() bool {
+  return e.Root.FocusRect.IsOwnedBy(e)
+}
+
+func (e *Input) onFocus(evt *Event) {
   e.refreshVBar()
   e.sync()
 
@@ -407,8 +419,6 @@ func (e *Input) onFocus(evt *Event) {
 }
 
 func (e *Input) onBlur(evt *Event) {
-  e.focused = false
-
   e.sync()
   e.hideVBar()
 
@@ -464,15 +474,15 @@ func (e *Input) fillRightClickMenu() {
 
   bh := 30
 
-  e.Root.Menu.AddButton("Cut", e.hasSel(), bh, func() {
+  e.Root.Menu.AddButton("Cut", e.hasSel(), false, bh, func() {
     e.cutSel()
   })
 
-  e.Root.Menu.AddButton("Copy", e.hasSel(), bh, func() {
+  e.Root.Menu.AddButton("Copy", e.hasSel(), false, bh, func() {
     e.copySel()
   })
 
-  e.Root.Menu.AddButton("Paste", sdl.HasClipboardText(), bh, func() {
+  e.Root.Menu.AddButton("Paste", sdl.HasClipboardText(), false, bh, func() {
     e.insertClipboard()
   })
 
@@ -629,7 +639,7 @@ func (e *Input) calcVBarPos(maxZIndex int) {
 }
 
 func (e *Input) sync() {
-  if e.hasSel() && e.focused {
+  if e.hasSel() && e.focused() {
     e.text.SetContent(e.value[0:e.selStart()] + strings.Repeat(" ", e.selWidth()) + e.value[e.selEnd():])
     e.selText.SetContent(strings.Repeat(" ", e.selStart()) + e.getSelText() + strings.Repeat(" ", len(e.value) - e.selEnd()))
   } else {
@@ -678,7 +688,7 @@ func (e *Input) Translate(dx, dy int) {
 func (e *Input) Animate(tick uint64) {
   e.lastTick = tick
 
-  if e.focused && !e.hasSel() {
+  if e.focused() && !e.hasSel() {
     if (tick - e.vBarTick + 1)%30 == 0 {
       if e.currentVBar {
         e.hideVBar()
