@@ -22,6 +22,7 @@ type ElementData struct {
   rect    Rect
   zIndex  int // returned by succesful Hit test, must be normalized before using in Pos
   visible bool
+  enabled bool
 }
 
 func NewElementData(root *Root, nInitTris1 int, nInitTris2 int) ElementData {
@@ -42,7 +43,7 @@ func NewElementData(root *Root, nInitTris1 int, nInitTris2 int) ElementData {
     make([]Element, 0),
     make(map[string]EventListener),
     0, 0, [4]int{0, 0, 0, 0}, 0,
-    Rect{0, 0, 0, 0}, -1, true,
+    Rect{0, 0, 0, 0}, -1, true, true,
   }
 }
 
@@ -82,16 +83,28 @@ func (e *ElementData) Show() {
   e.visible = true
 }
 
+func (e *ElementData) Enable() {
+  for _, child := range e.children {
+    child.Enable()
+  }
+
+  e.enabled = true
+}
+
+func (e *ElementData) Disable() {
+  for _, child := range e.children {
+    child.Disable()
+  }
+
+  e.enabled = false
+}
+
 func (e *ElementData) Cursor() int {
   return -1
 }
 
 func (e *ElementData) Tooltip() string {
   return ""
-}
-
-func (e *ElementData) AppendChild(child Element) {
-  e.children = append(e.children, child)
 }
 
 func (e *ElementData) RegisterParent(parent Element) {

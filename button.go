@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -60,7 +58,11 @@ func newButton(root *Root, flat bool, sticky bool) *Button {
 }
 
 func (e *Button) Cursor() int {
-  return sdl.SYSTEM_CURSOR_HAND
+  if e.enabled {
+    return sdl.SYSTEM_CURSOR_HAND
+  } else {
+    return -1
+  }
 }
 
 func (e *Button) OnClick(fn func()) {
@@ -76,9 +78,21 @@ func (e *Button) setState(down bool, inside bool) {
 
   newPressed := e.down && e.inside
 
-  if curPressed != newPressed || (e.flat && e.inside != oldInside) {
-    e.setTypesAndTCoords(newPressed)
+  if e.enabled {
+    if curPressed != newPressed || (e.flat && e.inside != oldInside) {
+      e.setTypesAndTCoords(newPressed)
+    }
   }
+}
+
+func (e *Button) Disable() {
+  e.setState(false, e.inside)
+
+  e.ElementData.Disable()
+}
+
+func (e *Button) Enable() {
+  e.ElementData.Enable()
 }
 
 func (e *Button) onMouseDown(evt *Event) {
@@ -86,9 +100,6 @@ func (e *Button) onMouseDown(evt *Event) {
 }
 
 func (e *Button) onMouseUp(evt *Event) {
-  if e.flat {
-    fmt.Println("mouse up triggered")
-  }
   e.setState(false, e.inside)
 }
 
@@ -176,10 +187,6 @@ func (e *Button) setTypesAndTCoords(pressed bool) {
 }
 
 func (e *Button) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
-  if e.flat {
-    fmt.Println("flat button zIndex: ", e.ZIndex())
-  }
-
   t := e.Root.P1.Skin.ButtonBorderThickness()
 
   w, h := e.GetSize()

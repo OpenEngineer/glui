@@ -467,32 +467,56 @@ func (e *Input) fillRightClickMenu() {
 
   if len(e.Root.Menu.Children()) == 0 {
     cutButton := NewFlatButton(e.Root)
-    cutButton.A(NewHor(e.Root, START, CENTER, 0).A(NewSans(e.Root, "Cut", 10)))
     cutButton.Size(60, 30).Padding(0, 10)
-    cutButton.OnClick(func() {
-      if e.hasSel() {
-        e.cutSel()
-      }
-      e.Root.Menu.Hide()
-    })
+    cutContent := NewHor(e.Root, START, CENTER, 0)
+    cutButton.A(cutContent)
+
+    if e.hasSel() {
+      cutContent.A(NewSans(e.Root, "Cut", 10))
+      cutButton.OnClick(func() {
+        if e.hasSel() {
+          e.cutSel()
+        }
+        e.Root.Menu.Hide()
+      })
+    } else {
+      cutContent.A(NewSansCaption(e.Root, "Cut", 10))
+      cutButton.Disable()
+    }
 
     copyButton := NewFlatButton(e.Root)
-    copyButton.A(NewHor(e.Root, START, CENTER, 0).A(NewSans(e.Root, "Copy", 10)))
     copyButton.Size(60, 30).Padding(0, 10)
-    copyButton.OnClick(func() {
-      if e.hasSel() {
-        e.copySel()
-      }
-      e.Root.Menu.Hide()
-    })
+    copyContent := NewHor(e.Root, START, CENTER, 0)
+    copyButton.A(copyContent)
+
+    if e.hasSel() {
+      copyContent.A(NewSans(e.Root, "Copy", 10))
+      copyButton.OnClick(func() {
+        if e.hasSel() {
+          e.copySel()
+        }
+        e.Root.Menu.Hide()
+      })
+    } else {
+      copyContent.A(NewSansCaption(e.Root, "Copy", 10))
+      copyButton.Disable()
+    }
 
     pasteButton := NewFlatButton(e.Root)
-    pasteButton.A(NewHor(e.Root, START, CENTER, 0).A(NewSans(e.Root, "Paste", 10)))
     pasteButton.Size(60, 30).Padding(0, 10)
-    pasteButton.OnClick(func() {
-      e.insertClipboard()
-      e.Root.Menu.Hide()
-    })
+    pasteContent := NewHor(e.Root, START, CENTER, 0)
+    pasteButton.A(pasteContent)
+
+    if sdl.HasClipboardText() {
+      pasteContent.A(NewSans(e.Root, "Paste", 10))
+      pasteButton.OnClick(func() {
+        e.insertClipboard()
+        e.Root.Menu.Hide()
+      })
+    } else {
+      pasteContent.A(NewSansCaption(e.Root, "Paste", 10))
+      pasteButton.Disable()
+    }
 
     e.Root.Menu.A(cutButton, copyButton, pasteButton)
   }
@@ -636,4 +660,11 @@ func (e *Input) Animate(tick uint64) {
       }
     }
   }
+}
+
+func (e *Input) Delete() {
+  e.selText.Delete()
+  e.text.Delete()
+
+  e.ElementData.Delete()
 }

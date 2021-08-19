@@ -1,7 +1,7 @@
 package glui
 func (e *Button) A(children ...Element) Element {
   for _, child := range children {
-    e.ElementData.AppendChild(child)
+    e.children = append(e.children, child)
     child.RegisterParent(e)
   }
   return e

@@ -77,6 +77,14 @@ func (e *Dropdown) Show() {
   e.button.Show()
 }
 
+func (e *Dropdown) Enable() {
+  e.button.Enable()
+}
+
+func (e *Dropdown) Disable() {
+  e.button.Disable()
+}
+
 func (e *Dropdown) GetEventListener(name string) EventListener {
   return e.button.GetEventListener(name)
 }

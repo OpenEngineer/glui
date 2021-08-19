@@ -25,6 +25,9 @@ type Element interface {
   Hide() // implemented by ElementData
   Show() // default implemented by ElementData simply shows children and sets visible to true
 
+  Enable() // implemented by ElementData
+  Disable() // implemented by ElementData
+
   GetEventListener(name string) EventListener // returns nil if no EventListener specified
 
   Delete() // deallocs all owned tris, implemented by ElementData

@@ -50,7 +50,7 @@ func countNonWhitespace(s string) int {
   count := 0
 
   for _, c := range s {
-    if c != ' ' && c != '\n' && c != '\t' {
+    if !isWhitespace(rune(c)) {
       count += 1
     }
   }
@@ -61,6 +61,10 @@ func countNonWhitespace(s string) int {
 func (e *Text) SetContent(content string) {
   e.content = content
 
+  e.Show()
+}
+
+func (e *Text) Show() {
   n := countNonWhitespace(e.content)
 
   nDiff := n - len(e.p2Tris)/2

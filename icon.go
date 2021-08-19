@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -78,7 +76,6 @@ func (e *Icon) setTypeColorAndTCoord() {
 }
 
 func (e *Icon) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
-  fmt.Println("icon z index: ", e.ZIndex())
   z := e.Z(maxZIndex)
   s := e.size
 
