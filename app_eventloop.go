@@ -6,6 +6,7 @@ import (
   "fmt"
   "math"
   "reflect"
+  "sync"
 
   "github.com/veandco/go-sdl2/sdl"
 )
@@ -94,7 +95,9 @@ func (app *App) emitAnimationEvents() {
   }
 }
 
-func (app *App) initMainEventLoop() {
+func (app *App) initMainEventLoop(m *sync.Mutex) {
+  app.initDrawLoop(m)
+
   for {
     event_ := <- app.eventCh
 
@@ -132,40 +135,50 @@ func (app *App) initMainEventLoop() {
     case *sdl.WindowEvent:
       switch event.Event {
       case sdl.WINDOWEVENT_SHOWN:
+        //fmt.Println("  window shown event")
         app.onShowOrResize()
         break
       case sdl.WINDOWEVENT_EXPOSED:
+        //fmt.Println("  window exposed event")
         app.onShowOrResize()
         break
       case sdl.WINDOWEVENT_RESIZED:
+        //fmt.Println("  window resized event")
         app.onShowOrResize()
         break
       case sdl.WINDOWEVENT_MAXIMIZED:
+        //fmt.Println("  window maximized event")
         app.onShowOrResize()
         break
       case sdl.WINDOWEVENT_RESTORED:
+        //fmt.Println("  window restored event")
         app.onShowOrResize()
         break
       case sdl.WINDOWEVENT_FOCUS_LOST:
+        //fmt.Println("  window focus lost event")
         app.onBlur()
         break
       case sdl.WINDOWEVENT_FOCUS_GAINED:
+        //fmt.Println("  window focus gained event")
         app.onFocus()
         break
       case sdl.WINDOWEVENT_LEAVE:
+        //fmt.Println("  window leave event")
         app.onLeave()
         break
       case sdl.WINDOWEVENT_ENTER:
+        //fmt.Println("  window enter event")
         app.onEnter()
         break
       }
-
     default:
-      fmt.Println("event: ", reflect.TypeOf(event_).String())
+      fmt.Println("unhandled event ", reflect.TypeOf(event_).String())
     }
 
     app.DrawIfDirty()
   }
+
+  app.endDrawLoop()
 }
 
 func (app *App) onTick(event *animationEvent) {
@@ -193,6 +206,11 @@ func (app *App) onMouseMove(event *sdl.MouseMotionEvent) {
 }
 
 func (app *App) onMouseDown(event *sdl.MouseButtonEvent) {
+  if app.state.mouseElement == app.root.Menu || app.state.mouseElement == nil {
+    // eg. on edge of menu
+    return
+  }
+
   app.state.lastDown = app.state.mouseElement
 
   if event.Button == sdl.BUTTON_LEFT {
@@ -276,6 +294,8 @@ func (app *App) detectClick(x, y int) {
 }
 
 func (app *App) onTextInput(event *sdl.TextInputEvent) {
+  app.hideMenuIfVisible()
+
   str := event.GetText()
 
   app.triggerEvent(app.state.focusElement, "textinput", NewTextInputEvent(str))
@@ -310,13 +330,19 @@ func (app *App) onTab(event *sdl.KeyboardEvent) {
 func (app *App) onKeyPress(event *sdl.KeyboardEvent) {
   eType, kType, ctrl, shift, alt := extractKeyboardEventDetails(event)
   if eType != "" && kType != "" {
+    if kType != "down" && kType != "up" {
+      app.hideMenuIfVisible()
+    }
+
     app.triggerEvent(app.state.focusElement, eType, NewKeyboardEvent(kType, ctrl, shift, alt))
 
     if eType == "keydown" {
       app.triggerEvent(app.state.focusElement, "keypress", NewKeyboardEvent(kType, ctrl, shift, alt))
     }
   } else {
-    fmt.Println("unhandled keyboardevent: ", event.Keysym.Sym)
+    app.hideMenuIfVisible()
+
+    fmt.Println("unhandled keyboardevent ", event.Keysym.Sym)
   }
 }
 

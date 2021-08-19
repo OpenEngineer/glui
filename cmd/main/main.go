@@ -25,7 +25,7 @@ func main() {
   button2 := glui.NewFlatButton(root).Size(40, 40)
   button2.A(glui.NewHor(root, glui.CENTER, glui.CENTER, 0).A(icon))
 
-  dropdown := glui.NewDropdown(root)
+  dropdown := glui.NewDropdown(root, []string{"Dog", "Cat", "Hamster"})
 
   body.A(button1, input1, button2, dropdown)
 

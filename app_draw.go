@@ -12,6 +12,8 @@ import (
 
 func (app *App) DrawIfDirty() {
   if app.root.posDirty() {
+    fmt.Println("recalculating...")
+
     app.root.CalcDepth()
 
     app.root.CalcPos()
@@ -22,9 +24,9 @@ func (app *App) DrawIfDirty() {
   }
 
   if app.root.dirty() {
-    fmt.Println("redrawing...")
+    fmt.Println("redrawing...", app.root.P1.nTris(), "&", app.root.P2.nTris())
 
-    app.Draw()
+    app.draw()
   }
 }
 
@@ -156,6 +158,77 @@ func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {
   }
 }
 
+/*func (app *App) initDrawLoop(m *sync.Mutex) {
+  m.Lock()
+
+  ctx, err := app.window.GLCreateContext()
+  if err != nil {
+    fmt.Fprintf(app.debug, "unable to create context: %s\n", err.Error())
+    panic(err)
+  }
+
+  app.ctx = ctx
+
+  if err := app.window.GLMakeCurrent(ctx); err != nil {
+    fmt.Fprintf(app.debug, "unable to make current in render: %s\n", err.Error())
+    panic(err)
+  }
+
+  if err := gl.Init(); err != nil {
+    fmt.Fprintf(app.debug, "render gl.Init error: %s\n", err.Error())
+    panic(err)
+  }
+
+  glVersion := gl.GoStr(gl.GetString(gl.VERSION))
+  if glVersion == "" {
+    err := errors.New("empty OpenGL version")
+    fmt.Fprintf(app.debug, "%s\n", err.Error())
+    panic(err)
+  }
+
+  app.program1, err = compileProgram1()
+  if err != nil {
+    fmt.Fprintf(app.debug, "failed to compile OpenGL program1: %s\n", err.Error())
+    panic(err)
+  }
+
+  app.program2, err = compileProgram2()
+  if err != nil {
+    fmt.Fprintf(app.debug, "failed to compile OpenGL program2: %s\n", err.Error())
+    panic(err)
+  }
+
+  app.root.syncSize(app.window)
+  app.root.initGL(app.program1, app.program2)
+
+  //gl.CreateFramebuffers(1, &(app.framebuffers[0]))
+  //gl.CreateFramebuffers(1, &(app.framebuffers[1]))
+
+  gl.GenFramebuffers(1, &(app.framebuffers[0]))
+  gl.GenFramebuffers(1, &(app.framebuffers[1]))
+
+  x, y := app.window.GetPosition()
+  app.x = int(x)
+  app.y = int(y)
+
+  if err := app.window.GLMakeCurrent(nil); err != nil {
+    fmt.Fprintf(app.debug, "unable to unmake current in render: %s\n", err.Error())
+    return
+  }
+
+  m.Unlock()
+
+  for true {
+    <- app.drawCh
+
+    app.draw()
+
+    sdl.Delay(RENDER_LOOP_INTERVAL)
+  }
+
+  sdl.GLDeleteContext(ctx)
+}*/
+
 func (app *App) initDrawLoop(m *sync.Mutex) {
   m.Lock()
 
@@ -214,35 +287,9 @@ func (app *App) initDrawLoop(m *sync.Mutex) {
     return
   }
 
-  //app.draw()
-
   m.Unlock()
+}
 
-  for true {
-    //fmt.Println("in render loop")
-    //for _ = range app.drawCh {
-    //}
-    <- app.drawCh
-
-    app.draw()
-
-    sdl.Delay(RENDER_LOOP_INTERVAL)
-
-    /*draining := true
-    for draining {
-      select {
-      case <- app.drawCh:
-        continue
-      default:
-        draining = false
-        break
-      }
-    }*/
-
-    //}
-    //default:
-    //fmt.Println("nothing done in render loop")
-  }
-
-  sdl.GLDeleteContext(ctx)
+func (app *App) endDrawLoop() {
+  sdl.GLDeleteContext(app.ctx)
 }

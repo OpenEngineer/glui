@@ -1,11 +1,14 @@
 package glui
 
 // wrap button for most Element interface methods
+// TODO: be its own element
 type Dropdown struct {
+  options []string
+  text   *Text
   button *Button
 }
 
-func NewDropdown(root *Root) *Dropdown {
+func NewDropdown(root *Root, options []string) *Dropdown {
   button := NewButton(root)
 
   text := NewSans(root, "Choose unit", 10)
@@ -14,7 +17,11 @@ func NewDropdown(root *Root) *Dropdown {
 
   button.A(NewHor(root, STRETCH, CENTER, 0).Padding(0, 10).A(text, arrow))
 
-  return &Dropdown{button}
+  e := &Dropdown{options, text, button}
+
+  button.OnClick(e.onShowMenu)
+
+  return e
 }
 
 func (e *Dropdown) RegisterParent(parent Element) {
@@ -91,4 +98,24 @@ func (e *Dropdown) GetEventListener(name string) EventListener {
 
 func (e *Dropdown) Delete() {
   e.button.Delete()
+}
+
+func (e *Dropdown) onShowMenu() {
+  menu := e.button.Root.Menu
+
+  menu.ClearChildren()
+
+  for _, option := range e.options {
+    option_ := option
+    menu.AddButton(option_, true, e.button.height, func() {
+      e.text.SetContent(option_)
+    })
+  }
+
+  e.button.Root.Menu.ShowAt(
+    e,
+    0.0,
+    1.0,
+    e.button.rect.W,
+  )
 }

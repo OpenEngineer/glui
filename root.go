@@ -55,6 +55,11 @@ func (e *Root) posDirty() bool {
   return e.P1.posDirty() || e.P2.posDirty()
 }
 
+func (e *Root) clearPosDirty() {
+  e.P1.clearPosDirty()
+  e.P2.clearPosDirty()
+}
+
 func (e *Root) ForcePosDirty() {
   e.P1.Type.dirty = true
 }

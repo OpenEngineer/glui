@@ -139,8 +139,19 @@ func (app *App) run() error {
 
   m := &sync.Mutex{}
 
-  go func(m_ *sync.Mutex) {
+  /*go func(m_ *sync.Mutex) {
     app.initDrawLoop(m)
+  }(m)
+
+  sdl.Delay(START_DELAY)
+
+  m.Lock()
+
+  m.Unlock()*/
+
+  // both animation and system/user events are serialized by a separate thread
+  go func(m_ *sync.Mutex) {
+    app.initMainEventLoop(m_)
   }(m)
 
   sdl.Delay(START_DELAY)
@@ -151,11 +162,6 @@ func (app *App) run() error {
 
   go func() {
     app.emitAnimationEvents()
-  }()
-
-  // both animation and system/user events are serialized by a separate thread
-  go func() {
-    app.initMainEventLoop()
   }()
 
   // here we are in the main thread and must this thread must be used to detect 

@@ -1,6 +1,9 @@
 package glui
 
 import (
+  "fmt"
+  "reflect"
+
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -91,6 +94,11 @@ func (app *App) updateMouseElement(x, y int) {
     evt.stopBubblingWhenElementReached(ca)
 
     app.state.mouseElement = newMouseElement
+    if app.state.mouseElement == nil {
+      fmt.Println("mouseElement is nil")
+    } else {
+      fmt.Println("mouseElement is ", reflect.TypeOf(app.state.mouseElement).String())
+    }
 
     if ca != newMouseElement {
       app.triggerHitEvent("mouseenter", evt)

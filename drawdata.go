@@ -175,6 +175,10 @@ func (d *DrawPassData) Len() int {
   return len(d.Type.data)/3
 }
 
+func (d *DrawPassData) nTris() int {
+  return d.Len() - len(d.free)
+}
+
 func (d *DrawPassData) Grow() {
   nTrisOld := d.Len()
   nTrisNew := int(float64(nTrisOld)*GROW_FACTOR)
@@ -659,4 +663,8 @@ func (d *DrawPassData) dirty() bool {
 
 func (d *DrawPassData) posDirty() bool {
   return d.Type.dirty // a change of type indicates that some elements became visible/hidden, and thus affect positioning of siblings etc.
+}
+
+func (d *DrawPassData) clearPosDirty() {
+  d.Type.dirty = false
 }

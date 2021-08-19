@@ -16,6 +16,12 @@ type Menu struct {
   anchorY float64
 }
 
+type ButtonConfig struct {
+  caption  string
+  enabled  bool
+  callback func()
+}
+
 func newMenu(root *Root) *Menu {
   e := &Menu{
     NewElementData(root, 9*2, 0),
@@ -25,6 +31,8 @@ func newMenu(root *Root) *Menu {
   }
 
   e.setTypesAndTCoords()
+
+  e.Padding(root.P1.Skin.ButtonBorderThickness())
 
   e.Hide()
 
@@ -45,12 +53,11 @@ func (e *Menu) setTypesAndTCoords() {
 // anchorX, anchorY specify a point in the anchor elements rect
 // the positioning of the menu will try to place the target point of the menu as close as 
 //  possible to the anchor point
-func (e *Menu) ShowAt(anchor Element, anchorX, anchorY float64, width, height int) {
+func (e *Menu) ShowAt(anchor Element, anchorX, anchorY float64, width int) {
   e.anchor  = anchor
   e.anchorX = anchorX
   e.anchorY = anchorY
   e.width   = width
-  e.height  = height
 
   e.ElementData.Show()
 
@@ -102,4 +109,77 @@ func (e *Menu) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   e.Translate(x, y)
 
   return 0, 0
+}
+
+/*func (e *Menu) AddButton(caption string, enabled bool, callback func()) {
+  button := NewFlatButton(e.Root)
+  button.Size(60, 30).Padding(0, 10)
+
+  content := NewHor(e.Root, START, CENTER, 0)
+  button.A(content)
+
+  if enabled {
+    content.A(NewSans(e.Root, caption, 10))
+    button.OnClick(func() {
+      callback()
+
+      e.Hide()
+    })
+  } else {
+    content.A(NewSansCaption(e.Root, caption, 10))
+    button.Disable()
+  }
+
+  e.A(button)
+}*/
+
+func (e *Menu) ClearChildren() {
+  e.height = 2*e.Root.P1.Skin.ButtonBorderThickness()
+
+  e.ElementData.ClearChildren()
+}
+
+func (e *Menu) AddButton(caption string, enabled bool, height int, callback func()) {
+  button := newMenuButton(e.Root, caption, func() {
+    callback()
+    e.Hide()
+  }).Padding(0, 10)
+
+  button.height = height
+
+  if !enabled {
+    button.Disable()
+  }
+
+  e.A(button)
+
+  e.height += height
+}
+
+func (e *Menu) FillWithButtons(cfgs []ButtonConfig) {
+  e.ClearChildren()
+  e.Padding(5)
+  e.Spacing(0)
+
+  for _, cfg := range cfgs {
+    button := NewFlatButton(e.Root)
+    button.Size(60, 30).Padding(0, 10)
+
+    content := NewHor(e.Root, START, CENTER, 0)
+    button.A(content)
+
+    if cfg.enabled {
+      content.A(NewSans(e.Root, cfg.caption, 10))
+      button.OnClick(func() {
+        cfg.callback()
+
+        e.Hide()
+      })
+    } else {
+      content.A(NewSansCaption(e.Root, cfg.caption, 10))
+      button.Disable()
+    }
+
+    e.A(button)
+  }
 }

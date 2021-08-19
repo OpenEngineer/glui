@@ -194,7 +194,9 @@ func (e *ElementData) Animate(tick uint64) {
 }
 
 func (e *ElementData) Delete() {
-  e.Hide()
+  for _, child := range e.children {
+    child.Delete()
+  }
 
   e.Root.P1.Dealloc(e.p1Tris)
 

@@ -224,7 +224,8 @@ void main() {
     gl_FragDepth = (alpha > 0.1) ? vDepth : 2.0;
     //gl_FragDepth = gl_FragDepth*alpha + 0.55*(1.0-alpha);
   } else {
-    gl_FragDepth = vDepth;
+    oColor = vec4(0.0, 0.0, 0.0, 0.0);
+    gl_FragDepth = 2.0;//vDepth;
   }
 }
 `)

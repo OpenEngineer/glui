@@ -11,7 +11,7 @@ type Caption struct {
   ElementData
 
   main *Text
-  back  *Text
+  back *Text
 
   mainColor sdl.Color
   backColor sdl.Color
@@ -33,14 +33,18 @@ func NewCaption(root *Root, content string, font string, size float64) *Caption 
   e.main.SetColor(e.mainColor)
   e.back.SetColor(e.backColor)
 
-  e.back.Hide()
-
   e.appendChild(e.back)
   e.appendChild(e.main)
 
   e.main.closerThan = append(e.main.closerThan, e.back)
 
+  e.back.Hide()
+
   return e
+}
+
+func (e *Caption) SetColor(c sdl.Color) {
+  e.main.SetColor(c)
 }
 
 func (e *Caption) Disable() {
@@ -67,4 +71,12 @@ func (e *Caption) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   }
 
   return e.InitRect(w, h)
+}
+
+func (e *Caption) Show() {
+  e.ElementData.Show()
+
+  if e.enabled {
+    e.back.Hide()
+  }
 }
