@@ -412,17 +412,17 @@ func (e *Input) focused() bool {
 }
 
 func (e *Input) onFocus(evt *Event) {
+  e.Root.FocusRect.Show(e)
+
   e.refreshVBar()
   e.sync()
-
-  e.Root.FocusRect.Show(e)
 }
 
 func (e *Input) onBlur(evt *Event) {
+  e.Root.FocusRect.Hide()
+
   e.sync()
   e.hideVBar()
-
-  e.Root.FocusRect.Hide()
 }
 
 func (e *Input) Cursor() int {
