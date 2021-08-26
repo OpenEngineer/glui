@@ -33,6 +33,16 @@ type Element interface {
   Delete() // deallocs all owned tris, implemented by ElementData
 }
 
+type Container interface {
+  Element
+
+  A(children ...Element) Container
+  Padding(p ...int) Container
+  Spacing(s int) Container
+
+  ClearChildren()
+}
+
 // other utility methods often implemented by Elements
 //  * InitRect(w, h int) (w, h)
 //  * A(children ...Element) Element

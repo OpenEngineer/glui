@@ -1,7 +1,6 @@
 package glui
 
 import (
-  "math"
   "unsafe"
 
   "github.com/go-gl/gl/v4.1-core/gl"
@@ -32,6 +31,9 @@ type SkinMap struct {
   insetX int
   insetY int
 
+  cornerX int
+  cornerY int
+
   loc uint32
   tid uint32
 }
@@ -56,6 +58,8 @@ func (sm *SkinMap) genData(s Skin) {
 
   sm.genInsetData(s, tb)
 
+  sm.genCornerData(s, tb)
+
   if err := tb.ToImage("skin.png"); err != nil {
     panic(err)
   }
@@ -66,65 +70,39 @@ func (sm *SkinMap) genData(s Skin) {
 }
 
 func (sm *SkinMap) genButtonData(s Skin, tb *TextureBuilder) {
-  button := s.Button()
-  sqrtN := math.Sqrt(float64(len(button)/4))
-  if math.Mod(sqrtN, 1.0) != 0.0 {
-    panic("button border skin incorrect size")
-  }
+  sm.buttonX, sm.buttonY, sm.buttonT = sm.genBordered(s.Button(), tb, false)
 
-  tButton := (int(sqrtN) - 1)/2
-
-  sm.buttonX, sm.buttonY = tb.Build(button, 2*tButton+1, 2*tButton+1)
-  sm.buttonT = tButton
-
-  buttonPressed := s.ButtonPressed()
-  if len(buttonPressed) != len(button) {
-    panic("buttonPressed not same length as button")
-  }
-
-  sm.buttonPressedX, sm.buttonPressedY = tb.Build(buttonPressed, 2*tButton+1, 2*tButton+1)
+  sm.buttonPressedX, sm.buttonPressedY, _ = sm.genBordered(s.ButtonPressed(), tb, true)
 }
 
 func (sm *SkinMap) genInputData(s Skin, tb *TextureBuilder) {
-  input := s.Input()
-  sqrtN := math.Sqrt(float64(len(input)/4))
-  if math.Mod(sqrtN, 1.0) != 0.0 {
-    panic("input border skin incorrect size")
-  }
-
-  tInput := (int(sqrtN) - 1)/2
-
-  sm.inputX, sm.inputY = tb.Build(input, 2*tInput+1, 2*tInput+1)
-  sm.inputT = tInput
+  sm.inputX, sm.inputY, sm.inputT = sm.genBordered(s.Input(), tb, false)
 }
 
 func (sm *SkinMap) genFocusData(s Skin, tb *TextureBuilder) {
-  focus := s.Focus()
-  sqrtN := math.Sqrt(float64(len(focus)/4))
-  if math.Mod(sqrtN, 1.0) != 0.0 {
-    panic("focus skin incorrect size")
-  }
-
-  tFocus := (int(sqrtN) - 1)/2
-
-  sm.focusX, sm.focusY = tb.Build(focus, 2*tFocus+1, 2*tFocus+1)
-  sm.focusT = tFocus
+  sm.focusX, sm.focusY, sm.focusT = sm.genBordered(s.Focus(), tb, false)
 }
 
 func (sm *SkinMap) genInsetData(s Skin, tb *TextureBuilder) {
-  inset := s.Inset()
-  sqrtN := math.Sqrt(float64(len(inset)/4))
-  if math.Mod(sqrtN, 1.0) != 0.0 {
-    panic("button border skin incorrect size")
+  sm.insetX, sm.insetY, _ = sm.genBordered(s.Inset(), tb, true)
+}
+
+func (sm *SkinMap) genCornerData(s Skin, tb *TextureBuilder) {
+  sm.cornerX, sm.cornerY, _ = sm.genBordered(s.Corner(), tb, true)
+}
+
+func (sm *SkinMap) genBordered(d []byte, tb *TextureBuilder, checkT bool) (int, int, int) {
+  var t int
+
+  if checkT {
+    t = calcSkinThicknessCheckRef(d, sm.buttonT)
+  } else {
+    t = calcSkinThickness(d)
   }
 
-  tInset := (int(sqrtN) - 1)/2
+  x, y := tb.BuildBordered(d, t)
 
-  sm.insetX, sm.insetY = tb.Build(inset, 2*tInset+1, 2*tInset+1)
-
-  if sm.buttonT != tInset {
-    panic("inset border should be same size as button border")
-  }
+  return x, y, t
 }
 
 func (s *SkinMap) InitGL(loc uint32) {
@@ -156,6 +134,10 @@ func (s *SkinMap) ButtonOrigin() (int, int) {
 
 func (s *SkinMap) ButtonPressedOrigin() (int, int) {
   return s.buttonPressedX, s.buttonPressedY
+}
+
+func (s *SkinMap) CornerOrigin() (int, int) {
+  return s.cornerX, s.cornerY
 }
 
 func (s *SkinMap) ButtonBorderThickness() int {

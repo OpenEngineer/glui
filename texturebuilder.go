@@ -72,6 +72,12 @@ func (tb *TextureBuilder) Build(data []byte, w int, h int) (int, int) {
   return tb.Build(data, w, h)
 }
 
+func (tb *TextureBuilder) BuildBordered(data []byte, t int) (int, int) {
+  s := 2*t+1
+
+  return tb.Build(data, s, s)
+}
+
 func (tb *TextureBuilder) setData(x int, y int, data []byte, w int, h int) {
   for i := x; i < x+w; i++ {
     for j := y; j < y+h; j++ {

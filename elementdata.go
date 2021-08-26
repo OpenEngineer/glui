@@ -1,5 +1,9 @@
 package glui
 
+import (
+  "github.com/veandco/go-sdl2/sdl"
+)
+
 // base type for all elements
 type ElementData struct {
   parent       Element
@@ -99,6 +103,14 @@ func (e *ElementData) Disable() {
   e.enabled = false
 }
 
+func (e *ElementData) ButtonCursor(enabled bool) int {
+  if enabled {
+    return sdl.SYSTEM_CURSOR_HAND
+  } else {
+    return e.Cursor()
+  }
+}
+
 func (e *ElementData) Cursor() int {
   return -1
 }
@@ -173,12 +185,12 @@ func (e *ElementData) Translate(dx, dy int) {
 
 // default positioning of children
 // placement elements like Hor can provide better control
-func (e *ElementData) CalcPosChildren(maxWidth, maxHeight, maxDepth int) {
+func (e *ElementData) CalcPosChildren(maxWidth, maxHeight, maxZIndex int) {
   y := e.padding[0]
 
   for _, child := range e.children {
     if child.Visible() {
-      _, dy := child.CalcPos(maxWidth - e.padding[1] - e.padding[3], maxHeight - y - e.padding[2], maxDepth)
+      _, dy := child.CalcPos(maxWidth - e.padding[1] - e.padding[3], maxHeight - y - e.padding[2], maxZIndex)
 
       child.Translate(e.padding[3], y)
 

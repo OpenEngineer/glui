@@ -371,24 +371,9 @@ func (b *Float32Buffer) Set4(triId uint32, vertexId uint32,
 }
 
 func (b *Float32Buffer) Set4Const(triId uint32, value0 float32, value1 float32, value2 float32, value3 float32) {
-  offset := triId*3
-
-  b.data[(offset + 0)*uint32(b.nComp) + 0] = value0
-  b.data[(offset + 0)*uint32(b.nComp) + 1] = value1
-  b.data[(offset + 0)*uint32(b.nComp) + 2] = value2
-  b.data[(offset + 0)*uint32(b.nComp) + 3] = value3
-
-  b.data[(offset + 1)*uint32(b.nComp) + 0] = value0
-  b.data[(offset + 1)*uint32(b.nComp) + 1] = value1
-  b.data[(offset + 1)*uint32(b.nComp) + 2] = value2
-  b.data[(offset + 1)*uint32(b.nComp) + 3] = value3
-
-  b.data[(offset + 2)*uint32(b.nComp) + 0] = value0
-  b.data[(offset + 2)*uint32(b.nComp) + 1] = value1
-  b.data[(offset + 2)*uint32(b.nComp) + 2] = value2
-  b.data[(offset + 2)*uint32(b.nComp) + 3] = value3
-
-  b.dirty = true
+  b.Set4(triId, 0, value0, value1, value2, value3)
+  b.Set4(triId, 1, value0, value1, value2, value3)
+  b.Set4(triId, 2, value0, value1, value2, value3)
 }
 
 func (b *Float32Buffer) dumpComp(compId int) string {
@@ -606,6 +591,26 @@ func (d *DrawPassData) SetColorConst(triId uint32, c sdl.Color) {
   a := float32(c.A)/float32(256)
 
   d.Color.Set4Const(triId, r, g, b, a)
+}
+
+func (d *DrawPassData) SetQuadColorLinearVGrad(tri0 uint32, tri1 uint32, cTop, cBottom sdl.Color) {
+  rT := float32(cTop.R)/float32(256)
+  gT := float32(cTop.G)/float32(256)
+  bT := float32(cTop.B)/float32(256)
+  aT := float32(cTop.A)/float32(256)
+
+  rB := float32(cBottom.R)/float32(256)
+  gB := float32(cBottom.G)/float32(256)
+  bB := float32(cBottom.B)/float32(256)
+  aB := float32(cBottom.A)/float32(256)
+
+  d.Color.Set4(tri0, 0, rT, gT, bT, aT)
+  d.Color.Set4(tri0, 1, rT, gT, bT, aT)
+  d.Color.Set4(tri0, 2, rB, gB, bB, aB)
+
+  d.Color.Set4(tri1, 0, rB, gB, bB, aB)
+  d.Color.Set4(tri1, 1, rT, gT, bT, aT)
+  d.Color.Set4(tri1, 2, rB, gB, bB, aB)
 }
 
 func (d *DrawPass2Data) SetGlyphCoord(triId uint32, vertexId uint32, x_ int, y_ int) {

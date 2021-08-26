@@ -21,8 +21,7 @@ func showBorderedElement(root *Root, tris []uint32) {
   }
 }
 
-// also used by input
-func setBorderedElementTypesAndTCoords(root *Root, tris []uint32, x0, y0 int, t int, bgColor sdl.Color) {
+func getSkinCoords(x0, y0 int, t int) ([4]int, [4]int) {
   var (
     x [4]int
     y [4]int
@@ -37,6 +36,48 @@ func setBorderedElementTypesAndTCoords(root *Root, tris []uint32, x0, y0 int, t 
   y[1] = y0 + t
   y[2] = y0 + t+1
   y[3] = y0 + 2*t+1
+
+  return x, y
+}
+
+func getButtonSkinCoords(root *Root) ([4]int, [4]int) {
+  t := root.P1.Skin.ButtonBorderThickness()
+
+  x0, y0 := root.P1.Skin.ButtonOrigin()
+
+  return getSkinCoords(x0, y0, t)
+}
+
+func getCornerSkinCoords(root *Root) ([4]int, [4]int) {
+  t := root.P1.Skin.ButtonBorderThickness()
+
+  x0, y0 := root.P1.Skin.CornerOrigin()
+
+  return getSkinCoords(x0, y0, t)
+}
+
+// (i,j) is top left of tri
+func setTopLeftTriSkinCoords(root *Root, tri uint32, i int, j int, x [4]int, y [4]int) {
+  root.P1.SetSkinCoord(tri, 0, x[i],   y[j])
+  root.P1.SetSkinCoord(tri, 1, x[i+1], y[j])
+  root.P1.SetSkinCoord(tri, 2, x[i],   y[j+1])
+}
+
+// (i,j) is top left of corresponding top left tri
+func setBottomRightTriSkinCoords(root *Root, tri uint32, i int, j int, x [4]int, y [4]int) {
+  root.P1.SetSkinCoord(tri, 0, x[i+1], y[j+1])
+  root.P1.SetSkinCoord(tri, 1, x[i+1], y[j])
+  root.P1.SetSkinCoord(tri, 2, x[i],   y[j+1])
+}
+
+func setQuadSkinCoords(root *Root, topRightTri uint32, bottomLeftTri uint32, i, j int, x [4]int, y [4]int) {
+  setTopLeftTriSkinCoords(root, topRightTri, i, j, x, y)
+  setBottomRightTriSkinCoords(root, bottomLeftTri, i, j, x, y)
+}
+
+// also used by input
+func setBorderedElementTypesAndTCoords(root *Root, tris []uint32, x0, y0 int, t int, bgColor sdl.Color) {
+  x, y := getSkinCoords(x0, y0, t)
 
   for i := 0; i < 3; i++ {
     for j := 0; j < 3; j++ {
@@ -54,15 +95,17 @@ func setBorderedElementTypesAndTCoords(root *Root, tris []uint32, x0, y0 int, t 
       } else {
         root.P1.Type.Set1Const(tri0, VTYPE_SKIN)
         root.P1.Color.Set4Const(tri0, 1.0, 1.0, 1.0, 1.0)
-        root.P1.SetSkinCoord(tri0, 0, x[i], y[j])
-        root.P1.SetSkinCoord(tri0, 1, x[i+1], y[j])
-        root.P1.SetSkinCoord(tri0, 2, x[i], y[j+1])
+        //root.P1.SetSkinCoord(tri0, 0, x[i], y[j])
+        //root.P1.SetSkinCoord(tri0, 1, x[i+1], y[j])
+        //root.P1.SetSkinCoord(tri0, 2, x[i], y[j+1])
 
         root.P1.Type.Set1Const(tri1, VTYPE_SKIN)
         root.P1.Color.Set4Const(tri1, 1.0, 1.0, 1.0, 1.0)
-        root.P1.SetSkinCoord(tri1, 0, x[i+1], y[j+1])
-        root.P1.SetSkinCoord(tri1, 1, x[i+1], y[j])
-        root.P1.SetSkinCoord(tri1, 2, x[i], y[j+1])
+
+        setQuadSkinCoords(root, tri0, tri1, i, j, x, y)
+        //root.P1.SetSkinCoord(tri1, 0, x[i+1], y[j+1])
+        //root.P1.SetSkinCoord(tri1, 1, x[i+1], y[j])
+        //root.P1.SetSkinCoord(tri1, 2, x[i], y[j+1])
       }
     }
   }

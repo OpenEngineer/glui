@@ -1,9 +1,5 @@
 package glui
 
-import (
-  "github.com/veandco/go-sdl2/sdl"
-)
-
 //go:generate ./gen_element Button "A CalcDepth On Size Padding"
 
 type Button struct {
@@ -57,11 +53,7 @@ func newButton(root *Root, flat bool, sticky bool) *Button {
 }
 
 func (e *Button) Cursor() int {
-  if e.enabled {
-    return sdl.SYSTEM_CURSOR_HAND
-  } else {
-    return -1
-  }
+  return e.ButtonCursor(e.enabled)
 }
 
 func (e *Button) OnClick(fn func()) {

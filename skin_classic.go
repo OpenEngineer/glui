@@ -14,6 +14,18 @@ func setColor(d []byte, pixId int, r, g, b, a byte) {
   d[pixId*4+3] = a
 }
 
+func setColor5x5(d []byte, i int, j int, r, g, b, a byte) {
+  setColor(d, i*5 + j, r, g, b, a)
+}
+
+func setColorGray(d []byte, pixId int, gray byte) {
+  setColor(d, pixId, gray, gray, gray, 0xff)
+}
+
+func setColor5x5Gray(d []byte, i int, j int, gray byte) {
+  setColor5x5(d, i, j, gray, gray, gray, 0xff)
+}
+
 func setColorSDL(d []byte, pixId int, c sdl.Color) {
   d[pixId*4+0] = c.R
   d[pixId*4+1] = c.G
@@ -106,28 +118,27 @@ func (s *ClassicSkin) twoPxOutsetBorder(c0 byte, c1 byte, c2 byte, c3 byte) []by
 
   // left and top side
   for i := 0; i < 4; i++ {
-    setColor(d, i, c0, c0, c0, 0xff)
-    setColor(d, i*5, c0, c0, c0, 0xff)
+    setColor5x5Gray(d, 0, i, c0)
+    setColor5x5Gray(d, i, 0, c0)
   }
 
   // middel top left
   for i := 1; i < 3; i++ {
     for j := 1; j < 3; j++ {
-      pixId := i*5+j
-      setColor(d, pixId, c1, c1, c1, 0xff)
+      setColor5x5Gray(d, i, j, c1)
     }
   }
 
   // middel bottom right
   for i := 1; i < 4; i++ {
-    setColor(d, 3*5 + i, c2, c2, c2, 0xff)
-    setColor(d, i*5 + 3, c2, c2, c2, 0xff)
+    setColor5x5Gray(d, 3, i, c2)
+    setColor5x5Gray(d, i, 3, c2)
   }
 
   // bottom and right
   for i := 0; i < 5; i++ {
-    setColor(d, 4*5 + i, c3, c3, c3, 0xff)
-    setColor(d, i*5 + 4, c3, c3, c3, 0xff)
+    setColor5x5Gray(d, 4, i, c3)
+    setColor5x5Gray(d, i, 4, c3)
   }
 
   return d
@@ -149,10 +160,7 @@ func (s *ClassicSkin) ButtonPressed() []byte {
 func (s *ClassicSkin) Input() []byte {
   d := s.twoPxOutsetBorder(0x80, 0x00, 0xc0, 0xff)
 
-  i := 2
-  j := 2
-
-  setColor(d, i*5 + j, 0xff, 0xff, 0xff, 0xff)
+  setColor5x5Gray(d, 2, 2, 0xff)
 
   return d
 }
@@ -165,4 +173,34 @@ func (s *ClassicSkin) Focus() []byte {
 
 func (s *ClassicSkin) Inset() []byte {
   return s.twoPxOutsetBorder(0x80, 0xc0, 0xc0, 0xff)
+}
+
+func (s *ClassicSkin) Corner() []byte {
+  d := make([]byte, 25*4)
+
+  c0 := byte(0xff)
+  c1 := byte(0xc0)
+  c2 := byte(0x80)
+
+  // top left of cross
+  setColor5x5Gray(d, 0, 0, c0)
+  setColor5x5Gray(d, 1, 0, c1)
+  setColor5x5Gray(d, 0, 1, c1)
+  setColor5x5Gray(d, 1, 1, c1)
+
+  // left middle (same as button)
+  setColor5x5Gray(d, 0, 2, c0)
+  setColor5x5Gray(d, 1, 2, c1)
+
+  // top right of cross
+  setColor5x5Gray(d, 3, 0, c2)
+  setColor5x5Gray(d, 4, 0, c0)
+  setColor5x5Gray(d, 3, 1, c1)
+  setColor5x5Gray(d, 4, 0, c1)
+
+  // top middle (sams as button)
+  setColor5x5Gray(d, 2, 0, c0)
+  setColor5x5Gray(d, 2, 1, c1)
+
+  return d
 }
