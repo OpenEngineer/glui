@@ -90,11 +90,16 @@ func (e *tabLip) Show() {
     } else {
       setQuadSkinCoords(e.Root, tri0, tri1, 1, 0, xCornerTex, yCornerTex)
 
-      if i == 1 {
-        tri0 := e.p1Tris[(i*3+1)*2 + 0]
-        tri1 := e.p1Tris[(i*3+1)*2 + 1]
+      j_ := 1
 
-        e.Root.P1.SetQuadColorLinearVGrad(tri0, tri1, bgColor, sdl.Color{0xa0, 0xa0, 0xa0, 0xff})
+      tri2 := e.p1Tris[(i*3+j_)*2 + 0]
+      tri3 := e.p1Tris[(i*3+j_)*2 + 1]
+
+      if i == 1 {
+        e.Root.P1.SetQuadColorLinearVGrad(tri2, tri3, bgColor, sdl.Color{0xa0, 0xa0, 0xa0, 0xff})
+      } else {
+        e.Root.P1.SetQuadColorLinearVGrad(tri2, tri3, 
+          sdl.Color{0xff, 0xff, 0xff, 0xff}, sdl.Color{0xd4, 0xd4, 0xd4, 0xff})
       }
     }
   }

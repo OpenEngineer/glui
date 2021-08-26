@@ -152,6 +152,8 @@ func (e *Button) onKeyUp(evt *Event) {
 
 func (e *Button) Show() {
   e.setTypesAndTCoords(e.down && e.inside)
+
+  e.ElementData.Show()
 }
 
 func (e *Button) setTypesAndTCoords(pressed bool) {

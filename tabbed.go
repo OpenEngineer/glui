@@ -121,12 +121,10 @@ func (e *Tabbed) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   y += lipH
 
   for i, tab := range e.tabs {
-    tab.CalcPos(maxWidth - x - e.padding[1], maxHeight - y - e.padding[2], maxZIndex)
+    if i == e.active {
+      tab.CalcPos(maxWidth - x - e.padding[1], maxHeight - y - e.padding[2], maxZIndex)
 
-    tab.Translate(x, y)
-
-    if i == 0 {
-      tab.Show()
+      tab.Translate(x, y)
     }
   }
 

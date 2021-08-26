@@ -83,7 +83,14 @@ void main() {
   if (t == PLAIN) {
     oColor = vColor;
   } else if (t == SKIN) {
-    oColor = texture(skin, vTCoord);
+    vec4 sColor = texture(skin, vTCoord);
+
+    oColor = vec4(
+      sColor.x*vColor.x, 
+      sColor.y*vColor.y,
+      sColor.z*vColor.z,
+      sColor.w
+    );
   }
 }
 `)

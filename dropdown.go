@@ -1,6 +1,8 @@
 package glui
 
 import (
+  "fmt"
+
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -166,6 +168,8 @@ func (e *Dropdown) Hide() {
   if e.menuVisible() {
     e.Root.Menu.Hide()
   }
+
+  fmt.Println("hiding dropdown")
 
   e.ElementData.Hide()
 }

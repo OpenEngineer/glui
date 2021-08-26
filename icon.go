@@ -37,12 +37,12 @@ func NewIcon(root *Root, name string, size int) *Icon {
     glyph,
   }
 
-  e.setTypeColorAndTCoord()
+  e.Show()
 
   return e
 }
 
-func (e *Icon) setTypeColorAndTCoord() {
+func (e *Icon) Show() {
   tri0 := e.p2Tris[0]
   tri1 := e.p2Tris[1]
   tri2 := e.p2Tris[2]

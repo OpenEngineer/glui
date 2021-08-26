@@ -441,6 +441,8 @@ func (e *Input) Show() {
   e.selText.Show()
 
   showBorderedElement(e.Root, e.p1Tris)
+
+  e.ElementData.Show()
 }
 
 func (e *Input) setTypesAndTCoords() {
