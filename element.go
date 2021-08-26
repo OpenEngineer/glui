@@ -31,6 +31,7 @@ type Element interface {
   GetEventListener(name string) EventListener // returns nil if no EventListener specified
 
   Delete() // deallocs all owned tris, implemented by ElementData
+  Deleted() bool
 }
 
 type Container interface {

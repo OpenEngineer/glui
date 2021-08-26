@@ -1,12 +1,19 @@
 package glui
 
 import (
+  "fmt"
+
   "github.com/veandco/go-sdl2/sdl"
 )
 
 //go:generate ./gen_element tabLip "CalcDepth appendChild On"
 
-const INACTIVE_LIP_DELTA = 5
+const (
+  INACTIVE_TABLIP_DELTA = 5
+  TABLIP_CAPTION_SIZE   = 10
+  TABLIP_CLOSE_INNER_SIZE = 15
+  TABLIP_CLOSE_OUTER_SIZE = 20
+)
 
 type tabLip struct {
   ElementData
@@ -19,7 +26,7 @@ type tabLip struct {
 func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool) *tabLip {
   root := tabbed.Root
 
-  caption := NewSans(root, captionText, 10)
+  caption := NewSans(root, captionText, TABLIP_CAPTION_SIZE)
 
   e := &tabLip{
     NewElementData(root, 9*2, 0),
@@ -32,12 +39,25 @@ func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool)
   e.height = 50
   e.closerThan = []Element{tab}
 
-  e.appendChild(NewHor(root, START, CENTER, 0).Padding(0, 10).A(caption))
-  //e.appendChild(caption)
+  if closeable {
+    closeButton := NewFlatIconButton(root, "close-thick", TABLIP_CLOSE_INNER_SIZE).Size(TABLIP_CLOSE_OUTER_SIZE, TABLIP_CLOSE_OUTER_SIZE)
 
-  e.Show()
+    closeButton.OnClick(e.onClickCloseButton)
+    closeButton.On("mousedown", func(evt *Event) {
+      evt.StopBubbling()
+    })
+
+    e.appendChild(NewHor(root, STRETCH, CENTER, 0).Padding(0, 10).A(caption, closeButton))
+  } else {
+    e.appendChild(NewHor(root, START, CENTER, 0).Padding(0, 10).A(caption))
+  }
+
+  //e.Show()
 
   e.On("mousedown", e.onMouseDown)
+  caption.On("focus", e.onFocusCaption)
+  caption.On("blur", e.onBlurCaption)
+  caption.On("keyup", e.onCaptionKeyUp)
 
   return e
 }
@@ -47,6 +67,33 @@ func (e *tabLip) onMouseDown(evt *Event) {
   if !e.isActive() {
     e.tabbed.setActiveLip(e)
   }
+}
+
+func (e *tabLip) onClickCloseButton() {
+  e.closeTab()
+}
+
+func (e *tabLip) onFocusCaption(evt *Event) {
+  // TODO: use a wrapper with some padding wrt. the text
+  if !e.isActive() && evt.IsKeyboardEvent() {
+    e.Root.FocusRect.Show(e.caption)
+  }
+}
+
+func (e *tabLip) onBlurCaption(evt *Event) {
+  e.Root.FocusRect.Hide()
+}
+
+func (e *tabLip) onCaptionKeyUp(evt *Event) {
+  if evt.IsReturnOrSpace() {
+    e.tabbed.setActiveLip(e)
+
+    e.Root.FocusRect.Hide()
+  }
+}
+
+func (e *tabLip) closeTab() {
+  e.tabbed.closeTab(e)
 }
 
 func (e *tabLip) isActive() bool {
@@ -116,6 +163,8 @@ func (e *tabLip) Select() {
 func (e *tabLip) Unselect() {
   e.Show()
 
+  fmt.Println("hiding tabLip: ", e.tabbed.lipIndex(e))
+
   e.tab.Hide()
 }
 
@@ -124,20 +173,25 @@ func (e *tabLip) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
 
   e.InitRect(e.width, e.height)
 
+  innerHeight := 50 - INACTIVE_TABLIP_DELTA
   if e.isActive() {
     e.height = 50
   } else {
-    e.height = 50 - INACTIVE_LIP_DELTA
+    e.height = innerHeight
   }
 
   e.SetButtonPos(maxWidth, maxHeight, maxZIndex)
 
-  e.CalcPosChildren(e.width, e.height, maxZIndex)
+  e.CalcPosChildren(e.width, innerHeight, maxZIndex)
 
   if !e.isActive() {
-    e.Translate(0, INACTIVE_LIP_DELTA + t)
+    e.Translate(0, INACTIVE_TABLIP_DELTA + t)
   } else {
     e.Translate(0, t)
+
+    for _, child := range e.children {
+      child.Translate(0, INACTIVE_TABLIP_DELTA)
+    }
   }
 
   return e.width, e.height

@@ -1,6 +1,7 @@
 package glui
 
 import (
+  "fmt"
 )
 
 //go:generate ./gen_element Tabbed "CalcDepth appendChild"
@@ -36,10 +37,10 @@ func (e *Tabbed) NewTab(caption string, closeable bool) Container {
   e.appendChild(lip)
 
   if len(e.lips) == 1 {
-    e.active = 0
+    e.setActive(0)
+  } else {
+    e.setActive(e.active)
   }
-
-  e.Show()
 
   return tab
 }
@@ -65,7 +66,12 @@ func (e *Tabbed) tabIndex(t *tabPage) int {
 }
 
 func (e *Tabbed) setActive(idx int) {
+  if idx > len(e.lips) - 1 {
+    idx = len(e.lips) - 1
+  }
+
   e.active = idx
+
   e.Show()
 }
 
@@ -87,6 +93,33 @@ func (e *Tabbed) isFirstLip(l *tabLip) bool {
 
 func (e *Tabbed) isActiveTab(t *tabPage) bool {
   return e.tabIndex(t) == e.active
+}
+
+func (e *Tabbed) closeTab(l *tabLip) {
+  i := e.lipIndex(l)
+
+  fmt.Println("deleting tab: ", i)
+  e.lips[i].Delete()
+  e.tabs[i].Delete()
+
+  e.lips = append(e.lips[0:i], e.lips[i+1:]...)
+  e.tabs = append(e.tabs[0:i], e.tabs[i+1:]...)
+
+  if i > 0 {
+    i -= 1
+  } else if len(e.lips) == 0 {
+    i = -1
+  } else {
+    i += 1
+  }
+
+  if i > len(e.lips) - 1 {
+    i = len(e.lips) - 1
+  }
+
+  fmt.Println("new active tab: ", i)
+
+  e.setActive(i)
 }
 
 func (e *Tabbed) Show() {

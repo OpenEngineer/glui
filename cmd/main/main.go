@@ -16,19 +16,19 @@ func main() {
   body.Padding(10)
 
   tabbed := glui.NewTabbed(root)
-  tabPage1 := tabbed.NewTab("Tab one", false)
+  tabPage1 := tabbed.NewTab("Tab one", true)
   tabPage1.Spacing(10)
 
-  tabPage2 := tabbed.NewTab("Tab two", false)
+  tabPage2 := tabbed.NewTab("Tab two", true)
 
   button1 := glui.NewButton(root)
   button1.A(glui.NewHor(root, glui.CENTER, glui.CENTER, 0).A(glui.NewSans(root, "Submit", 10)))
 
   input1 := glui.NewInput(root).Padding(0, 2)
 
-  icon := glui.NewIcon(root, "floppy", 30)
-  button2 := glui.NewFlatButton(root).Size(40, 40)
-  button2.A(glui.NewHor(root, glui.CENTER, glui.CENTER, 0).A(icon))
+  //icon := glui.NewIcon(root, "floppy", 30)
+  button2 := glui.NewFlatIconButton(root, "floppy", 30).Size(40, 40)
+  //button2.A(glui.NewHor(root, glui.CENTER, glui.CENTER, 0).A(icon))
 
   dropdown := glui.NewDropdown(root, []string{"Dog", "Cat", "Hamster"})
 

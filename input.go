@@ -74,7 +74,7 @@ func (e *Input) onKeyPress(evt *Event) {
       e.Root.Menu.SelectNext()
     } else if evt.Key == "up" {
       e.Root.Menu.SelectPrev()
-    } else if evt.Key == "space" || evt.Key == "return" {
+    } else if evt.IsReturnOrSpace() {
       e.Root.Menu.ClickSelected()
     } else {
       e.Root.Menu.Hide()

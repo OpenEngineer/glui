@@ -1,6 +1,7 @@
 package glui
 
 import (
+  "fmt"
   "math"
 )
 
@@ -116,5 +117,14 @@ func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     }
   } 
 
-  return e.InitRect(x, maxHeight)
+  if len(e.children) ==  2{
+    fmt.Println("hor x: ", x)
+  }
+
+  totalWidth := e.padding[1] + e.padding[3]
+  if len(e.children) > 0 {
+    totalWidth = e.children[len(e.children)-1].Rect().Right() + e.padding[1]
+  }
+
+  return e.InitRect(totalWidth, maxHeight)
 }

@@ -1,6 +1,9 @@
 package glui
 
 import (
+  "fmt"
+  "reflect"
+
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -59,9 +62,13 @@ func (e *FocusRect) Hide() {
 }
 
 func (e *FocusRect) CalcPos(maxWidth, maxHeight, maxZIndex int) {
-  if e.anchor == nil {
+  if e.anchor == nil || e.anchor.Deleted() {
+    e.Hide()
+
     return
-  }
+  } 
+  
+  fmt.Println("focusrect anchor: ", reflect.TypeOf(e.anchor).String())
 
   z := normalizeZIndex(e.anchor.ZIndex(), maxZIndex)
 

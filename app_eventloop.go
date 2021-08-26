@@ -200,8 +200,8 @@ func (app *App) onMouseMove(event *sdl.MouseMotionEvent) {
   if !app.state.outside {
     app.updateMouseElement(int(event.X), int(event.Y))
 
-    if app.state.mouseElement != nil {
-      if app.state.lastDown != nil && app.state.lastDown != app.state.mouseElement {
+    if elementNotNil(app.state.mouseElement) {
+      if elementNotNil(app.state.lastDown) && app.state.lastDown != app.state.mouseElement {
         TriggerEvent(app.state.lastDown, "mousemove", NewMouseEvent(int(event.X), int(event.Y)))
       }
 
@@ -236,7 +236,7 @@ func (app *App) onMouseDown(event *sdl.MouseButtonEvent) {
 
 func (app *App) onMouseUp(event *sdl.MouseButtonEvent) {
   if !app.state.outside && event.Button == sdl.BUTTON_LEFT {
-    if app.state.lastDown != nil && app.state.lastDown != app.state.mouseElement {
+    if elementNotNil(app.state.lastDown) && app.state.lastDown != app.state.mouseElement {
       tmp := app.state.mouseElement
       app.state.mouseElement = app.state.lastDown
 
@@ -311,13 +311,13 @@ func (app *App) onTab(event *sdl.KeyboardEvent) {
 
   shift := event.Keysym.Mod & sdl.KMOD_SHIFT > 0
   if shift {
-    if app.state.focusElement != nil {
+    if elementNotNil(app.state.focusElement) {
       newFocusable = findPrevFocusable(app.state.focusElement)
     } else {
       newFocusable = findPrevFocusable(app.root.Body)
     }
   } else {
-    if app.state.focusElement != nil {
+    if elementNotNil(app.state.focusElement) {
       newFocusable = findNextFocusable(app.state.focusElement)
     } else {
       newFocusable = findNextFocusable(app.root.Body)

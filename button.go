@@ -23,6 +23,15 @@ func NewFlatButton(root *Root) *Button {
   return newButton(root, true, false)
 }
 
+func NewFlatIconButton(root *Root, iconName string, iconSize int) *Button {
+  icon := NewIcon(root, iconName, iconSize)
+
+  button := NewFlatButton(root)
+  button.A(NewHor(root, CENTER, CENTER, 0).A(icon))
+
+  return button
+}
+
 func NewStickyFlatButton(root *Root) *Button {
   return newButton(root, true, true)
 }
@@ -37,7 +46,7 @@ func newButton(root *Root, flat bool, sticky bool) *Button {
 
   e.Size(200, 50)
 
-  e.setTypesAndTCoords(false)
+  e.Show()
 
   e.On("mousedown", e.onMouseDown)
   e.On("mouseup", e.onMouseUp)
@@ -94,10 +103,16 @@ func (e *Button) onMouseUp(evt *Event) {
   e.setState(false, e.inside)
 }
 
-func (e *Button) onMouseClick(evt *Event) {
+func (e *Button) triggerClick(evt *Event) {
   if e.onClick != nil {
     e.onClick()
+
+    evt.StopBubbling()
   }
+}
+
+func (e *Button) onMouseClick(evt *Event) {
+  e.triggerClick(evt)
 }
 
 func (e *Button) onMouseLeave(evt *Event) {
@@ -129,7 +144,7 @@ func (e *Button) onBlur(evt *Event) {
 }
 
 func (e *Button) onKeyDown(evt *Event) {
-  if evt.Key == "space" || evt.Key == "return" {
+  if evt.IsReturnOrSpace() {
     curPressed := e.down
     e.down = true
 
@@ -140,12 +155,14 @@ func (e *Button) onKeyDown(evt *Event) {
 }
 
 func (e *Button) onKeyUp(evt *Event) {
-  if evt.Key == "space" || evt.Key == "return" {
+  if evt.IsReturnOrSpace() {
     curPressed := e.down
     e.down = false
 
     if curPressed {
       e.setTypesAndTCoords(false)
+
+      e.triggerClick(evt)
     }
   }
 }
@@ -159,6 +176,10 @@ func (e *Button) Show() {
 func (e *Button) setTypesAndTCoords(pressed bool) {
   t := e.Root.P1.Skin.ButtonBorderThickness()
 
+  if len(e.p1Tris) == 0 {
+    panic("no p1Tris available")
+  }
+
   if pressed {
     x0, y0 := e.Root.P1.Skin.ButtonPressedOrigin()
 
@@ -170,8 +191,9 @@ func (e *Button) setTypesAndTCoords(pressed bool) {
       setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, e.Root.P1.Skin.BGColor())
     } else {
       for _, tri := range e.p1Tris {
-        e.Root.P1.Type.Set1Const(tri, VTYPE_PLAIN)
-        e.Root.P1.SetColorConst(tri, e.Root.P1.Skin.BGColor())
+        // hide the tris, leave the color up the underlying element
+        e.Root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
+        //e.Root.P1.SetColorConst(tri, e.Root.P1.Skin.BGColor())
       }
     }
   } else {
@@ -184,7 +206,7 @@ func (e *Button) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
 }
 
 func (e *Button) Hide() {
-  e.setState(false, false)
+  //e.setState(false, false)
 
   e.ElementData.Hide()
 }

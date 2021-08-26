@@ -27,6 +27,7 @@ type ElementData struct {
   zIndex  int // returned by succesful Hit test, must be normalized before using in Pos
   visible bool
   enabled bool
+  deleted bool
 }
 
 func NewElementData(root *Root, nInitTris1 int, nInitTris2 int) ElementData {
@@ -47,7 +48,7 @@ func NewElementData(root *Root, nInitTris1 int, nInitTris2 int) ElementData {
     make([]Element, 0),
     make(map[string]EventListener),
     0, 0, [4]int{0, 0, 0, 0}, 0,
-    Rect{0, 0, 0, 0}, -1, true, true,
+    Rect{0, 0, 0, 0}, -1, true, true, false,
   }
 }
 
@@ -214,10 +215,15 @@ func (e *ElementData) Delete() {
 
   e.Root.P2.Dealloc(e.p2Tris)
 
+  e.deleted = true
   e.p1Tris = nil
   e.p2Tris = nil
 
   e.Root.ForcePosDirty()
+}
+
+func (e *ElementData) Deleted() bool {
+  return e.deleted
 }
 
 func (e *ElementData) ClearChildren() {

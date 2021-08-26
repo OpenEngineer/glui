@@ -7,7 +7,7 @@ import (
   "github.com/veandco/go-sdl2/sdl"
 )
 
-//go:generate ./gen_element Text "CalcDepth"
+//go:generate ./gen_element Text "CalcDepth On"
 
 var (
   DEFAULT_SANS = "dejavusans"

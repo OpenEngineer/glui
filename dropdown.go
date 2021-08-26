@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -45,7 +43,6 @@ func NewDropdown(root *Root, options []string) *Dropdown {
 
   e.appendChild(NewHor(root, STRETCH, CENTER, 0).Padding(0, 10).A(e.text, e.arrow))
   e.Show()
-
 
   e.On("mousedown", e.onMouseDown)
   e.On("mousebuttonoutsidemenu", e.onMouseButtonOutsideMenu)
@@ -100,7 +97,7 @@ func (e *Dropdown) onBlur(evt *Event) {
 }
 
 func (e *Dropdown) onKeyDown(evt *Event) {
-  if evt.Key == "space" || evt.Key == "return" {
+  if evt.IsReturnOrSpace() {
     if e.menuVisible() {
       e.Root.Menu.ClickSelected()
     } else {
@@ -149,6 +146,14 @@ func (e *DropdownWrapper) ZIndex() int {
   return e.dropdown.ZIndex()
 }
 
+func (e *DropdownWrapper) Visible() bool {
+  return e.dropdown.Visible()
+}
+
+func (e *DropdownWrapper) Deleted() bool {
+  return e.dropdown.Deleted()
+}
+
 func (e *DropdownWrapper) Rect() Rect {
   ddr := e.dropdown.Rect()
 
@@ -168,8 +173,6 @@ func (e *Dropdown) Hide() {
   if e.menuVisible() {
     e.Root.Menu.Hide()
   }
-
-  fmt.Println("hiding dropdown")
 
   e.ElementData.Hide()
 }

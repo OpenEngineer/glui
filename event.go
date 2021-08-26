@@ -60,6 +60,10 @@ func (e *Event) IsKeyboardEvent() bool {
   return e.Key != ""
 }
 
+func (e *Event) IsReturnOrSpace() bool {
+  return e.Key == "space" || e.Key == "return"
+}
+
 func extractKeyboardEventDetails(event *sdl.KeyboardEvent) (string, string, bool, bool, bool) {
   eType := ""
   if event.State == sdl.RELEASED {

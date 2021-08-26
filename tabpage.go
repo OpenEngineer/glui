@@ -1,5 +1,10 @@
 package glui
 
+import (
+  "fmt"
+  "reflect"
+)
+
 //go:generate ./gen_element tabPage "CalcDepth AContainer PaddingContainer SpacingContainer"
 
 type tabPage struct {
@@ -36,4 +41,14 @@ func (e *tabPage) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   e.CalcPosChildren(maxWidth, maxHeight, maxZIndex)
 
   return e.InitRect(maxWidth, maxHeight)
+}
+
+func (e *tabPage) Hide() {
+  fmt.Println("hiding tab: ", e.tabbed.tabIndex(e))
+
+  for _, child := range e.children {
+    fmt.Println("might hide ", reflect.TypeOf(child).String())
+  }
+
+  e.ElementData.Hide()
 }

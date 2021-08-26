@@ -8,7 +8,7 @@ import (
 )
 
 func TriggerEvent(e Element, name string, evt *Event) {
-  for e != nil {
+  for elementNotNil(e) {
     l := e.GetEventListener(name)
     
     if l != nil {
@@ -29,19 +29,21 @@ func TriggerEvent(e Element, name string, evt *Event) {
 }
 
 func (app *App) triggerHitEvent(name string, evt *Event) {
-  TriggerEvent(app.state.mouseElement, name, evt)
+  if !app.state.mouseElement.Deleted() {
+    TriggerEvent(app.state.mouseElement, name, evt)
+  }
 }
 
 // XXX: one focus element per root?
 func (app *App) changeFocusElement(newFocusable Element, blurEvt, focusEvt *Event) {
   if newFocusable != app.state.focusElement {
-    if app.state.focusElement != nil {
+    if elementNotNil(app.state.focusElement) {
       TriggerEvent(app.state.focusElement, "blur", blurEvt)
     }
 
     app.state.focusElement = newFocusable
 
-    if newFocusable != nil {
+    if elementNotNil(newFocusable) {
       TriggerEvent(app.state.focusElement, "focus", focusEvt)
     }
   }
@@ -72,7 +74,7 @@ func (app *App) updateMouseElement(x, y int) {
   newMouseElement, isSameOrChildOfOld := app.root.findMouseElement(app.state.mouseElement, x, y)
 
   // trigger mouse leave event if new mouseElement isn't child of old
-  if app.state.mouseElement != nil && !isSameOrChildOfOld {
+  if elementNotNil(app.state.mouseElement) && !isSameOrChildOfOld {
     evt := NewMouseEvent(x, y)
 
     ca := commonAncestor(app.state.mouseElement, newMouseElement)
@@ -107,7 +109,7 @@ func (app *App) updateMouseElement(x, y int) {
 
   cursor := -1
   e := app.state.mouseElement
-  for cursor < 0 && e != nil {
+  for cursor < 0 && elementNotNil(e) {
     cursor = e.Cursor()
     e = e.Parent()
   }

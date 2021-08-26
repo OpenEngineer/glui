@@ -137,6 +137,8 @@ func (app *App) run() error {
 
   app.window.Maximize()
 
+  app.root.show()
+
   m := &sync.Mutex{}
 
   /*go func(m_ *sync.Mutex) {

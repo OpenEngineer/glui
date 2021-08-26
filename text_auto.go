@@ -5,3 +5,7 @@ func (e *Text) CalcDepth(stack *ElementStack) {
     child.CalcDepth(stack)
   }
 }
+func (e *Text) On(name string, fn EventListener) *Text {
+  e.evtListeners[name] = fn
+  return e
+}

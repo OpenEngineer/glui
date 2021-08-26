@@ -1,5 +1,9 @@
 package glui
 
+func elementNotNil(e Element) bool {
+  return !(e == nil || e.Deleted())
+}
+
 // returns true if new active element is same as old active element, or is child of old active element
 func findHitElement(e Element, x, y int) (Element, bool) {
   if z := e.Hit(x, y); z > -1 {
@@ -31,10 +35,10 @@ func findHitElement(e Element, x, y int) (Element, bool) {
 func collectAncestors(a Element) []Element {
   res := make([]Element, 0)
 
-  for ; a != nil; {
+  for ; elementNotNil(a); {
     a = a.Parent()
 
-    if a != nil {
+    if elementNotNil(a) {
       res = append([]Element{a}, res...)
     } else {
       break
@@ -94,13 +98,13 @@ func hasEvent(e Element, name string) bool {
 }
 
 func focusable(e Element) bool {
-  return hasEvent(e, "focus")
+  return elementNotNil(e) && hasEvent(e, "focus") && e.Visible()
 }
 
 func findFocusable(e_ Element) Element {
   e := e_
 
-  for e != nil {
+  for elementNotNil(e) {
     if focusable(e) {
       return e
     }
@@ -119,7 +123,7 @@ func findFirstFocusable(e Element) Element {
   for _, eChild := range e.Children() {
     if focusable(eChild) {
       return eChild
-    } else if inner := findFirstFocusable(eChild); inner != nil {
+    } else if inner := findFirstFocusable(eChild); elementNotNil(inner) {
       return inner
     }
   }
@@ -138,7 +142,7 @@ func findLastFocusable(e Element) Element {
 
     if focusable(eChild) {
       return eChild
-    } else if inner := findLastFocusable(eChild); inner != nil {
+    } else if inner := findLastFocusable(eChild); elementNotNil(inner) {
       return inner
     }
   }
@@ -154,14 +158,14 @@ func findNextFocusable(e_ Element) Element {
     p = p.Parent()
   } 
 
-  for p != nil {
+  for elementNotNil(p) {
     thisChildFound := false
     for _, pChild := range p.Children() {
       if pChild == e {
         thisChildFound = true
       } else if thisChildFound || !b {
         next := findFirstFocusable(pChild)
-        if next != nil {
+        if elementNotNil(next) {
           return next
         }
       }
@@ -173,7 +177,7 @@ func findNextFocusable(e_ Element) Element {
 
   // we are the end, start from the beginning until we encounter initial element
   next := findFirstFocusable(e)
-  if next == nil {
+  if !elementNotNil(next) {
     return nil
   } else if next == e_ {
     return nil
@@ -190,7 +194,7 @@ func findPrevFocusable(e_ Element) Element {
     p = p.Parent()
   } 
 
-  for p != nil {
+  for elementNotNil(p) {
     thisChildFound := false
 
     children := p.Children()
@@ -201,7 +205,7 @@ func findPrevFocusable(e_ Element) Element {
         thisChildFound = true
       } else if thisChildFound || !b {
         prev := findLastFocusable(pChild)
-        if prev != nil {
+        if elementNotNil(prev) {
           return prev
         }
       }
@@ -213,7 +217,7 @@ func findPrevFocusable(e_ Element) Element {
 
   // we are the beginning , start from the end until we encounter the initial element
   prev := findLastFocusable(e)
-  if prev == nil {
+  if !elementNotNil(prev) {
     return nil
   } else if prev == e_ {
     return nil

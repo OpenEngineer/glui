@@ -68,6 +68,10 @@ func (e *Root) GetSize() (int, int) {
   return e.w, e.h
 }
 
+func (e *Root) show() {
+  e.Body.Show()
+}
+
 func (e *Root) CalcDepth() {
   stack := newElementStack()
 
