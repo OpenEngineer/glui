@@ -34,6 +34,10 @@ type SkinMap struct {
   cornerX int
   cornerY int
 
+  barX int
+  barY int
+  barT int // not the border thickness of the bar, but the actual intended bar thickness
+
   loc uint32
   tid uint32
 }
@@ -59,6 +63,8 @@ func (sm *SkinMap) genData(s Skin) {
   sm.genInsetData(s, tb)
 
   sm.genCornerData(s, tb)
+
+  sm.genBarData(s, tb)
 
   if err := tb.ToImage("skin.png"); err != nil {
     panic(err)
@@ -89,6 +95,15 @@ func (sm *SkinMap) genInsetData(s Skin, tb *TextureBuilder) {
 
 func (sm *SkinMap) genCornerData(s Skin, tb *TextureBuilder) {
   sm.cornerX, sm.cornerY, _ = sm.genBordered(s.Corner(), tb, true)
+}
+
+func (sm *SkinMap) genBarData(s Skin, tb *TextureBuilder) {
+  bar := s.Bar()
+
+  n := calcSquareSkinSize(bar)
+
+  sm.barX, sm.barY = tb.Build(bar, n, n)
+  sm.barT = n
 }
 
 func (sm *SkinMap) genBordered(d []byte, tb *TextureBuilder, checkT bool) (int, int, int) {
@@ -186,4 +201,12 @@ func (s *SkinMap) FocusThickness() int {
 
 func (s *SkinMap) InsetOrigin() (int, int) {
   return s.insetX, s.insetY
+}
+
+func (s *SkinMap) BarOrigin() (int, int) {
+  return s.barX, s.barY
+}
+
+func (s *SkinMap) BarThickness() int {
+  return s.barT
 }

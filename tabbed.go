@@ -1,7 +1,6 @@
 package glui
 
 import (
-  "fmt"
 )
 
 //go:generate ./gen_element Tabbed "CalcDepth appendChild"
@@ -98,7 +97,6 @@ func (e *Tabbed) isActiveTab(t *tabPage) bool {
 func (e *Tabbed) closeTab(l *tabLip) {
   i := e.lipIndex(l)
 
-  fmt.Println("deleting tab: ", i)
   e.lips[i].Delete()
   e.tabs[i].Delete()
 
@@ -117,8 +115,6 @@ func (e *Tabbed) closeTab(l *tabLip) {
     i = len(e.lips) - 1
   }
 
-  fmt.Println("new active tab: ", i)
-
   e.setActive(i)
 }
 
@@ -133,7 +129,7 @@ func (e *Tabbed) Show() {
 }
 
 func (e *Tabbed) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
-  lipH := 0
+  maxLipH := 0
 
   x := e.padding[3]
   y := e.padding[0]
@@ -141,8 +137,8 @@ func (e *Tabbed) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   for _, lip := range e.lips {
     w, h := lip.CalcPos(maxWidth - x - e.padding[1], maxHeight - y - e.padding[2], maxZIndex)
 
-    if h > lipH {
-      lipH = h
+    if h > maxLipH {
+      maxLipH = h
     }
 
     lip.Translate(x, y)
@@ -150,15 +146,42 @@ func (e *Tabbed) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     x += w
   }
 
+  totalLipW := x + e.padding[1]
+
   x = e.padding[3]
-  y += lipH
+  y += maxLipH - e.Root.P1.Skin.ButtonBorderThickness()
+
+  maxTabW, maxTabH := 0, 0
+
+  if totalLipW > maxWidth {
+    maxWidth = totalLipW
+  }
 
   for i, tab := range e.tabs {
     if i == e.active {
-      tab.CalcPos(maxWidth - x - e.padding[1], maxHeight - y - e.padding[2], maxZIndex)
+      tabW, tabH := tab.CalcPos(maxWidth - x - e.padding[1], maxHeight - y - e.padding[2], maxZIndex)
 
       tab.Translate(x, y)
+
+      if tabW > maxTabW {
+        maxTabW = tabW
+      }
+
+      if tabH > maxTabH {
+        maxTabH = tabH
+      }
     }
+  }
+
+  maxW := maxTabW + e.padding[1] + e.padding[3]
+  maxH := maxTabH + y + e.padding[0] + e.padding[2]
+
+  if maxW > maxWidth {
+    maxWidth = maxW
+  } 
+
+  if maxH > maxHeight {
+    maxHeight = maxH
   }
 
   return e.InitRect(maxWidth, maxHeight)

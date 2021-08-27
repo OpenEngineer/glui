@@ -10,6 +10,9 @@ type Event struct {
   X int // mouse X pos (left edge of window is 0)
   Y int // mouse Y pos (top edge of window is 0)
 
+  XRel int
+  YRel int
+
   Key   string // empty if not a key event
   Ctrl  bool
   Shift bool
@@ -29,15 +32,23 @@ func NewMouseEvent(x, y int) *Event {
     y = int(y_)
   }
 
-  return &Event{x, y, "", false, false, false, "", nil, false}
+  return &Event{x, y, 0, 0, "", false, false, false, "", nil, false}
+}
+
+func NewMouseMoveEvent(x, y int, dx, dy int) *Event {
+  e := NewMouseEvent(x, y)
+  e.XRel = dx
+  e.YRel = dy
+
+  return e
 }
 
 func NewKeyboardEvent(keyName string, ctrl bool, shift bool, alt bool) *Event {
-  return &Event{0, 0, keyName, ctrl, shift, alt, "", nil, false}
+  return &Event{0, 0, 0, 0, keyName, ctrl, shift, alt, "", nil, false}
 }
 
 func NewTextInputEvent(str string) *Event {
-  return &Event{0, 0, "", false, false, false, str, nil, false}
+  return &Event{0, 0, 0, 0, "", false, false, false, str, nil, false}
 }
 
 func (e *Event) StopBubbling() {

@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -160,14 +158,11 @@ func (e *tabLip) Select() {
 func (e *tabLip) Unselect() {
   e.Show()
 
-  fmt.Println("hiding tabLip: ", e.tabbed.lipIndex(e))
-
   e.tab.Hide()
 }
 
+// the tabPage is moved up by ButtonBorderThickness in order to overlap with the bottom border of the tabLip
 func (e *tabLip) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
-  t := e.Root.P1.Skin.ButtonBorderThickness()
-
   e.InitRect(e.width, e.height)
 
   innerHeight := 50 - INACTIVE_TABLIP_DELTA
@@ -182,10 +177,8 @@ func (e *tabLip) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   e.CalcPosChildren(e.width, innerHeight, maxZIndex)
 
   if !e.isActive() {
-    e.Translate(0, INACTIVE_TABLIP_DELTA + t)
+    e.Translate(0, INACTIVE_TABLIP_DELTA)
   } else {
-    e.Translate(0, t)
-
     for _, child := range e.children {
       child.Translate(0, INACTIVE_TABLIP_DELTA)
     }

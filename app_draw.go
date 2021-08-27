@@ -19,7 +19,7 @@ func (app *App) DrawIfDirty() {
     app.root.CalcPos()
 
     if app.mouseInWindow() {
-      app.updateMouseElement(-1, -1)
+      app.updateMouseElement(-1, -1, 0, 0)
     }
   }
 

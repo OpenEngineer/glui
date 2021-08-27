@@ -19,15 +19,22 @@ type Skin interface {
   Input()         []byte
   Focus()         []byte
   Inset()         []byte
+  Bar()           []byte // vertical bar, transposed to form horizontal bar
 }
 
-func calcSkinThickness(d []byte) int {
+func calcSquareSkinSize(d []byte) int {
   sqrtN := math.Sqrt(float64(len(d)/4))
   if math.Mod(sqrtN, 1.0) != 0.0 {
     panic("incorrect skin size")
   }
 
-  t := (int(sqrtN) - 1)/2
+  return int(sqrtN)
+}
+
+func calcSkinThickness(d []byte) int {
+  sqrtN := calcSquareSkinSize(d)
+
+  t := (sqrtN - 1)/2
 
   return t
 }

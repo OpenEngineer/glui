@@ -198,15 +198,7 @@ func (app *App) onTick(event *animationEvent) {
 
 func (app *App) onMouseMove(event *sdl.MouseMotionEvent) {
   if !app.state.outside {
-    app.updateMouseElement(int(event.X), int(event.Y))
-
-    if elementNotNil(app.state.mouseElement) {
-      if elementNotNil(app.state.lastDown) && app.state.lastDown != app.state.mouseElement {
-        TriggerEvent(app.state.lastDown, "mousemove", NewMouseEvent(int(event.X), int(event.Y)))
-      }
-
-      app.triggerHitEvent("mousemove", NewMouseEvent(int(event.X), int(event.Y)))
-    }
+    app.updateMouseElement(int(event.X), int(event.Y), int(event.XRel), int(event.YRel))
   }
 }
 
@@ -219,6 +211,11 @@ func (app *App) onMouseDown(event *sdl.MouseButtonEvent) {
   app.state.lastDown = app.state.mouseElement
 
   if event.Button == sdl.BUTTON_LEFT {
+    app.state.lastDownX = int(event.X)
+    app.state.lastDownY = int(event.Y)
+    app.state.mouseMoveSumX = 0
+    app.state.mouseMoveSumY = 0
+
     app.triggerHitEvent("mousedown", NewMouseEvent(int(event.X), int(event.Y)))
   } else if event.Button == sdl.BUTTON_RIGHT {
     app.triggerHitEvent("rightclick", NewMouseEvent(int(event.X), int(event.Y)))
@@ -248,6 +245,8 @@ func (app *App) onMouseUp(event *sdl.MouseButtonEvent) {
     app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
 
     app.detectClick(int(event.X), int(event.Y))
+
+    //app.updateCursor()
   } else {
     if event.Button == sdl.BUTTON_LEFT {
       app.state.mouseElement = app.state.lastDown
@@ -260,6 +259,8 @@ func (app *App) onMouseUp(event *sdl.MouseButtonEvent) {
     app.state.mouseElement = nil
   }
 
+  app.state.mouseMoveSumX = 0
+  app.state.mouseMoveSumY = 0
   app.state.lastDown = nil
 }
 
@@ -280,6 +281,8 @@ func (app *App) detectClick(x, y int) {
   app.state.lastUpTick = app.state.lastTick
   app.state.lastUpX = x
   app.state.lastUpY = y
+  app.state.mouseMoveSumX = 0
+  app.state.mouseMoveSumY = 0
 
   var eName string
   switch app.state.upCount {
@@ -370,6 +373,6 @@ func (app *App) onLeave() {
 func (app *App) onEnter() {
   if app.mouseInWindow() {
     app.state.outside = false
-    app.updateMouseElement(-1, -1)
+    app.updateMouseElement(-1, -1, 0, 0)
   }
 }

@@ -60,6 +60,34 @@ func (e *ElementData) Visible() bool {
   return e.visible
 }
 
+func (e *ElementData) nChildren() int {
+  return len(e.children)
+}
+
+func (e *ElementData) nVisibleChildren() int {
+  c := 0
+
+  for _, child := range e.children {
+    if child.Visible() {
+      c += 1
+    }
+  }
+
+  return c
+}
+
+func (e *ElementData) visibleChildren() []Element {
+  els := make([]Element, 0)
+
+  for _, child := range e.children {
+    if child.Visible() {
+      els = append(els, child)
+    }
+  }
+
+  return els
+}
+
 func (e *ElementData) GetSize() (int, int) {
   return e.width, e.height
 }
@@ -186,18 +214,25 @@ func (e *ElementData) Translate(dx, dy int) {
 
 // default positioning of children
 // placement elements like Hor can provide better control
-func (e *ElementData) CalcPosChildren(maxWidth, maxHeight, maxZIndex int) {
+func (e *ElementData) CalcPosChildren(maxWidth, maxHeight, maxZIndex int) (int, int) {
   y := e.padding[0]
 
+  maxW := 0
   for _, child := range e.children {
     if child.Visible() {
-      _, dy := child.CalcPos(maxWidth - e.padding[1] - e.padding[3], maxHeight - y - e.padding[2], maxZIndex)
+      w, dy := child.CalcPos(maxWidth - e.padding[1] - e.padding[3], maxHeight - y - e.padding[2], maxZIndex)
 
       child.Translate(e.padding[3], y)
 
       y += dy + e.spacing
+
+      if w > maxW {
+        maxW = w
+      }
     }
   }
+
+  return maxW + e.padding[1] + e.padding[3], y + e.padding[2]
 }
 
 func (e *ElementData) Animate(tick uint64) {

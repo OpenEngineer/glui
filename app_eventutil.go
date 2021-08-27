@@ -63,7 +63,7 @@ func (app *App) mouseInWindow() bool {
   return b
 }
 
-func (app *App) updateMouseElement(x, y int) {
+func (app *App) updateMouseElement(x, y int, dx, dy int) {
   if x < 0 {
     x_, y_, _ := sdl.GetMouseState()
 
@@ -84,7 +84,8 @@ func (app *App) updateMouseElement(x, y int) {
     app.triggerHitEvent("mouseleave", evt)
   }
 
-  if app.state.mouseElement == nil {
+
+  if !elementNotNil(app.state.mouseElement) {
     evt := NewMouseEvent(x, y)
     app.state.mouseElement = newMouseElement
     app.triggerHitEvent("mouseenter", evt)
@@ -107,6 +108,35 @@ func (app *App) updateMouseElement(x, y int) {
     }
   }
 
+  mouseMove := dx != 0 || dy != 0
+  // mousemove event must be triggered before cursor is updated, as mousemove might change cursor
+  if mouseMove {
+    if elementNotNil(app.state.mouseElement) {
+      app.state.mouseMoveSumX += dx
+      app.state.mouseMoveSumY += dy
+
+      if app.state.lastDownX + app.state.mouseMoveSumX != x {
+        dx += x - app.state.lastDownX - app.state.mouseMoveSumX
+        app.state.mouseMoveSumX = x
+      }
+
+      if app.state.lastDownY + app.state.mouseMoveSumY != y {
+        dy += y - app.state.lastDownY - app.state.mouseMoveSumY
+        app.state.mouseMoveSumY = y
+      }
+
+      if elementNotNil(app.state.lastDown) && app.state.lastDown != app.state.mouseElement {
+        TriggerEvent(app.state.lastDown, "mousemove", NewMouseMoveEvent(x, y, dx, dy))
+      }
+
+      app.triggerHitEvent("mousemove", NewMouseMoveEvent(x, y, dx, dy))
+    }
+  }
+
+  app.updateCursor()
+}
+
+func (app *App) updateCursor() {
   cursor := -1
   e := app.state.mouseElement
   for cursor < 0 && elementNotNil(e) {

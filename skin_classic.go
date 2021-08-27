@@ -20,16 +20,24 @@ func setTransparent(d []byte, pixId int) {
 
 // i is horizontal coord
 // j is vertical coord
-func ijToPix(i, j int) int {
+func ijToPix5x5(i, j int) int {
   return i*5 + j
 }
 
+func ijToPix3x3(i, j int) int {
+  return i*3 + j
+}
+
 func setColor5x5(d []byte, i int, j int, r, g, b, a byte) {
-  setColor(d, ijToPix(i, j), r, g, b, a)
+  setColor(d, ijToPix5x5(i, j), r, g, b, a)
+}
+
+func setColor3x3(d []byte, i, j int, r, g, b, a byte) {
+  setColor(d, ijToPix3x3(i, j), r, g, b, a)
 }
 
 func setTransparent5x5(d []byte, i int, j int) {
-  setTransparent(d, ijToPix(i, j))
+  setTransparent(d, ijToPix5x5(i, j))
 }
 
 func setColorGray(d []byte, pixId int, gray byte) {
@@ -38,6 +46,10 @@ func setColorGray(d []byte, pixId int, gray byte) {
 
 func setColor5x5Gray(d []byte, i int, j int, gray byte) {
   setColor5x5(d, i, j, gray, gray, gray, 0xff)
+}
+
+func setColor3x3Gray(d []byte, i, j int, gray byte) {
+  setColor3x3(d, i, j, gray, gray, gray, 0xff)
 }
 
 func setColorSDL(d []byte, pixId int, c sdl.Color) {
@@ -190,8 +202,8 @@ func (s *ClassicSkin) Inset() []byte {
 
   // only outer rim has non-zero alpha
 
-  for i := 1; i < 3; i++ {
-    for j := 1; j < 3; j++ {
+  for i := 1; i <= 3; i++ {
+    for j := 1; j <= 3; j++ {
       setTransparent5x5(d, i, j)
     }
   }
@@ -225,6 +237,28 @@ func (s *ClassicSkin) Corner() []byte {
   // top middle (sams as button)
   setColor5x5Gray(d, 2, 0, c0)
   setColor5x5Gray(d, 2, 1, c1)
+
+  return d
+}
+
+func (s *ClassicSkin) Bar() []byte {
+  d := make([]byte, 9*4)
+
+  c0 := byte(0xff)
+  c1 := byte(0xc0)
+  c2 := byte(0x80)
+
+  setColor3x3Gray(d, 0, 0, c0)
+  setColor3x3Gray(d, 1, 0, c0)
+  setColor3x3Gray(d, 2, 0, c0)
+
+  setColor3x3Gray(d, 0, 1, c0)
+  setColor3x3Gray(d, 1, 1, c1)
+  setColor3x3Gray(d, 2, 1, c2)
+
+  setColor3x3Gray(d, 0, 2, c2)
+  setColor3x3Gray(d, 1, 2, c2)
+  setColor3x3Gray(d, 2, 2, c2)
 
   return d
 }

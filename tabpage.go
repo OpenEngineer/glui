@@ -1,8 +1,6 @@
 package glui
 
 import (
-  "fmt"
-  "reflect"
 )
 
 //go:generate ./gen_element tabPage "CalcDepth AContainer PaddingContainer SpacingContainer"
@@ -33,22 +31,21 @@ func (e *tabPage) Show() {
 }
 
 func (e *tabPage) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
+
+  w, h := e.CalcPosChildren(maxWidth, maxHeight, maxZIndex)
+
+  if w > maxWidth {
+    maxWidth = w
+  }
+
+  if h > maxHeight {
+    maxHeight = h
+  }
+
   e.width = maxWidth
   e.height = maxHeight
 
   e.SetButtonPos(maxWidth, maxHeight, maxZIndex)
 
-  e.CalcPosChildren(maxWidth, maxHeight, maxZIndex)
-
   return e.InitRect(maxWidth, maxHeight)
-}
-
-func (e *tabPage) Hide() {
-  fmt.Println("hiding tab: ", e.tabbed.tabIndex(e))
-
-  for _, child := range e.children {
-    fmt.Println("might hide ", reflect.TypeOf(child).String())
-  }
-
-  e.ElementData.Hide()
 }

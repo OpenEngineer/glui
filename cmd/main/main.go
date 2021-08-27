@@ -21,8 +21,8 @@ func main() {
 
   tabPage2 := tabbed.NewTab("Tab two", true)
 
-  tabbed.NewTab("Tab three", true)
-  tabbed.NewTab("Tab four", true)
+  //tabbed.NewTab("Tab three", true)
+  //tabbed.NewTab("Tab four", true)
 
   button1 := glui.NewButton(root)
   button1.A(glui.NewHor(root, glui.CENTER, glui.CENTER, 0).A(glui.NewSans(root, "Submit", 10)))
@@ -35,10 +35,18 @@ func main() {
 
   dropdown := glui.NewDropdown(root, []string{"Dog", "Cat", "Hamster"})
 
-  tabPage1.A(button1, input1, button2)
+
+  tabPage1.A(input1, button1, button2)
+
+
   tabPage2.A(dropdown)
 
-  body.A(tabbed)
+  tabbed2 := glui.NewTabbed(root)
+  tabbed2.NewTab("other side", false)
+
+  vsplit := glui.NewVSplit(root).A(tabbed, tabbed2)
+
+  body.A(vsplit)
 
   app.Run()
 }

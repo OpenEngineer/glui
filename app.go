@@ -42,6 +42,10 @@ type AppState struct {
   cursor         int
   lastDown       Element
   outside        bool
+  lastDownX      int
+  lastDownY      int
+  mouseMoveSumX  int
+  mouseMoveSumY  int
   lastUpX        int
   lastUpY        int
   upCount        int // limited to three
@@ -56,7 +60,9 @@ func newAppState() AppState {
     -1,
     nil,
     false,
-    0,0,0,
+    0,0, 0,0,
+    0,0,
+    0,
     0,0,
   }
 }

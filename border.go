@@ -21,7 +21,7 @@ func showBorderedElement(root *Root, tris []uint32) {
   }
 }
 
-func getSkinCoords(x0, y0 int, t int) ([4]int, [4]int) {
+func getBorderedSkinCoords(x0, y0 int, t int) ([4]int, [4]int) {
   var (
     x [4]int
     y [4]int
@@ -40,12 +40,13 @@ func getSkinCoords(x0, y0 int, t int) ([4]int, [4]int) {
   return x, y
 }
 
+
 func getButtonSkinCoords(root *Root) ([4]int, [4]int) {
   t := root.P1.Skin.ButtonBorderThickness()
 
   x0, y0 := root.P1.Skin.ButtonOrigin()
 
-  return getSkinCoords(x0, y0, t)
+  return getBorderedSkinCoords(x0, y0, t)
 }
 
 func getCornerSkinCoords(root *Root) ([4]int, [4]int) {
@@ -53,7 +54,29 @@ func getCornerSkinCoords(root *Root) ([4]int, [4]int) {
 
   x0, y0 := root.P1.Skin.CornerOrigin()
 
-  return getSkinCoords(x0, y0, t)
+  return getBorderedSkinCoords(x0, y0, t)
+}
+
+func getBarSkinCoords(root *Root) ([2]int, [4]int) {
+  t := root.P1.Skin.BarThickness()
+
+  x0, y0 := root.P1.Skin.BarOrigin()
+
+  var (
+    x [2]int
+    y [4]int
+  )
+
+  x[0] = x0
+  x[1] = x0 + t
+
+  dt := (t - 1)/2
+  y[0] = y0 
+  y[1] = y0 + dt
+  y[2] = y0 + dt + 1
+  y[3] = y0 + t
+
+  return x, y
 }
 
 // (i,j) is top left of tri
@@ -77,7 +100,7 @@ func setQuadSkinCoords(root *Root, topRightTri uint32, bottomLeftTri uint32, i, 
 
 // also used by input
 func setBorderedElementTypesAndTCoords(root *Root, tris []uint32, x0, y0 int, t int, bgColor sdl.Color) {
-  x, y := getSkinCoords(x0, y0, t)
+  x, y := getBorderedSkinCoords(x0, y0, t)
 
   for i := 0; i < 3; i++ {
     for j := 0; j < 3; j++ {
