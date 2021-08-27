@@ -19,6 +19,8 @@ type tabLip struct {
   tabbed  *Tabbed
   tab     *tabPage
   caption *Text
+
+  touchesRightSide_ bool
 }
 
 func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool) *tabLip {
@@ -31,6 +33,7 @@ func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool)
     tabbed,
     tab,
     caption,
+    false,
   }
 
   e.width = 200
@@ -127,7 +130,11 @@ func (e *tabLip) Show() {
         e.Root.P1.SetColorConst(tri0, bgColor)
         e.Root.P1.SetColorConst(tri1, bgColor)
       } else if i == 2 {
-        setQuadSkinCoords(e.Root, tri0, tri1, 2, 0, xCornerTex, yCornerTex)
+        if e.touchesRightSide_ {
+          setQuadSkinCoords(e.Root, tri0, tri1, 2, 1, xCornerTex, yCornerTex)
+        } else {
+          setQuadSkinCoords(e.Root, tri0, tri1, 2, 0, xCornerTex, yCornerTex)
+        }
       }
     } else {
       setQuadSkinCoords(e.Root, tri0, tri1, 1, 0, xCornerTex, yCornerTex)
@@ -147,6 +154,16 @@ func (e *tabLip) Show() {
   }
 
   e.ElementData.Show()
+}
+
+func (e *tabLip) touchesRightSide(b bool) {
+  if e.touchesRightSide_ != b {
+
+    e.touchesRightSide_ = b
+    if e.Visible() {
+      e.Show()
+    }
+  }
 }
 
 func (e *tabLip) Select() {

@@ -45,7 +45,7 @@ func NewInput(root *Root) *Input {
     0,
   }
 
-  e.width, e.height = 400, 50
+  e.width, e.height = 200, 50
 
   e.selText.SetColor(sdl.Color{0xff, 0xff, 0xff, 0xff})
 

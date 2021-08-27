@@ -184,5 +184,16 @@ func (e *Tabbed) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     maxHeight = maxH
   }
 
+  // if the right side of last lip lies within ButtonBorderThickness of the tab right side, then its skin must be updated
+  iLast := len(e.lips) - 1
+  if iLast >= 0 {
+
+    if e.tabs[iLast].Rect().Right() - e.lips[iLast].Rect().Right() < e.Root.P1.Skin.ButtonBorderThickness() {
+      e.lips[iLast].touchesRightSide(true)
+    } else {
+      e.lips[iLast].touchesRightSide(false)
+    }
+  }
+
   return e.InitRect(maxWidth, maxHeight)
 }

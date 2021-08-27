@@ -17,6 +17,7 @@ Tab to prev/next element with a `"focus"`
 * Button
 * Input
 * Tabbed
+* VSplit
 
 # DWMPeekPreview
 

@@ -217,6 +217,7 @@ func (s *ClassicSkin) Corner() []byte {
   c0 := byte(0xff)
   c1 := byte(0xc0)
   c2 := byte(0x80)
+  c3 := byte(0x00)
 
   // top left of cross
   setColor5x5Gray(d, 0, 0, c0)
@@ -237,6 +238,10 @@ func (s *ClassicSkin) Corner() []byte {
   // top middle (sams as button)
   setColor5x5Gray(d, 2, 0, c0)
   setColor5x5Gray(d, 2, 1, c1)
+
+  // right middle (same as button)
+  setColor5x5Gray(d, 3, 2, c2)
+  setColor5x5Gray(d, 4, 2, c3)
 
   return d
 }
