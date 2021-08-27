@@ -97,6 +97,8 @@ func (e *Button) Enable() {
 
 func (e *Button) onMouseDown(evt *Event) {
   e.setState(true, e.inside)
+
+  evt.StopBubbling()
 }
 
 func (e *Button) onMouseUp(evt *Event) {
@@ -189,6 +191,13 @@ func (e *Button) setTypesAndTCoords(pressed bool) {
       x0, y0 := e.Root.P1.Skin.InsetOrigin()
 
       setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, e.Root.P1.Skin.BGColor())
+
+      // hide the center tris
+      tri0 := e.p1Tris[(3+1)*2 + 0]
+      tri1 := e.p1Tris[(3+1)*2 + 1]
+
+      e.Root.P1.Type.Set1Const(tri0, VTYPE_HIDDEN)
+      e.Root.P1.Type.Set1Const(tri1, VTYPE_HIDDEN)
     } else {
       for _, tri := range e.p1Tris {
         // hide the tris, leave the color up the underlying element

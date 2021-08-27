@@ -43,9 +43,6 @@ func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool)
     closeButton := NewFlatIconButton(root, "close-thick", TABLIP_CLOSE_INNER_SIZE).Size(TABLIP_CLOSE_OUTER_SIZE, TABLIP_CLOSE_OUTER_SIZE)
 
     closeButton.OnClick(e.onClickCloseButton)
-    closeButton.On("mousedown", func(evt *Event) {
-      evt.StopBubbling()
-    })
 
     e.appendChild(NewHor(root, STRETCH, CENTER, 0).Padding(0, 10).A(caption, closeButton))
   } else {

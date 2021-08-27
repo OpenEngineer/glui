@@ -16,10 +16,13 @@ func main() {
   body.Padding(10)
 
   tabbed := glui.NewTabbed(root)
-  tabPage1 := tabbed.NewTab("Tab one", true)
+  tabPage1 := tabbed.NewTab("Tab one", false)
   tabPage1.Spacing(10)
 
   tabPage2 := tabbed.NewTab("Tab two", true)
+
+  tabbed.NewTab("Tab three", true)
+  tabbed.NewTab("Tab four", true)
 
   button1 := glui.NewButton(root)
   button1.A(glui.NewHor(root, glui.CENTER, glui.CENTER, 0).A(glui.NewSans(root, "Submit", 10)))

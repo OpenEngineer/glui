@@ -14,8 +14,22 @@ func setColor(d []byte, pixId int, r, g, b, a byte) {
   d[pixId*4+3] = a
 }
 
+func setTransparent(d []byte, pixId int) {
+  d[pixId*4+3] = 0x00
+}
+
+// i is horizontal coord
+// j is vertical coord
+func ijToPix(i, j int) int {
+  return i*5 + j
+}
+
 func setColor5x5(d []byte, i int, j int, r, g, b, a byte) {
-  setColor(d, i*5 + j, r, g, b, a)
+  setColor(d, ijToPix(i, j), r, g, b, a)
+}
+
+func setTransparent5x5(d []byte, i int, j int) {
+  setTransparent(d, ijToPix(i, j))
 }
 
 func setColorGray(d []byte, pixId int, gray byte) {
@@ -172,7 +186,17 @@ func (s *ClassicSkin) Focus() []byte {
 }
 
 func (s *ClassicSkin) Inset() []byte {
-  return s.twoPxOutsetBorder(0x80, 0xc0, 0xc0, 0xff)
+  d := s.twoPxOutsetBorder(0x80, 0xc0, 0xc0, 0xff)
+
+  // only outer rim has non-zero alpha
+
+  for i := 1; i < 3; i++ {
+    for j := 1; j < 3; j++ {
+      setTransparent5x5(d, i, j)
+    }
+  }
+
+  return d
 }
 
 func (s *ClassicSkin) Corner() []byte {
