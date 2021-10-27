@@ -58,7 +58,9 @@ func main() {
   table.AddRow("Bob", "1945-02-06")
   table.AddRow("Charlie", "1889-04-16")
 
-  vsplit := glui.NewVSplit(root).A(table, tabbed)
+  vsplit := glui.NewVSplit(root)
+  vsplit.MinIntervals([]int{300, 300})
+  vsplit.A(table, tabbed)
 
   body.A(vsplit)
 

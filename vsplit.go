@@ -13,10 +13,10 @@ type VSplit struct {
   ElementData
 
   intervals    []int // split equally if interval is unknown (i.e. interval==-1)
+  minIntervals []int
   hover        bool
-  activeBar    int
-  barDelta     int
 
+  activeBar    int
   startX       int
   startY       int
   startLeft    int
@@ -27,9 +27,9 @@ func NewVSplit(root *Root) *VSplit {
   e := &VSplit{
     NewElementData(root, 0, 0),
     make([]int, 0),
+    nil,
     false,
-    -1, 0,
-    0,0,0,0,
+    -1, 0,0,0,0,
   }
 
   e.spacing = 5
@@ -39,6 +39,10 @@ func NewVSplit(root *Root) *VSplit {
   e.On("mouseup",   e.onMouseUp)
 
   return e
+}
+
+func (e *VSplit) MinIntervals(minInterv []int) {
+  e.minIntervals = minInterv
 }
 
 func (e *VSplit) nBars() int {
@@ -52,24 +56,38 @@ func (e *VSplit) nBars() int {
 }
 
 func (e *VSplit) barPos(i int) int {
-  return e.children[i].Rect().Right() + e.spacing
+  x := e.Rect().X
+
+  for i_ := 0; i_ <= i; i++ {
+    x += e.intervals[i_]
+
+    if i_ < i {
+      x += e.childSpacing()
+    }
+  }
+
+  return x + e.spacing
 }
 
 func (e *VSplit) hitBar(evt *Event) int {
+  x0 := e.rect.X
   y0 := e.rect.Y
   h := e.rect.H
 
   margin := 1
   w := e.Root.P1.Skin.BarThickness() + margin*2
-  // check if we are hovering over any 
-  for i := 0; i < e.nBars(); i++ {
-    x0 := e.barPos(i) - margin
+  // check if we are hovering over any vsplit bar
 
-    r := Rect{x0, y0, w, h}
+  for i := 0; i < e.nBars(); i++ {
+    x0 += e.intervals[i] + e.spacing
+
+    r := Rect{x0 - margin, y0, w, h}
 
     if r.Hit(evt.X, evt.Y) {
       return i
     }
+
+    x0 += e.childSpacing()
   }
 
   return -1
@@ -81,11 +99,35 @@ func (e *VSplit) onMouseMove(evt *Event) {
     e.hover = true
 
     if e.activeBar > -1 {
-      e.moveActiveBar(evt.XRel) // TODO: dont use XRel, but the actual start pos
+      e.moveActiveBar(evt.X - e.startX)
     }
   } else {
     e.hover = false
   }
+}
+
+// bound by mininterval
+func (e *VSplit) setInterval(i int, dLeft int, dRight int) {
+  if e.minIntervals != nil {
+    if i >= 0 && i < len(e.minIntervals) {
+      if dLeft < e.minIntervals[i] {
+        diff := e.minIntervals[i] - dLeft
+        dLeft = e.minIntervals[i]
+        dRight -= diff
+      }
+    }
+
+    if i+1 < len(e.minIntervals) {
+      if dRight < e.minIntervals[i+1] {
+        diff := e.minIntervals[i+1] - dRight
+        dRight = e.minIntervals[i+1]
+        dLeft -= diff
+      }
+    }
+  }
+
+  e.intervals[i] = dLeft
+  e.intervals[i+1] = dRight
 }
 
 func (e *VSplit) onMouseDown(evt *Event) {
@@ -95,7 +137,7 @@ func (e *VSplit) onMouseDown(evt *Event) {
     e.startX = evt.X
     e.startY = evt.Y
     e.startLeft = e.intervals[i]
-    e.startRight = e.intervals[i]
+    e.startRight = e.intervals[i+1]
   }
 }
 
@@ -107,7 +149,7 @@ func (e *VSplit) onMouseUp(evt *Event) {
 
 // its unlikely that a resize of the window is triggered while the mouse is down
 func (e *VSplit) moveActiveBar(delta int) {
-  e.barDelta = delta
+  e.setInterval(e.activeBar, e.startLeft + delta, e.startRight - delta)
 
   e.Root.ForcePosDirty()
 }
@@ -203,25 +245,6 @@ func (e *VSplit) fillUnsetIntervals(maxWidth int) {
   }
 }
 
-func (e *VSplit) addToIntervalsAfter(iSmallerThanExpected int, diff int) {
-  nAfter := len(e.intervals) - 1 - iSmallerThanExpected
-
-  if nAfter > 0 {
-    diffPerInterval := diff/nAfter
-    lastIntervalDiff := diffPerInterval + (diff - diffPerInterval*nAfter)
-
-    for i := iSmallerThanExpected + 1; i < len(e.intervals); i++ {
-
-      if i == len(e.intervals) - 1 {
-        e.intervals[i] += lastIntervalDiff
-      } else {
-        e.intervals[i] += diffPerInterval
-      }
-    }
-  }
-}
-
-// TODO: this function is kind of slow due to the inner loop
 func (e *VSplit) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   e.fillUnsetIntervals(maxWidth)
 
@@ -231,73 +254,29 @@ func (e *VSplit) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
 
   children := e.children
   cHeight := 0
-  cWidths := make([]int, len(children))
 
-  // incorporate the intended movement of the bar
-  iMovePrev := -1
-  iMoveNext := -1
-  if e.activeBar != -1 {
-    iMovePrev = e.activeBar
-    iMoveNext = e.activeBar + 1
-  }
-
-  intervalsResolved := false
-
-  backup := make([]int, len(e.intervals))
-  for i, in := range e.intervals {
-    backup[i] = in
-  }
-
-  for ; !intervalsResolved; {
-    intervalsResolved = true
-
-    for i, child := range children {
-      wantedInterval := e.intervals[i]
-      if i == len(children) - 1 {
-        wantedInterval = maxWidth - e.padding[1] - x // last child always gets the remaining
-      } else if i == iMovePrev {
-        wantedInterval = e.intervals[i] + e.barDelta // child before moving bar gets less/more
-      } else if i == iMoveNext {
-        wantedInterval = e.intervals[i] - e.barDelta // child after moving bar gets more/less
-      }
-
-      w, h := child.CalcPos(wantedInterval, maxHeight - e.padding[0] - e.padding[2], maxZIndex)
-
-      if h > cHeight {
-        cHeight = h
-      }
-
-      cWidths[i] = w
+  for i, child := range children {
+    w := e.intervals[i]
+    if i == len(children) - 1 {
+      // last child gets remaining width
+      w = maxWidth - x
       e.intervals[i] = w
-
-      // actual size of child might be less, in which case remaining children get more
-      if w < wantedInterval {
-        diff := wantedInterval - w
-
-        e.addToIntervalsAfter(i, diff)
-      } else if w > wantedInterval && e.barDelta != 0 {
-        intervalsResolved = false
-        e.barDelta = 0
-
-        for i, bin := range backup {
-          e.intervals[i] = bin
-        }
-
-        x = e.padding[3]
-
-        break
-      }
-
-      child.Translate(x, 0)
-
-      x += w + barSpace
     }
+
+    _, h := child.CalcPos(w, maxHeight - e.padding[0] - e.padding[2], maxZIndex)
+    if h > cHeight {
+      cHeight = h
+    }
+
+    child.Translate(x, 0)
+
+    x += w + barSpace
   }
 
   // now we know the innerheight we can calculate the bar positions
   x = e.padding[3]
   for i, _ := range children {
-    x += cWidths[i]
+    x += e.intervals[i]
 
     if i < len(children) - 1 {
       e.calcPosBar(i, x, e.padding[0], cHeight, maxZIndex)
@@ -305,8 +284,6 @@ func (e *VSplit) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
       x += barSpace
     }
   }
-
-  e.barDelta = 0
 
   return e.InitRect(x + e.padding[1], cHeight + e.padding[0] + e.padding[2])
 }

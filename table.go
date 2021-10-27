@@ -69,13 +69,13 @@ func (e *Table) NumSelected() int {
 func (e *Table) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   w, h := 400, 400 //e.GetSize()
 
-  /*if w > maxWidth {
+  if w > maxWidth {
     w = maxWidth
   }
   
   if h > maxHeight {
     h = maxHeight
-  }*/
+  }
 
   e.body.CalcPos(w - 2*e.borderT(), h - 2*e.borderT() - e.LineHeight(), maxZIndex)
 

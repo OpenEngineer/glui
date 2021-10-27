@@ -1,12 +1,15 @@
 # glui
 OpenGL UI Framework built on SDL
 
-* cross-platform windows/linux (no mac 
+* cross-platform windows/linux (no mac)
 
 # Handled by framework
 
 ## (Shift-)tab
 Tab to prev/next element with a `"focus"`
+
+## Focusrect
+Some elements draw act as the anchor for a focusrect when focussed. These elements grab keyboard input.
 
 # Types of elements
 
@@ -18,14 +21,7 @@ Tab to prev/next element with a `"focus"`
 * Input
 * Tabbed
 * VSplit
-
-# DWMPeekPreview
-
-Windows only
-
-Use `DwmSetIconicLivePreviewBitmap()` when receiving `WM_DWMSENDICONICLIVEPREVIEWBITMAP` message.
-
-Declared in dwmapi.h
+* Table
 
 # Mixing a color with a skin
 

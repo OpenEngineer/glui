@@ -227,7 +227,6 @@ func (app *App) onMouseDown(event *sdl.MouseButtonEvent) {
     blurEvt := NewMouseEvent(int(event.X), int(event.Y))
     focusEvt := NewMouseEvent(int(event.X), int(event.Y))
 
-    fmt.Println("changing focuselement upon mouseclick", dumpElement(newFocusable), dumpElement(app.state.mouseElement))
     app.changeFocusElement(newFocusable, blurEvt, focusEvt)
   }
 }

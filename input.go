@@ -592,6 +592,14 @@ func (e *Input) CalcDepth(stack *ElementStack) {
 func (e *Input) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   w, h := e.GetSize()
 
+  if w > maxWidth {
+    w = maxWidth
+  }
+
+  if h > maxHeight {
+    h = maxHeight
+  }
+
   e.SetBorderedElementPos(w, h, e.borderT(), maxZIndex)
 
   for _, textElem := range []*Text{e.text, e.selText} {
