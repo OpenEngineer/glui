@@ -1,4 +1,5 @@
 package glui
+// must return Element in order to implement Container interface
 func (e *Hor) A(children ...Element) Element {
   for _, child := range children {
     e.children = append(e.children, child)
@@ -6,12 +7,14 @@ func (e *Hor) A(children ...Element) Element {
   }
   return e
 }
+
 func (e *Hor) CalcDepth(stack *ElementStack) {
   e.zIndex = stack.Add(e, e.closerThan)
   for _, child := range e.Children() {
     child.CalcDepth(stack)
   }
 }
+
 func (e *Hor) Padding(p ...int) *Hor {
   switch len(p) {
   case 1:
@@ -32,8 +35,10 @@ func (e *Hor) Padding(p ...int) *Hor {
   e.Root.ForcePosDirty()
   return e
 }
+
 func (e *Hor) Spacing(s int) *Hor {
   e.spacing = s
   e.Root.ForcePosDirty()
   return e
 }
+

@@ -73,6 +73,7 @@ func (app *App) updateMouseElement(x, y int, dx, dy int) {
 
   newMouseElement, isSameOrChildOfOld := app.root.findMouseElement(app.state.mouseElement, x, y)
 
+
   // trigger mouse leave event if new mouseElement isn't child of old
   if elementNotNil(app.state.mouseElement) && !isSameOrChildOfOld {
     evt := NewMouseEvent(x, y)

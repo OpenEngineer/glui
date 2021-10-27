@@ -13,12 +13,18 @@ const (
   TABLIP_CLOSE_OUTER_SIZE = 20
 )
 
+type tabLipCaption struct {
+  Text
+
+  tl *tabLip // tabLipCaption isn't focusable if tabLip is active
+}
+
 type tabLip struct {
   ElementData
 
   tabbed  *Tabbed
   tab     *tabPage
-  caption *Text
+  caption *tabLipCaption
 
   touchesRightSide_ bool
 }
@@ -26,7 +32,8 @@ type tabLip struct {
 func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool) *tabLip {
   root := tabbed.Root
 
-  caption := NewSans(root, captionText, TABLIP_CAPTION_SIZE)
+  caption_ := NewSans(root, captionText, TABLIP_CAPTION_SIZE)
+  caption := &tabLipCaption{*caption_, nil}
 
   e := &tabLip{
     NewElementData(root, 9*2, 0),
@@ -35,6 +42,8 @@ func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool)
     caption,
     false,
   }
+
+  caption.tl = e
 
   e.width = 200
   e.height = 50
@@ -50,8 +59,6 @@ func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool)
     e.appendChild(NewHor(root, START, CENTER, 0).Padding(0, 10).A(caption))
   }
 
-  //e.Show()
-
   e.On("mousedown", e.onMouseDown)
   caption.On("focus", e.onFocusCaption)
   caption.On("blur", e.onBlurCaption)
@@ -60,6 +67,9 @@ func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool)
   return e
 }
 
+func (e *tabLipCaption) IsFocusable() bool {
+  return e.ElementData.IsFocusable() && !e.tl.isActive()
+}
 
 func (e *tabLip) onMouseDown(evt *Event) {
   if !e.isActive() {
@@ -96,6 +106,10 @@ func (e *tabLip) closeTab() {
 
 func (e *tabLip) isActive() bool {
   return e.tabbed.isActiveLip(e)
+}
+
+func (e *tabLip) IsFocusable() bool {
+  return e.ElementData.IsFocusable() && !e.isActive()
 }
 
 func (e *tabLip) Cursor() int {

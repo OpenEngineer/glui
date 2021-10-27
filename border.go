@@ -134,6 +134,14 @@ func setBorderedElementTypesAndTCoords(root *Root, tris []uint32, x0, y0 int, t 
   }
 }
 
+func setInputLikeElementTypesAndTCoords(root *Root, tris []uint32) {
+  borderT := root.P1.Skin.InputBorderThickness()
+
+  x0, y0 := root.P1.Skin.InputOrigin()
+
+  setBorderedElementTypesAndTCoords(root, tris, x0, y0, borderT, root.P1.Skin.InputBGColor())
+}
+
 func setBorderedElementPos(root *Root, tris []uint32, width, height, t int, z float32) {
   var (
     x [4]int

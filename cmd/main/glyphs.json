@@ -30,6 +30,10 @@
     {
       "name": "arrow-down-drop",
       "path": "M2,8H22L12,20Z"
+    },
+    {
+      "name": "arrow-up-drop",
+      "path": "M2,16H22L12,4Z"
     }
   ]
 }

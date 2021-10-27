@@ -227,6 +227,7 @@ func (app *App) onMouseDown(event *sdl.MouseButtonEvent) {
     blurEvt := NewMouseEvent(int(event.X), int(event.Y))
     focusEvt := NewMouseEvent(int(event.X), int(event.Y))
 
+    fmt.Println("changing focuselement upon mouseclick", dumpElement(newFocusable), dumpElement(app.state.mouseElement))
     app.changeFocusElement(newFocusable, blurEvt, focusEvt)
   }
 }
@@ -284,18 +285,23 @@ func (app *App) detectClick(x, y int) {
   app.state.mouseMoveSumX = 0
   app.state.mouseMoveSumY = 0
 
-  var eName string
+  eName := "click"
   switch app.state.upCount {
   case 0:
     panic("shouldn't be possible")
   case 1:
-    eName = "click"
-    break
   case 2:
-    eName = "doubleclick"
-    break
+    if elementNotNil(app.state.mouseElement) {
+      if hasEvent(app.state.mouseElement, "doubleclick") {
+        eName = "doubleclick"
+      }
+    }
   default:
-    eName = "tripleclick"
+    if elementNotNil(app.state.mouseElement) {
+      if hasEvent(app.state.mouseElement, "tripleclick") {
+        eName = "tripleclick"
+      }
+    }
   }
 
   TriggerEvent(app.state.mouseElement, eName, NewMouseEvent(x, y))
@@ -322,6 +328,8 @@ func (app *App) onTab(event *sdl.KeyboardEvent) {
   } else {
     if elementNotNil(app.state.focusElement) {
       newFocusable = findNextFocusable(app.state.focusElement)
+
+      fmt.Println("found next focusable", dumpElement(newFocusable))
     } else {
       newFocusable = findNextFocusable(app.root.Body)
     }

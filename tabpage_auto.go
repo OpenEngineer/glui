@@ -5,6 +5,8 @@ func (e *tabPage) CalcDepth(stack *ElementStack) {
     child.CalcDepth(stack)
   }
 }
+
+// must return Element in order to implement Container interface
 func (e *tabPage) A(children ...Element) Container {
   for _, child := range children {
     e.children = append(e.children, child)
@@ -12,6 +14,7 @@ func (e *tabPage) A(children ...Element) Container {
   }
   return e
 }
+
 func (e *tabPage) Padding(p ...int) Container {
   switch len(p) {
   case 1:
@@ -32,8 +35,10 @@ func (e *tabPage) Padding(p ...int) Container {
   e.Root.ForcePosDirty()
   return e
 }
+
 func (e *tabPage) Spacing(s int) Container {
   e.spacing = s
   e.Root.ForcePosDirty()
   return e
 }
+

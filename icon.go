@@ -42,6 +42,19 @@ func NewIcon(root *Root, name string, size int) *Icon {
   return e
 }
 
+func (e *Icon) ChangeGlyph(name string) {
+  e.name = name
+  e.glyph = e.Root.P2.Glyphs.GetGlyph(name)
+
+  tri0 := e.p2Tris[0]
+  tri1 := e.p2Tris[1]
+  tri2 := e.p2Tris[2]
+  tri3 := e.p2Tris[3]
+
+  e.Root.P2.SetGlyphCoords(tri0, tri1, e.name)
+  e.Root.P2.SetGlyphCoords(tri2, tri3, e.name)
+}
+
 func (e *Icon) Show() {
   tri0 := e.p2Tris[0]
   tri1 := e.p2Tris[1]

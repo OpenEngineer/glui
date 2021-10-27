@@ -1,5 +1,12 @@
 package glui
-func (e *menuButton) appendChild(children ...Element) Element {
+func (e *Table) CalcDepth(stack *ElementStack) {
+  e.zIndex = stack.Add(e, e.closerThan)
+  for _, child := range e.Children() {
+    child.CalcDepth(stack)
+  }
+}
+
+func (e *Table) appendChild(children ...Element) Element {
   for _, child := range children {
     e.children = append(e.children, child)
     child.RegisterParent(e)
@@ -7,14 +14,7 @@ func (e *menuButton) appendChild(children ...Element) Element {
   return e
 }
 
-func (e *menuButton) CalcDepth(stack *ElementStack) {
-  e.zIndex = stack.Add(e, e.closerThan)
-  for _, child := range e.Children() {
-    child.CalcDepth(stack)
-  }
-}
-
-func (e *menuButton) On(name string, fn EventListener) *menuButton {
+func (e *Table) On(name string, fn EventListener) *Table {
   old := e.evtListeners[name]
   if old == nil {
     e.evtListeners[name] = fn
@@ -24,14 +24,14 @@ func (e *menuButton) On(name string, fn EventListener) *menuButton {
   return e
 }
 
-func (e *menuButton) Size(w, h int) *menuButton {
+func (e *Table) Size(w, h int) *Table {
   e.width = w
   e.height = h
   e.Root.ForcePosDirty()
   return e
 }
 
-func (e *menuButton) Padding(p ...int) *menuButton {
+func (e *Table) Padding(p ...int) *Table {
   switch len(p) {
   case 1:
     e.padding = [4]int{p[0], p[0], p[0], p[0]}

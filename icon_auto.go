@@ -5,3 +5,4 @@ func (e *Icon) CalcDepth(stack *ElementStack) {
     child.CalcDepth(stack)
   }
 }
+

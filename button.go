@@ -1,5 +1,8 @@
 package glui
 
+import (
+)
+
 //go:generate ./gen_element Button "A CalcDepth On Size Padding"
 
 type Button struct {
@@ -34,6 +37,51 @@ func NewFlatIconButton(root *Root, iconName string, iconSize int) *Button {
 
 func NewStickyFlatButton(root *Root) *Button {
   return newButton(root, true, true)
+}
+
+func NewCaptionButton(root *Root, caption string, optArgs ...interface{}) *Button {
+  b := NewButton(root)
+
+  var (
+    hAlign Align = CENTER
+    vAlign Align = CENTER
+    lrPadding int = 0
+    ok bool
+  )
+
+  if len(optArgs) >= 1 {
+    hAlign, ok = optArgs[0].(Align)
+    if !ok {
+      panic("expected Align for first arg")
+    }
+  }
+
+  if len(optArgs) >= 2 {
+    vAlign, ok = optArgs[1].(Align)
+    if !ok {
+      panic("expected Align for second arg")
+    }
+  }
+
+  if len(optArgs) >= 3 {
+    lrPadding, ok = optArgs[2].(int)
+    if !ok {
+      panic("expected int for third arg")
+    }
+  }
+
+  if len(optArgs) >= 4 {
+    panic("unexpected number of args")
+  }
+
+  hor := NewHor(root, hAlign, vAlign, 0)
+
+  hor.A(NewSans(root, caption, 10))
+  hor.Padding(0, lrPadding, 0, lrPadding)
+
+  b.A(hor)
+
+  return b
 }
 
 func newButton(root *Root, flat bool, sticky bool) *Button {

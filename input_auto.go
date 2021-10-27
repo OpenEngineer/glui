@@ -1,8 +1,14 @@
 package glui
 func (e *Input) On(name string, fn EventListener) *Input {
-  e.evtListeners[name] = fn
+  old := e.evtListeners[name]
+  if old == nil {
+    e.evtListeners[name] = fn
+  } else {
+    e.evtListeners[name] = func(evt *Event) {fn(evt); if !evt.stopPropagation {old(evt)}}
+  }
   return e
 }
+
 func (e *Input) Padding(p ...int) *Input {
   switch len(p) {
   case 1:
@@ -23,3 +29,4 @@ func (e *Input) Padding(p ...int) *Input {
   e.Root.ForcePosDirty()
   return e
 }
+

@@ -6,22 +6,31 @@ func (e *Dropdown) appendChild(children ...Element) Element {
   }
   return e
 }
+
 func (e *Dropdown) CalcDepth(stack *ElementStack) {
   e.zIndex = stack.Add(e, e.closerThan)
   for _, child := range e.Children() {
     child.CalcDepth(stack)
   }
 }
+
 func (e *Dropdown) On(name string, fn EventListener) *Dropdown {
-  e.evtListeners[name] = fn
+  old := e.evtListeners[name]
+  if old == nil {
+    e.evtListeners[name] = fn
+  } else {
+    e.evtListeners[name] = func(evt *Event) {fn(evt); if !evt.stopPropagation {old(evt)}}
+  }
   return e
 }
+
 func (e *Dropdown) Size(w, h int) *Dropdown {
   e.width = w
   e.height = h
   e.Root.ForcePosDirty()
   return e
 }
+
 func (e *Dropdown) Padding(p ...int) *Dropdown {
   switch len(p) {
   case 1:
@@ -42,3 +51,4 @@ func (e *Dropdown) Padding(p ...int) *Dropdown {
   e.Root.ForcePosDirty()
   return e
 }
+

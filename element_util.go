@@ -1,7 +1,22 @@
 package glui
 
+import (
+  "fmt"
+  "reflect"
+)
+
 func elementNotNil(e Element) bool {
   return !(e == nil || e.Deleted())
+}
+
+func dumpElement(e Element) string {
+  if e == nil {
+    return "nil"
+  } else if eT, ok := e.(*Text); ok {
+    return "*Text(" + eT.Value() + ")"
+  } else {
+    return fmt.Sprintf("%s(%p)", reflect.TypeOf(e).String(), e)
+  }
 }
 
 // returns true if new active element is same as old active element, or is child of old active element
@@ -98,7 +113,7 @@ func hasEvent(e Element, name string) bool {
 }
 
 func focusable(e Element) bool {
-  return elementNotNil(e) && hasEvent(e, "focus") && e.Visible()
+  return elementNotNil(e) && e.IsFocusable()
 }
 
 func findFocusable(e_ Element) Element {
@@ -206,6 +221,7 @@ func findPrevFocusable(e_ Element) Element {
       } else if thisChildFound || !b {
         prev := findLastFocusable(pChild)
         if elementNotNil(prev) {
+          fmt.Println("returning prev focusable", dumpElement(prev))
           return prev
         }
       }

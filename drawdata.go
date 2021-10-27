@@ -291,6 +291,21 @@ func (d *DrawPassData) Dealloc(offsets []uint32) {
   }
 }
 
+// if diff is
+func (d *DrawPassData) Resize(tris []uint32, nNew int) []uint32 {
+  nDiff := nNew - len(tris)
+
+  if nDiff > 0 {
+    return append(tris, d.Alloc(nDiff)...)
+  } else if nDiff < 0 {
+    remove := tris[nNew:]
+    d.Dealloc(remove)
+    return tris[0:nNew]
+  } else {
+    return tris
+  }
+}
+
 func (b *Float32Buffer) Get(triId uint32, vertexId uint32, compId uint32) float32 {
   offset := (triId*3 + vertexId)*uint32(b.nComp)
 

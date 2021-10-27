@@ -16,6 +16,11 @@ type VSplit struct {
   hover        bool
   activeBar    int
   barDelta     int
+
+  startX       int
+  startY       int
+  startLeft    int
+  startRight   int
 }
 
 func NewVSplit(root *Root) *VSplit {
@@ -24,6 +29,7 @@ func NewVSplit(root *Root) *VSplit {
     make([]int, 0),
     false,
     -1, 0,
+    0,0,0,0,
   }
 
   e.spacing = 5
@@ -75,7 +81,7 @@ func (e *VSplit) onMouseMove(evt *Event) {
     e.hover = true
 
     if e.activeBar > -1 {
-      e.moveActiveBar(evt.XRel)
+      e.moveActiveBar(evt.XRel) // TODO: dont use XRel, but the actual start pos
     }
   } else {
     e.hover = false
@@ -86,6 +92,10 @@ func (e *VSplit) onMouseDown(evt *Event) {
   i := e.hitBar(evt)
   if i > -1 {
     e.activeBar = i
+    e.startX = evt.X
+    e.startY = evt.Y
+    e.startLeft = e.intervals[i]
+    e.startRight = e.intervals[i]
   }
 }
 
@@ -211,6 +221,7 @@ func (e *VSplit) addToIntervalsAfter(iSmallerThanExpected int, diff int) {
   }
 }
 
+// TODO: this function is kind of slow due to the inner loop
 func (e *VSplit) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   e.fillUnsetIntervals(maxWidth)
 

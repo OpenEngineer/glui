@@ -10,7 +10,10 @@ import (
 //go:generate ./gen_element Text "CalcDepth On"
 
 var (
+  DEFAULT_MONO = "dejavumono"
   DEFAULT_SANS = "dejavusans"
+  BLACK = sdl.Color{0x00, 0x00, 0x00, 0xff}
+  WHITE = sdl.Color{0xff, 0xff, 0xff, 0xff}
 )
 
 type Text struct {
@@ -28,14 +31,22 @@ func NewSans(root *Root, content string, size float64) *Text {
   return NewText(root, content, DEFAULT_SANS, size)
 }
 
+func NewMono(root *Root, content string, size float64) *Text {
+  return NewText(root, content ,DEFAULT_MONO, size)
+}
+
 func NewText(root *Root, content string, font string, size float64) *Text {
   refGlyph := root.P2.Glyphs.GetGlyph(fmt.Sprintf("%s:%d", font, 'a'))
 
-  e := &Text{NewElementData(root, 0, 0), "", font, size, sdl.Color{0x00, 0x00, 0x00, 0xff}, refGlyph}
+  e := &Text{NewElementData(root, 0, 0), "", font, size, BLACK, refGlyph}
 
   e.SetContent(content)
 
   return e
+}
+
+func (e *Text) Value() string {
+  return e.content
 }
 
 func (e *Text) SetColor(c sdl.Color) {
@@ -67,14 +78,15 @@ func (e *Text) SetContent(content string) {
 func (e *Text) Show() {
   n := countNonWhitespace(e.content)
 
-  nDiff := n - len(e.p2Tris)/2
+  e.p2Tris = e.Root.P2.Resize(e.p2Tris, n*2)
+  /*nDiff := n - len(e.p2Tris)/2 // old code
   if nDiff > 0 {
     e.p2Tris = append(e.p2Tris, e.Root.P2.Alloc(nDiff*2)...)
   } else if nDiff < 0 {
     remove := e.p2Tris[n*2:]
     e.Root.P2.Dealloc(remove)
     e.p2Tris = e.p2Tris[0:n*2]
-  }
+  }*/
 
   for i := 0; i < n; i++ {
     tri0 := e.p2Tris[i*2+0]

@@ -15,7 +15,6 @@ import (
 type Input struct {
   ElementData
 
-  borderT     int
   barHeight   int
 
   // state
@@ -33,7 +32,6 @@ type Input struct {
 func NewInput(root *Root) *Input {
   e := &Input{
     NewElementData(root, 10*2, 0), 
-    root.P1.Skin.InputBorderThickness(),
     25,
     NewText(root, "", "dejavumono", 10), 
     NewText(root, "", "dejavumono", 10),
@@ -45,7 +43,7 @@ func NewInput(root *Root) *Input {
     0,
   }
 
-  e.width, e.height = 200, 50
+  e.width, e.height = 400, 50
 
   e.selText.SetColor(sdl.Color{0xff, 0xff, 0xff, 0xff})
 
@@ -66,6 +64,10 @@ func NewInput(root *Root) *Input {
   e.On("rightclick",  e.onRightClick)
 
   return e
+}
+
+func (e *Input) borderT() int {
+  return e.Root.P1.Skin.InputBorderThickness()
 }
 
 func (e *Input) onKeyPress(evt *Event) {
@@ -246,7 +248,7 @@ func (e *Input) mousePosToCol(evt *Event) int {
   // RIGHT ALIGN
 
   // from right
-  relX = e.width - relX - e.padding[1] - e.borderT
+  relX = e.width - relX - e.padding[1] - e.borderT()
 
   colFromRight := math.Floor((float64(relX))/e.text.RefAdvance() + 0.5)
   if colFromRight < 0.0 {
@@ -329,7 +331,7 @@ func (e *Input) atEnd() bool {
 }
 
 func (e *Input) maxLen() int {
-  return (e.width - e.padding[1] - e.padding[3] - 2*e.borderT)/int(e.text.RefAdvance())
+  return (e.width - e.padding[1] - e.padding[3] - 2*e.borderT())/int(e.text.RefAdvance())
 }
 
 func (e *Input) delSel() {
@@ -446,9 +448,7 @@ func (e *Input) Show() {
 }
 
 func (e *Input) setTypesAndTCoords() {
-  x0, y0 := e.Root.P1.Skin.InputOrigin()
-
-  setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, e.borderT, e.Root.P1.Skin.InputBGColor())
+  setInputLikeElementTypesAndTCoords(e.Root, e.p1Tris)
 
   e.setVBarTypeAndColor()
 }
@@ -543,7 +543,7 @@ func (e *Input) calcVBarPos(maxZIndex int) {
   y0 := e.height/2 - e.barHeight/2
 
   // Right Aligned
-  x0 := e.width - e.padding[1] - e.borderT - 
+  x0 := e.width - e.padding[1] - e.borderT() - 
     int(math.Ceil(float64(len(e.value) - e.selStart())*e.text.RefAdvance()))
 
   tri0 := e.p1Tris[18]
@@ -592,15 +592,15 @@ func (e *Input) CalcDepth(stack *ElementStack) {
 func (e *Input) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   w, h := e.GetSize()
 
-  e.SetBorderedElementPos(e.width, e.height, e.borderT, maxZIndex)
+  e.SetBorderedElementPos(w, h, e.borderT(), maxZIndex)
 
   for _, textElem := range []*Text{e.text, e.selText} {
-    textWidth, textHeight := textElem.CalcPos(e.width - e.padding[1] - e.padding[3] - 2*e.borderT, 0, maxZIndex)
+    textWidth, textHeight := textElem.CalcPos(w - e.padding[1] - e.padding[3] - 2*e.borderT(), 0, maxZIndex)
 
     // RIGHT ALIGN
     textElem.Translate(
-      e.width - e.borderT - textWidth - e.padding[1], 
-      (e.height - textHeight)/2)
+      w - e.borderT() - textWidth - e.padding[1], 
+      (h - textHeight)/2)
   }
 
   e.calcVBarPos(maxZIndex)

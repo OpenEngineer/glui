@@ -10,7 +10,8 @@ type Event struct {
   X int // mouse X pos (left edge of window is 0)
   Y int // mouse Y pos (top edge of window is 0)
 
-  XRel int
+  // mouse movement since last event, 0 if irrelevant
+  XRel int 
   YRel int
 
   Key   string // empty if not a key event
@@ -22,6 +23,8 @@ type Event struct {
 
   stopBubblingElement Element // exclusive
   stopBubbling bool
+
+  stopPropagation bool // multiple functions can be tied to a single eventlisteners, this stops older functions from being called
 }
 
 func NewMouseEvent(x, y int) *Event {
@@ -32,7 +35,12 @@ func NewMouseEvent(x, y int) *Event {
     y = int(y_)
   }
 
-  return &Event{x, y, 0, 0, "", false, false, false, "", nil, false}
+  ks := sdl.GetKeyboardState()
+  ctrl := ks[sdl.SCANCODE_LCTRL] > 0 || ks[sdl.SCANCODE_RCTRL] > 0
+  shift := ks[sdl.SCANCODE_LSHIFT] > 0 || ks[sdl.SCANCODE_RSHIFT] > 0
+  alt := ks[sdl.SCANCODE_LALT] > 0 || ks[sdl.SCANCODE_RALT] > 0
+
+  return &Event{x, y, 0, 0, "", ctrl, shift, alt, "", nil, false, false}
 }
 
 func NewMouseMoveEvent(x, y int, dx, dy int) *Event {
@@ -44,11 +52,11 @@ func NewMouseMoveEvent(x, y int, dx, dy int) *Event {
 }
 
 func NewKeyboardEvent(keyName string, ctrl bool, shift bool, alt bool) *Event {
-  return &Event{0, 0, 0, 0, keyName, ctrl, shift, alt, "", nil, false}
+  return &Event{0, 0, 0, 0, keyName, ctrl, shift, alt, "", nil, false, false}
 }
 
 func NewTextInputEvent(str string) *Event {
-  return &Event{0, 0, 0, 0, "", false, false, false, str, nil, false}
+  return &Event{0, 0, 0, 0, "", false, false, false, str, nil, false, false}
 }
 
 func (e *Event) StopBubbling() {
@@ -73,6 +81,14 @@ func (e *Event) IsKeyboardEvent() bool {
 
 func (e *Event) IsReturnOrSpace() bool {
   return e.Key == "space" || e.Key == "return"
+}
+
+func (e *Event) IsTab() bool {
+  return e.Key == "tab"
+}
+
+func (e *Event) RelPos(r Rect) (int, int) {
+  return e.X - r.X, e.Y - r.Y
 }
 
 func extractKeyboardEventDetails(event *sdl.KeyboardEvent) (string, string, bool, bool, bool) {
@@ -130,6 +146,9 @@ func extractKeyboardEventDetails(event *sdl.KeyboardEvent) (string, string, bool
     break
   case sdl.K_RETURN, sdl.K_RETURN2:
     kType = "return"
+    break
+  case sdl.K_ESCAPE:
+    kType = "escape"
     break
   }
 

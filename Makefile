@@ -17,6 +17,8 @@ pkg=$(shell find . -name \*.go)
 
 all: $(generator) $(dsts)
 
+main: ./build/main
+
 ms: $(dsts_windows_amd64)
 
 mac: $(dsts_darwin_amd64)

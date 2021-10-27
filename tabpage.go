@@ -5,6 +5,7 @@ import (
 
 //go:generate ./gen_element tabPage "CalcDepth AContainer PaddingContainer SpacingContainer"
 
+// we don't want to export tabPage, but instead let it be used as a Container
 type tabPage struct {
   ElementData
 

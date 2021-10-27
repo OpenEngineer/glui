@@ -116,6 +116,7 @@ func (e *Root) Animate(tick uint64) {
   e.FocusRect.Animate(tick)
 }
 
+// if this function returns `false` incorrectly, then oldMouseElement probably doesnt correctly have Body as ancestor
 func (e *Root) findMouseElement(oldMouseElement Element, x, y int) (Element, bool) {
   if e.Menu.IsHit(x, y) {
     if oldMouseElement == nil {

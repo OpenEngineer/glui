@@ -5,6 +5,7 @@ func (e *Caption) CalcDepth(stack *ElementStack) {
     child.CalcDepth(stack)
   }
 }
+
 func (e *Caption) appendChild(children ...Element) Element {
   for _, child := range children {
     e.children = append(e.children, child)
@@ -12,3 +13,4 @@ func (e *Caption) appendChild(children ...Element) Element {
   }
   return e
 }
+

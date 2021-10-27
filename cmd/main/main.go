@@ -1,6 +1,8 @@
 package main
 
 import (
+  //"time"
+
   "github.com/computeportal/glui"
 )
 
@@ -24,8 +26,10 @@ func main() {
   //tabbed.NewTab("Tab three", true)
   //tabbed.NewTab("Tab four", true)
 
-  button1 := glui.NewButton(root)
-  button1.A(glui.NewHor(root, glui.CENTER, glui.CENTER, 0).A(glui.NewSans(root, "Submit", 10)))
+  // the following 2 Submit buttons are equivalent
+  button1 := glui.NewCaptionButton(root, "Submit")
+  //button1_ := glui.NewButton(root)
+  //button1_.A(glui.NewHor(root, glui.CENTER, glui.CENTER, 0).A(glui.NewSans(root, "Submit", 10))) 
 
   input1 := glui.NewInput(root).Padding(0, 2)
 
@@ -41,10 +45,20 @@ func main() {
 
   tabPage2.A(dropdown)
 
-  tabbed2 := glui.NewTabbed(root)
-  tabbed2.NewTab("other side", false)
+  //tabbed2 := glui.NewTabbed(root)
+  //otherSidePage := tabbed2.NewTab("other side", false)
 
-  vsplit := glui.NewVSplit(root).A(tabbed, tabbed2)
+  table := glui.NewTable(root).MasterColumn(0)
+  column1 := glui.NewTextColumn(root, "Name")
+  column2 := glui.NewDateColumn(root, "Date")
+  table.A(column1, column2)
+  //otherSidePage.A(table.A(
+
+  table.AddRow("Alice", "1865-10-26")
+  table.AddRow("Bob", "1945-02-06")
+  table.AddRow("Charlie", "1889-04-16")
+
+  vsplit := glui.NewVSplit(root).A(table, tabbed)
 
   body.A(vsplit)
 

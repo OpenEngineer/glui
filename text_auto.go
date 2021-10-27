@@ -5,7 +5,14 @@ func (e *Text) CalcDepth(stack *ElementStack) {
     child.CalcDepth(stack)
   }
 }
+
 func (e *Text) On(name string, fn EventListener) *Text {
-  e.evtListeners[name] = fn
+  old := e.evtListeners[name]
+  if old == nil {
+    e.evtListeners[name] = fn
+  } else {
+    e.evtListeners[name] = func(evt *Event) {fn(evt); if !evt.stopPropagation {old(evt)}}
+  }
   return e
 }
+

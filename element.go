@@ -16,7 +16,7 @@ type Element interface {
   CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) // ***must be implemented by custom Element***
   Animate(tick uint64) // defaults to passing Animate to children
 
-  Rect() Rect           // implemented by ElementData, needed for focusbox and menu anchors
+  Rect() Rect           // implemented by ElementData, needed for focusrect and menu anchors
   ZIndex() int          // implemented by ElementData
   Hit(x, y int) int     // return -1 if no hit, otherwise returns zIndex, implemented by ElementData
   Translate(dx, dy int) // implemented by ElementData
@@ -28,10 +28,12 @@ type Element interface {
   Enable() // implemented by ElementData
   Disable() // implemented by ElementData
 
-  GetEventListener(name string) EventListener // returns nil if no EventListener specified
+  GetEventListener(name string) EventListener // returns nil if no EventListener specified, implemented by ElementData
 
   Delete() // deallocs all owned tris, implemented by ElementData
-  Deleted() bool
+  Deleted() bool // implemented by ElementData
+
+  IsFocusable() bool // implemented by ElementData in general case (i.e. hasEvent(e, "focus) && e.Visible())
 }
 
 type Container interface {
@@ -44,11 +46,11 @@ type Container interface {
   ClearChildren()
 }
 
-// other utility methods often implemented by Elements
+// other utility methods often implemented by Elements, but not part of interface
 //  * InitRect(w, h int) (w, h)
 //  * A(children ...Element) Element
 //  * Size(w, h int) Element
-//  * GetSize() (int, int)
+//  * GetSize() (int, int)                       // implement by ElementData
 //  * Padding(p ...int) Element
 //  * Spacing(s int) Element
 //  * On(name string, fn EventListener) Element

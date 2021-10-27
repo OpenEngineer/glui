@@ -70,7 +70,10 @@ func (e *FocusRect) CalcPos(maxWidth, maxHeight, maxZIndex int) {
   
   fmt.Println("focusrect anchor: ", reflect.TypeOf(e.anchor).String())
 
-  z := normalizeZIndex(e.anchor.ZIndex(), maxZIndex)
+  // z should be pretty high
+  zId := e.anchor.ZIndex()
+  zId = e.root.Menu.ZIndex() - 1
+  z := normalizeZIndex(zId, maxZIndex)
 
   r := e.anchor.Rect()
 

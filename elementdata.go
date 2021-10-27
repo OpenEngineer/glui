@@ -296,9 +296,21 @@ func (e *ElementData) SetButtonPos(maxWidth, maxHeight, maxZIndex int) (int, int
 
   w, h := e.GetSize()
 
+  if w > maxWidth {
+    w = maxWidth
+  }
+
+  if h > maxHeight {
+    h = maxHeight
+  }
+
   e.SetBorderedElementPos(w, h, t, maxZIndex)
 
   e.CalcPosChildren(w, h, maxZIndex)
 
   return e.InitRect(w, h)
+}
+
+func (e *ElementData) IsFocusable() bool {
+  return e.GetEventListener("focus") != nil && e.Visible()
 }
