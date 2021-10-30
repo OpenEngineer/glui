@@ -4,7 +4,7 @@ import (
   "math"
 )
 
-//go:generate ./gen_element Hor "A CalcDepth Padding Spacing"
+//go:generate ./gen_element Hor "A CalcDepth Padding Spacing H"
 
 // special element that is just used for positioning of children
 type Hor struct {
@@ -100,16 +100,23 @@ func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     }
   }
 
+  h := e.height
+  if h < 0 {
+    h = maxHeight
+  } else if h < maxChildH + e.padding[0] + e.padding[2] {
+    h = maxChildH + e.padding[0] + e.padding[2]
+  }
+
   if someDXSet || e.vAlign != START {
     for i, child := range e.children {
       dy := 0
 
       switch e.vAlign {
       case CENTER:
-        dy = (maxHeight - childHs[i] - e.padding[0] - e.padding[2])/2
+        dy = (h - childHs[i] - e.padding[0] - e.padding[2])/2
         break
       case END:
-        dy = (maxHeight - childHs[i] - e.padding[2])
+        dy = (h - childHs[i] - e.padding[2])
         break
       }
 
@@ -117,7 +124,10 @@ func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     }
   } 
 
-  totalWidth := x + dx[len(dx)-1] + e.padding[1]
+  totalWidth := x + e.padding[1]
+  if len(dx) > 0 {
+    totalWidth += dx[len(dx)-1]
+  }
 
-  return e.InitRect(totalWidth, maxHeight)
+  return e.InitRect(totalWidth, h)
 }

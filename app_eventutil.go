@@ -29,7 +29,7 @@ func TriggerEvent(e Element, name string, evt *Event) {
 }
 
 func (app *App) triggerHitEvent(name string, evt *Event) {
-  if !app.state.mouseElement.Deleted() {
+  if elementNotNil(app.state.mouseElement) {
     TriggerEvent(app.state.mouseElement, name, evt)
   }
 }

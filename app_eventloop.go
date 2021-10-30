@@ -27,13 +27,12 @@ func (app *App) forwardSystemAndUserEvents() error {
       if err := HandleSysWMEvent(app, event); err != nil{
         return err
       }
-      break
     case *sdl.QuitEvent:
+      app.eventCh <- event_
       running = false
-      break
+      sdl.Delay(START_DELAY) // give the draw loop some time to exit cleanly
     default:
       app.eventCh <- event_
-      break
     }
   }
 
@@ -98,84 +97,77 @@ func (app *App) emitAnimationEvents() {
 func (app *App) initMainEventLoop(m *sync.Mutex) {
   app.initDrawLoop(m)
 
+  Outer:
   for {
     event_ := <- app.eventCh
 
     switch event := event_.(type) {
     case *animationEvent:
       app.onTick(event)
-      break
     case *sdl.MouseMotionEvent:
       app.onMouseMove(event)
-      break
     case *sdl.MouseButtonEvent:
-      if app.root.Menu.Visible() && !app.root.Menu.IsHit(int(event.X), int(event.Y)) && !app.root.Menu.IsOwnedBy(app.state.mouseElement) {
-        if hasEvent(app.root.Menu.anchor, "mousebuttonoutsidemenu") {
-          TriggerEvent(app.root.Menu.anchor, "mousebuttonoutsidemenu", 
-            NewMouseEvent(int(event.X), int(event.Y)))
-        } else {
-          app.root.Menu.Hide()
+      if app.state.blockNextMouseButtonEvent {
+        app.state.blockNextMouseButtonEvent = false
+      } else {
+        evt := NewMouseEvent(int(event.X), int(event.Y))
+
+        if app.root.Menu.Visible() && !app.root.Menu.IsHit(int(event.X), int(event.Y)) && !app.root.Menu.IsOwnedBy(app.state.mouseElement) {
+          if hasEvent(app.root.Menu.anchor, "mousebuttonoutsidemenu") {
+            TriggerEvent(app.root.Menu.anchor, "mousebuttonoutsidemenu", evt)
+          } else {
+            app.root.Menu.Hide()
+          }
+        }
+
+        if !evt.stopPropagation { // TODO: also propagate to subsequent MOUSEBUTTONUP
+          if event.Type == sdl.MOUSEBUTTONDOWN {
+            app.onMouseDown(event)
+          } else if event.Type == sdl.MOUSEBUTTONUP {
+            app.onMouseUp(event)
+          }
+        } else if event.Type == sdl.MOUSEBUTTONDOWN {
+          app.state.blockNextMouseButtonEvent = true
         }
       }
-
-      if event.Type == sdl.MOUSEBUTTONDOWN {
-        app.onMouseDown(event)
-      } else if event.Type == sdl.MOUSEBUTTONUP {
-        app.onMouseUp(event)
-      }
-
-      break
     case *sdl.TextInputEvent:
       app.onTextInput(event)
-      break
     case *sdl.KeyboardEvent:
       // tab and shift-tab cycle through the focusable elements
       if event.Keysym.Sym == sdl.K_TAB && event.State == sdl.PRESSED {
         app.onTab(event)
+      } else if event.Keysym.Sym == sdl.K_F4 && event.State == sdl.PRESSED && (event.Keysym.Mod & sdl.KMOD_ALT > 0) {
+        app.Quit() // which throws another event!
+      } else if event.Keysym.Sym == sdl.K_q && event.State == sdl.PRESSED && (event.Keysym.Mod & sdl.KMOD_CTRL > 0) {
+        app.Quit() // which throws another event!
       } else {
         app.onKeyPress(event)
       }
-
-      break
     case *sdl.WindowEvent:
       switch event.Event {
       case sdl.WINDOWEVENT_SHOWN:
-        //fmt.Println("  window shown event")
         app.onShowOrResize()
-        break
       case sdl.WINDOWEVENT_EXPOSED:
-        //fmt.Println("  window exposed event")
         app.onShowOrResize()
-        break
       case sdl.WINDOWEVENT_RESIZED:
-        //fmt.Println("  window resized event")
         app.onShowOrResize()
-        break
       case sdl.WINDOWEVENT_MAXIMIZED:
-        //fmt.Println("  window maximized event")
         app.onShowOrResize()
-        break
       case sdl.WINDOWEVENT_RESTORED:
-        //fmt.Println("  window restored event")
         app.onShowOrResize()
-        break
       case sdl.WINDOWEVENT_FOCUS_LOST:
-        //fmt.Println("  window focus lost event")
         app.onBlur()
-        break
       case sdl.WINDOWEVENT_FOCUS_GAINED:
-        //fmt.Println("  window focus gained event")
         app.onFocus()
-        break
       case sdl.WINDOWEVENT_LEAVE:
-        //fmt.Println("  window leave event")
+        app.state.blockNextMouseButtonEvent = false
         app.onLeave()
-        break
       case sdl.WINDOWEVENT_ENTER:
-        //fmt.Println("  window enter event")
         app.onEnter()
-        break
       }
+    case *sdl.QuitEvent:
+      // TODO: optionally catch this event with an eventlistener that can still decide not to quit
+      break Outer
     default:
       fmt.Println("unhandled event ", reflect.TypeOf(event_).String())
     }
@@ -210,15 +202,15 @@ func (app *App) onMouseDown(event *sdl.MouseButtonEvent) {
 
   app.state.lastDown = app.state.mouseElement
 
-  if event.Button == sdl.BUTTON_LEFT {
-    app.state.lastDownX = int(event.X)
-    app.state.lastDownY = int(event.Y)
-    app.state.mouseMoveSumX = 0
-    app.state.mouseMoveSumY = 0
+  app.state.lastDownX = int(event.X)
+  app.state.lastDownY = int(event.Y)
+  app.state.mouseMoveSumX = 0
+  app.state.mouseMoveSumY = 0
 
+  if event.Button == sdl.BUTTON_LEFT {
     app.triggerHitEvent("mousedown", NewMouseEvent(int(event.X), int(event.Y)))
   } else if event.Button == sdl.BUTTON_RIGHT {
-    app.triggerHitEvent("rightclick", NewMouseEvent(int(event.X), int(event.Y)))
+    app.triggerHitEvent("rightmousedown", NewMouseEvent(int(event.X), int(event.Y)))
   }
 
   if !hasAncestor(app.state.mouseElement, app.root.Menu) {
@@ -232,29 +224,32 @@ func (app *App) onMouseDown(event *sdl.MouseButtonEvent) {
 }
 
 func (app *App) onMouseUp(event *sdl.MouseButtonEvent) {
-  if !app.state.outside && event.Button == sdl.BUTTON_LEFT {
+  fnTrigger := func() {
+    if event.Button == sdl.BUTTON_LEFT {
+      app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
+      app.detectClick(int(event.X), int(event.Y)) // turn mouseup into click, doubleclick or tripleclick
+    } else if event.Button == sdl.BUTTON_RIGHT {
+      app.triggerHitEvent("rightmouseup", NewMouseEvent(int(event.X), int(event.Y)))
+      app.triggerHitEvent("rightclick", NewMouseEvent(int(event.X), int(event.Y)))
+    }
+  }
+
+  if !app.state.outside {
+    // lastdown also gets a mouseup/rightclick event
     if elementNotNil(app.state.lastDown) && app.state.lastDown != app.state.mouseElement {
       tmp := app.state.mouseElement
       app.state.mouseElement = app.state.lastDown
 
-      app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
+      fnTrigger()
 
       app.state.mouseElement = tmp
     }
 
-    app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
-
-    app.detectClick(int(event.X), int(event.Y))
-
-    //app.updateCursor()
+    fnTrigger()
   } else {
-    if event.Button == sdl.BUTTON_LEFT {
-      app.state.mouseElement = app.state.lastDown
+    app.state.mouseElement = app.state.lastDown
 
-      app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
-
-      app.detectClick(int(event.X), int(event.Y))
-    }
+    fnTrigger()
 
     app.state.mouseElement = nil
   }
@@ -327,8 +322,6 @@ func (app *App) onTab(event *sdl.KeyboardEvent) {
   } else {
     if elementNotNil(app.state.focusElement) {
       newFocusable = findNextFocusable(app.state.focusElement)
-
-      fmt.Println("found next focusable", dumpElement(newFocusable))
     } else {
       newFocusable = findNextFocusable(app.root.Body)
     }

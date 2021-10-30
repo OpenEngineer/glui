@@ -264,6 +264,8 @@ func (e *Input) mousePosToCol(evt *Event) int {
 }
 
 func (e *Input) onMouseDown(evt *Event) {
+  e.hideMenuIfVisible()
+
   col := e.mousePosToCol(evt)
 
   e.col0 = col
@@ -409,6 +411,12 @@ func (e *Input) menuVisible() bool {
   return e.Root.Menu.IsOwnedBy(e)
 }
 
+func (e *Input) hideMenuIfVisible() {
+  if e.menuVisible() {
+    e.Root.Menu.Hide()
+  }
+}
+
 func (e *Input) focused() bool {
   return e.Root.FocusRect.IsOwnedBy(e)
 }
@@ -476,17 +484,23 @@ func (e *Input) fillRightClickMenu() {
 
   bh := 30
 
-  e.Root.Menu.AddButton("Cut", e.hasSel(), false, bh, func() {
+  cutItem := NewMenuItem(e.Root, "Cut", func() {
     e.cutSel()
-  })
+  }).H(bh)
 
-  e.Root.Menu.AddButton("Copy", e.hasSel(), false, bh, func() {
+  e.Root.Menu.AddItem(cutItem, e.hasSel(), false)
+
+  copyItem := NewMenuItem(e.Root, "Copy", func() {
     e.copySel()
-  })
+  }).H(bh)
 
-  e.Root.Menu.AddButton("Paste", sdl.HasClipboardText(), false, bh, func() {
+  e.Root.Menu.AddItem(copyItem, e.hasSel(), false)
+
+  pasteItem := NewMenuItem(e.Root, "Paste", func() {
     e.insertClipboard()
-  })
+  }).H(bh)
+
+  e.Root.Menu.AddItem(pasteItem, sdl.HasClipboardText(), false)
 }
 
 func (e *Input) showVBar() {

@@ -242,6 +242,48 @@ void main() {
   return b.String()
 }
 
+func vertexShaderGaussBlur() string {
+  var b strings.Builder
+  
+  b.WriteString("#version 410\n")
+
+  b.WriteString(`
+in vec2 aCoord;
+
+out vec2 vCoord;
+
+void main() {
+  gl_Position = vec4(aCoord.x*2.0 - 1.0, aCoord.y*2.0 - 1.0, 0.0, 1.0);
+
+  vCoord = aCoord;
+}
+`)
+
+  b.WriteString("\x00")
+
+  return b.String()
+}
+
+func fragmentShaderGaussBlur() string {
+  var b strings.Builder
+
+  b.WriteString("#version 410\n")
+
+  b.WriteString(`
+in vec2 vCoord;
+
+out vec4 oColor;
+
+void main() {
+  oColor = vec4(1.0,1.0,0.0,1.0);
+}
+`)
+
+  b.WriteString("\x00")
+
+  return b.String()
+}
+
 // copied from https://kylewbanks.com/blog/tutorial-opengl-with-golang-part-1-hello-opengl
 func compileShader(source string, shaderType uint32) (uint32, error) {
   shader := gl.CreateShader(shaderType)
@@ -257,6 +299,7 @@ func compileShader(source string, shaderType uint32) (uint32, error) {
     var logLength int32
     gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
 
+    fmt.Println("shader compilation log length:", logLength)
     log := strings.Repeat("\x00", int(logLength+1))
     gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(log))
 
@@ -304,4 +347,9 @@ func compileProgram1() (uint32, error) {
 
 func compileProgram2() (uint32, error) {
   return compileProgram(vertexShader2(), fragmentShader2())
+}
+
+func compileProgramGaussBlur() (uint32, error) {
+  return compileProgram(vertexShaderGaussBlur(), fragmentShaderGaussBlur())
+  //return compileProgram(vertexShader2(), fragmentShader2())
 }

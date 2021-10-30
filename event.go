@@ -87,6 +87,10 @@ func (e *Event) IsTab() bool {
   return e.Key == "tab"
 }
 
+func (e *Event) IsEscape() bool {
+  return e.Key == "escape"
+}
+
 func (e *Event) RelPos(r Rect) (int, int) {
   return e.X - r.X, e.Y - r.Y
 }

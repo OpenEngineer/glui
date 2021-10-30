@@ -30,7 +30,7 @@ func NewFlatIconButton(root *Root, iconName string, iconSize int) *Button {
   icon := NewIcon(root, iconName, iconSize)
 
   button := NewFlatButton(root)
-  button.A(NewHor(root, CENTER, CENTER, 0).A(icon))
+  button.A(NewHor(root, CENTER, CENTER, 0).H(-1).A(icon))
 
   return button
 }
@@ -74,7 +74,7 @@ func NewCaptionButton(root *Root, caption string, optArgs ...interface{}) *Butto
     panic("unexpected number of args")
   }
 
-  hor := NewHor(root, hAlign, vAlign, 0)
+  hor := NewHor(root, hAlign, vAlign, 0).H(-1)
 
   hor.A(NewSans(root, caption, 10))
   hor.Padding(0, lrPadding, 0, lrPadding)
@@ -113,18 +113,19 @@ func (e *Button) Cursor() int {
   return e.ButtonCursor(e.enabled)
 }
 
+// set onClick here, so it can also be accessed by the keypresses
 func (e *Button) OnClick(fn func()) {
   e.onClick = fn
 }
 
 func (e *Button) setState(down bool, inside bool) {
-  curPressed := e.down && e.inside
+  curPressed := e.down && (e.inside || e.sticky)
 
   e.down = down
   oldInside := e.inside
   e.inside = inside
 
-  newPressed := e.down && e.inside
+  newPressed := e.down && (e.inside || e.sticky)
 
   if e.enabled {
     if curPressed != newPressed || (e.flat && e.inside != oldInside) {
@@ -150,7 +151,9 @@ func (e *Button) onMouseDown(evt *Event) {
 }
 
 func (e *Button) onMouseUp(evt *Event) {
-  e.setState(false, e.inside)
+  if !e.sticky {
+    e.setState(false, e.inside)
+  }
 }
 
 func (e *Button) triggerClick(evt *Event) {
@@ -207,11 +210,16 @@ func (e *Button) onKeyDown(evt *Event) {
 func (e *Button) onKeyUp(evt *Event) {
   if evt.IsReturnOrSpace() {
     curPressed := e.down
-    e.down = false
+
+    if !e.sticky {
+      e.down = false
+    }
+
+    if curPressed && !e.sticky {
+      e.setTypesAndTCoords(false)
+    }
 
     if curPressed {
-      e.setTypesAndTCoords(false)
-
       e.triggerClick(evt)
     }
   }
@@ -266,4 +274,10 @@ func (e *Button) Hide() {
   //e.setState(false, false)
 
   e.ElementData.Hide()
+}
+
+func (e *Button) Unstick() {
+  if e.sticky {
+    e.setState(false, e.inside)
+  }
 }

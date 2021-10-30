@@ -149,11 +149,13 @@ func (e *ElementData) Tooltip() string {
 }
 
 func (e *ElementData) RegisterParent(parent Element) {
-  if e.parent != nil {
+  if parent == nil {
+    e.parent = nil
+  } else if e.parent != nil {
     panic("parent already registered")
+  } else {
+    e.parent = parent
   }
-
-  e.parent = parent
 }
 
 func (e *ElementData) GetEventListener(name string) EventListener {
@@ -247,14 +249,16 @@ func (e *ElementData) Delete() {
   }
 
   e.Root.P1.Dealloc(e.p1Tris)
-
   e.Root.P2.Dealloc(e.p2Tris)
 
   e.deleted = true
   e.p1Tris = nil
   e.p2Tris = nil
+  e.parent = nil
 
   e.Root.ForcePosDirty()
+
+  e.Root = nil // so error is thrown if deletion is tried again
 }
 
 func (e *ElementData) Deleted() bool {

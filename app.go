@@ -29,6 +29,7 @@ type App struct {
   framebuffers [2]uint32 // for windows thumbnail drawing
   program1 uint32
   program2 uint32
+  programGaussBlur uint32
 
   ctx    sdl.GLContext
   debug  *os.File
@@ -51,6 +52,7 @@ type AppState struct {
   upCount        int // limited to three
   lastTick       uint64
   lastUpTick     uint64
+  blockNextMouseButtonEvent bool
 }
 
 func newAppState() AppState {
@@ -64,6 +66,7 @@ func newAppState() AppState {
     0,0,
     0,
     0,0,
+    false,
   }
 }
 
@@ -93,6 +96,7 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
     [2]uint32{0, 0},
     0,
     0,
+    0,
     nil,
     debug,
     newAppState(),
@@ -120,59 +124,60 @@ func (app *App) run() error {
 
   defer sdl.Quit()
 
-  var err error
+  // can we get the size of the displayable area before creating the window?
+  dm, err := sdl.GetCurrentDisplayMode(0)
+  if err != nil {
+    return err
+  }
+
+  fmt.Println(dm.W, dm.H)
+
   app.window, err = sdl.CreateWindow(
     app.name, 
     sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
     0, 0, 
-    sdl.WINDOW_SHOWN | sdl.WINDOW_RESIZABLE | sdl.WINDOW_OPENGL | sdl.WINDOW_MAXIMIZED | sdl.WINDOW_ALLOW_HIGHDPI,
+    sdl.WINDOW_RESIZABLE | sdl.WINDOW_OPENGL | sdl.WINDOW_MAXIMIZED, // doesn't work in ratpoison wm manager for some reason,
   )
   if err != nil {
     return err
   }
 
-  defer app.window.Destroy()
+  app.window.SetMinimumSize(1024, 764)
 
-  app.window.SetMinimumSize(1024, 768)
+  defer app.window.Destroy()
 
   if err := InitOS(app.window); err != nil {
     return err
   }
 
+  // give opengl some time to initialize
   sdl.Delay(START_DELAY)
-
-  app.window.Maximize()
 
   app.root.show()
 
   m := &sync.Mutex{}
-
-  /*go func(m_ *sync.Mutex) {
-    app.initDrawLoop(m)
-  }(m)
-
-  sdl.Delay(START_DELAY)
-
-  m.Lock()
-
-  m.Unlock()*/
 
   // both animation and system/user events are serialized by a separate thread
   go func(m_ *sync.Mutex) {
     app.initMainEventLoop(m_)
   }(m)
 
+  // make sure the mutex is locked/unlocked by initMainEventLoop()
   sdl.Delay(START_DELAY)
 
+  // once we are able to unlock the mutex here, we can start emitting events
   m.Lock()
-
   m.Unlock()
-
   go func() {
     app.emitAnimationEvents()
   }()
 
-  // here we are in the main thread and must this thread must be used to detect 
-  //  system and user events, which are forwarded into the main event loop (separate thread)
+  // here we are in the main thread and this thread must be used to detect system and user events, 
+  // which are forwarded into the main event loop (separate thread)
   return app.forwardSystemAndUserEvents()
+}
+
+func (app *App) Quit() {
+  // XXX: does the timestamp matter?
+  sdl.PushEvent(&sdl.QuitEvent{sdl.QUIT, 0})
 }

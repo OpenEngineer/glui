@@ -23,7 +23,6 @@ type Float32Buffer struct {
   nComp int // 1, 2, 3 or 4
 
   loc uint32
-  vao uint32
   vbo uint32
 
   data []float32 // 3 coords per vertex, 3 vertices per tri
@@ -35,7 +34,6 @@ type UInt8Buffer struct {
   nComp int // 1, 2, 3 or 4
 
   loc uint32
-  vao uint32
   vbo uint32
 
   data []uint8
@@ -69,7 +67,7 @@ type DrawPass2Data struct {
 }
 
 func NewFloat32Buffer(nComp int) *Float32Buffer {
-  b := &Float32Buffer{nComp, 0, 0, 0, make([]float32, N_INIT_TRIS*3*nComp), true}
+  b := &Float32Buffer{nComp, 0, 0, make([]float32, N_INIT_TRIS*3*nComp), true}
 
   return b
 }
@@ -78,8 +76,6 @@ func (b *Float32Buffer) InitGL(location uint32) {
   b.loc = location
 
   gl.GenBuffers(1, &b.vbo)
-  gl.GenVertexArrays(1, &b.vao)
-  gl.BindVertexArray(b.vao)
   gl.EnableVertexAttribArray(b.loc)
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.FLOAT, false, 0, nil)
@@ -90,7 +86,7 @@ func (b *Float32Buffer) InitGL(location uint32) {
 }
 
 func NewUInt8Buffer(nComp int) *UInt8Buffer {
-  b := &UInt8Buffer{nComp, 0, 0, 0, make([]uint8, N_INIT_TRIS*3*nComp), true}
+  b := &UInt8Buffer{nComp, 0, 0, make([]uint8, N_INIT_TRIS*3*nComp), true}
 
   return b
 }
@@ -99,8 +95,6 @@ func (b *UInt8Buffer) InitGL(location uint32) {
   b.loc = location
 
   gl.GenBuffers(1, &b.vbo)
-  gl.GenVertexArrays(1, &b.vao)
-  gl.BindVertexArray(b.vao)
   gl.EnableVertexAttribArray(b.loc)
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.UNSIGNED_BYTE, false, 0, nil)
@@ -497,14 +491,12 @@ func (b *UInt8Buffer) sync() {
 }
 
 func (b *Float32Buffer) bind() {
-  //gl.BindVertexArray(b.vao)
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.FLOAT, false, 0, nil)
   gl.EnableVertexAttribArray(b.loc)
 }
 
 func (b *UInt8Buffer) bind() {
-  //gl.BindVertexArray(b.vao)
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.UNSIGNED_BYTE, false, 0, nil)
   gl.EnableVertexAttribArray(b.loc)

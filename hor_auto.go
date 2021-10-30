@@ -42,3 +42,9 @@ func (e *Hor) Spacing(s int) *Hor {
   return e
 }
 
+func (e *Hor) H(h int) *Hor {
+  e.height = h
+  e.Root.ForcePosDirty()
+  return e
+}
+

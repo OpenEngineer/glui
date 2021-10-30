@@ -54,9 +54,9 @@ func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool)
 
     closeButton.OnClick(e.onClickCloseButton)
 
-    e.appendChild(NewHor(root, STRETCH, CENTER, 0).Padding(0, 10).A(caption, closeButton))
+    e.appendChild(NewHor(root, STRETCH, CENTER, 0).H(-1).Padding(0, 10).A(caption, closeButton))
   } else {
-    e.appendChild(NewHor(root, START, CENTER, 0).Padding(0, 10).A(caption))
+    e.appendChild(NewHor(root, START, CENTER, 0).H(-1).Padding(0, 10).A(caption))
   }
 
   e.On("mousedown", e.onMouseDown)

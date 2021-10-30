@@ -9,10 +9,7 @@ import (
 func main() {
   app := glui.NewApp("test", &glui.ClassicSkin{}, MakeGlyphs())
 
-  root := app.Root()
-
-  //rainbow1 := glui.NewRainbow(dd)
-  //rainbow2 := glui.NewRainbow(dd)
+  root := app.Root() // single (global) root, or multiple roots?
 
   body := app.Body()
   body.Padding(10)
@@ -22,9 +19,6 @@ func main() {
   tabPage1.Spacing(10)
 
   tabPage2 := tabbed.NewTab("Tab two", true)
-
-  //tabbed.NewTab("Tab three", true)
-  //tabbed.NewTab("Tab four", true)
 
   // the following 2 Submit buttons are equivalent
   button1 := glui.NewCaptionButton(root, "Submit")
@@ -37,7 +31,7 @@ func main() {
   button2 := glui.NewFlatIconButton(root, "floppy", 30).Size(40, 40)
   //button2.A(glui.NewHor(root, glui.CENTER, glui.CENTER, 0).A(icon))
 
-  dropdown := glui.NewDropdown(root, []string{"Dog", "Cat", "Hamster"})
+  dropdown := glui.NewSelect(root, []string{"Dog", "Cat", "Hamster"})
 
 
   tabPage1.A(input1, button1, button2)
@@ -62,6 +56,21 @@ func main() {
   vsplit.MinIntervals([]int{300, 300})
   vsplit.A(table, tabbed)
 
+
+  menuItems:= []glui.MenuItemConfig {
+    glui.MenuItemConfig{
+      "Close",
+      func(){app.Quit()},
+      120,
+    },
+    glui.MenuItemConfig{
+      "Blur",
+      func(){app.DrawBlurred()},
+      120,
+    },
+  }
+
+  body.A(glui.NewHor(root, glui.END, glui.CENTER, 0).A(glui.NewIconDropdown(root, "menu", 30, glui.END, menuItems).Size(40, 40)))
   body.A(vsplit)
 
   app.Run()

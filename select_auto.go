@@ -1,5 +1,5 @@
 package glui
-func (e *Dropdown) appendChild(children ...Element) Element {
+func (e *Select) appendChild(children ...Element) Element {
   for _, child := range children {
     e.children = append(e.children, child)
     child.RegisterParent(e)
@@ -7,14 +7,14 @@ func (e *Dropdown) appendChild(children ...Element) Element {
   return e
 }
 
-func (e *Dropdown) CalcDepth(stack *ElementStack) {
+func (e *Select) CalcDepth(stack *ElementStack) {
   e.zIndex = stack.Add(e, e.closerThan)
   for _, child := range e.Children() {
     child.CalcDepth(stack)
   }
 }
 
-func (e *Dropdown) On(name string, fn EventListener) *Dropdown {
+func (e *Select) On(name string, fn EventListener) *Select {
   old := e.evtListeners[name]
   if old == nil {
     e.evtListeners[name] = fn
@@ -24,14 +24,14 @@ func (e *Dropdown) On(name string, fn EventListener) *Dropdown {
   return e
 }
 
-func (e *Dropdown) Size(w, h int) *Dropdown {
+func (e *Select) Size(w, h int) *Select {
   e.width = w
   e.height = h
   e.Root.ForcePosDirty()
   return e
 }
 
-func (e *Dropdown) Padding(p ...int) *Dropdown {
+func (e *Select) Padding(p ...int) *Select {
   switch len(p) {
   case 1:
     e.padding = [4]int{p[0], p[0], p[0], p[0]}

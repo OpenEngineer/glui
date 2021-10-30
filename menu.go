@@ -1,7 +1,6 @@
 package glui
 
 import (
-  "fmt"
 )
 
 //go:generate ./gen_element Menu "A CalcDepth Padding Spacing"
@@ -71,7 +70,6 @@ func (e *Menu) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
 
   w, h := e.GetSize()
 
-  fmt.Println("menu z index: ", e.ZIndex())
   e.SetBorderedElementPos(w, h, t, maxZIndex)
 
   e.ElementData.CalcPosChildren(w, h, maxZIndex)
@@ -79,21 +77,24 @@ func (e *Menu) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   e.InitRect(w, h)
 
   r := e.anchor.Rect()
-  x, y := r.Pos(e.anchorX, e.anchorY)
+  x_, y_ := r.Pos(e.anchorX, e.anchorY)
+
+  x := x_ - int(e.anchorX*float64(w))
+  y := y_ - int((1.0 - e.anchorY)*float64(h))
 
   // bound by window
   W, H := e.Root.GetSize()
 
   if x < 0 {
     x = 0
-  } else if x + r.W > W {
-    x = W - r.W
+  } else if x + w > W {
+    x = W - w
   }
 
   if y < 0 {
     y = 0
-  } else if y + r.H > H {
-    y = H - r.H
+  } else if y + h > H {
+    y = H - h
   }
 
   e.Translate(x, y)
@@ -107,36 +108,40 @@ func (e *Menu) ClearChildren() {
   e.ElementData.ClearChildren()
 }
 
-func (e *Menu) AddButton(caption string, enabled bool, selected bool, height int, callback func()) {
-  button := newMenuButton(e, caption, func() {
-    callback()
-    e.Hide()
-  }).Padding(0, 10)
+func (e *Menu) AddItem(item *MenuItem, enabled bool, selected bool) {
+  // add mouseupeventlistener to close the menu
+  item.On("mouseup", func(evt *Event) {
+    if e.Visible() {
+      e.Hide()
+    } else {
+      evt.stopPropagation = true
+    }
+  })
 
-  button.height = height
+  item.Padding(0, 10)
 
   if !enabled {
-    button.Disable()
+    item.Disable()
   }
 
   if selected {
-    button.Select()
+    item.Select()
   }
 
-  e.A(button)
+  e.A(item)
 
-  e.height += height
+  e.height += item.height
 }
 
 func (e *Menu) IsOwnedBy(el Element) bool {
   return e.anchor == el && e.Visible()
 }
 
-func (e *Menu) loopMenuButtons(fn func(i int, mb *menuButton)) int {
+func (e *Menu) loopMenuItems(fn func(i int, item *MenuItem)) int {
   c := 0
 
   for _, child_ := range e.children {
-    if child, ok := child_.(*menuButton); ok && child.enabled {
+    if child, ok := child_.(*MenuItem); ok && child.enabled {
       fn(c, child)
       c += 1
     }
@@ -145,15 +150,15 @@ func (e *Menu) loopMenuButtons(fn func(i int, mb *menuButton)) int {
   return c
 }
 
-func (e *Menu) countMenuButtons() int {
-  return e.loopMenuButtons(func(i int, mb *menuButton) {})
+func (e *Menu) countMenuItems() int {
+  return e.loopMenuItems(func(i int, item *MenuItem) {})
 }
 
 func (e *Menu) SelectedIndex() int {
   found := -1
 
-  e.loopMenuButtons(func(i int, mb *menuButton) {
-    if found == -1 && mb.Selected() {
+  e.loopMenuItems(func(i int, item *MenuItem) {
+    if found == -1 && item.Selected() {
       found = i
     }
   })
@@ -161,10 +166,10 @@ func (e *Menu) SelectedIndex() int {
   return found
 }
 
-func (e *Menu) unselectOtherMenuButtons(b *menuButton) {
-  e.loopMenuButtons(func(_ int, mb *menuButton) {
-    if mb != b {
-      mb.Unselect()
+func (e *Menu) unselectOtherMenuItems(item *MenuItem) {
+  e.loopMenuItems(func(_ int, otherItem *MenuItem) {
+    if otherItem != item {
+      otherItem.Unselect()
     }
   })
 }
@@ -172,14 +177,14 @@ func (e *Menu) unselectOtherMenuButtons(b *menuButton) {
 func (e *Menu) SelectNext() {
   oldSel := e.SelectedIndex()
 
-  e.loopMenuButtons(func(i int, mb *menuButton) {
+  e.loopMenuItems(func(i int, item *MenuItem) {
     if oldSel == -1 {
-      mb.Select()
+      item.Select()
       oldSel = -2
     } else if i == oldSel + 1 {
-      mb.Select()
+      item.Select()
     } else {
-      mb.Unselect()
+      item.Unselect()
     }
   })
 }
@@ -188,34 +193,43 @@ func (e *Menu) SelectPrev() {
   oldSel := e.SelectedIndex()
 
   if oldSel == -1 {
-    c := e.countMenuButtons()
+    c := e.countMenuItems()
 
-    e.loopMenuButtons(func(i int, mb *menuButton) {
+    e.loopMenuItems(func(i int, item *MenuItem) {
       if i == c -1 {
-        mb.Select()
+        item.Select()
       } else {
-        mb.Unselect()
+        item.Unselect()
       }
     })
   } else if oldSel == 0 {
-    e.unselectOtherMenuButtons(nil)
+    e.unselectOtherMenuItems(nil)
   } else {
-    e.loopMenuButtons(func(i int, mb *menuButton) {
+    e.loopMenuItems(func(i int, item *MenuItem) {
       if i == oldSel - 1 {
-        mb.Select()
+        item.Select()
       } else {
-        mb.Unselect()
+        item.Unselect()
       }
     })
   }
 }
 
 func (e *Menu) ClickSelected() {
-  e.loopMenuButtons(func(i int, mb *menuButton) {
-    if mb.Selected() {
-      mb.onClick()
+  if e.Visible() {
+    // onClick must be called after menu is hidden (to avoid double click issues), but we must find the selected item before the menu is hidden (because the selected state is reset upon hiding the menu)
+    var fn func() = nil
+
+    e.loopMenuItems(func(i int, item *MenuItem) {
+      if item.Selected() {
+        fn = item.onClick
+      }
+    })
+
+    e.Hide()
+
+    if fn != nil {
+      fn()
     }
-  })
-  
-  e.Hide()
+  }
 }

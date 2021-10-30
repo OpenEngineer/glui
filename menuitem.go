@@ -4,10 +4,16 @@ import (
   "github.com/veandco/go-sdl2/sdl"
 )
 
-//go:generate ./gen_element menuButton "appendChild CalcDepth On Size Padding"
+//go:generate ./gen_element MenuItem "appendChild CalcDepth On Size Padding H W"
+
+type MenuItemConfig struct {
+  Caption  string
+  Callback func()
+  Width    int
+}
 
 // a plain button
-type menuButton struct {
+type MenuItem struct {
   ElementData
 
   menu    *Menu
@@ -19,12 +25,12 @@ type menuButton struct {
   onClick func()
 }
 
-func newMenuButton(menu *Menu, captionText string, callback func()) *menuButton {
-  root := menu.Root
+func NewMenuItem(root *Root, captionText string, callback func()) *MenuItem {
+  menu := root.Menu
 
   caption := NewSansCaption(root, captionText, 10)
 
-  e := &menuButton{
+  e := &MenuItem{
     NewElementData(root, 2, 0),
     menu,
     caption,
@@ -33,20 +39,30 @@ func newMenuButton(menu *Menu, captionText string, callback func()) *menuButton 
   }
 
   e.height = 30
+  e.width = 200
 
   e.setTypesAndColor()
 
-  e.On("mousedown",  e.onMouseClick)
   e.On("mouseup",    e.onMouseClick)
   e.On("mouseleave", e.onMouseLeave)
   e.On("mouseenter", e.onMouseEnter)
   
-  e.appendChild(NewHor(root, START, CENTER, 0).A(caption))
+  e.appendChild(NewHor(root, START, CENTER, 0).H(-1).A(caption))
 
   return e
 }
 
-func (e *menuButton) setTypesAndColor() {
+func newMenuItemFromConfig(root *Root, cfg MenuItemConfig) *MenuItem {
+  item := NewMenuItem(root, cfg.Caption, cfg.Callback)
+
+  if cfg.Width != 0 {
+    item.W(cfg.Width)
+  }
+
+  return item
+}
+
+func (e *MenuItem) setTypesAndColor() {
   var c sdl.Color
 
   if e.selected && e.enabled {
@@ -63,7 +79,7 @@ func (e *menuButton) setTypesAndColor() {
   }
 }
 
-func (e *menuButton) setState(selected bool) {
+func (e *MenuItem) setState(selected bool) {
   if e.enabled && e.selected != selected {
     e.selected = selected
 
@@ -71,35 +87,35 @@ func (e *menuButton) setState(selected bool) {
   }
 }
 
-func (e *menuButton) onMouseEnter(evt *Event) {
-  e.menu.unselectOtherMenuButtons(e)
+func (e *MenuItem) onMouseEnter(evt *Event) {
+  e.menu.unselectOtherMenuItems(e)
 
   e.Select()
 }
 
-func (e *menuButton) onMouseLeave(evt *Event) {
+func (e *MenuItem) onMouseLeave(evt *Event) {
   e.Unselect()
 }
 
-func (e *menuButton) Select() {
+func (e *MenuItem) Select() {
   e.setState(true)
 }
 
-func (e *menuButton) Unselect() {
+func (e *MenuItem) Unselect() {
   e.setState(false)
 }
 
-func (e *menuButton) Selected() bool {
+func (e *MenuItem) Selected() bool {
   return e.selected
 }
 
-func (e *menuButton) onMouseClick(evt *Event) {
+func (e *MenuItem) onMouseClick(evt *Event) {
   if e.onClick != nil {
     e.onClick()
   }
 }
 
-func (e *menuButton) Cursor() int {
+func (e *MenuItem) Cursor() int {
   if e.enabled {
     return sdl.SYSTEM_CURSOR_HAND
   } else {
@@ -107,7 +123,7 @@ func (e *menuButton) Cursor() int {
   }
 }
 
-func (e *menuButton) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
+func (e *MenuItem) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   w := maxWidth
 
   e.Root.P1.SetQuadPos(e.p1Tris[0], e.p1Tris[1], Rect{0, 0, w, e.height}, e.Z(maxZIndex))
@@ -117,7 +133,7 @@ func (e *menuButton) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   return e.InitRect(w, e.height)
 }
 
-func (e *menuButton) Hide() {
+func (e *MenuItem) Hide() {
   e.setState(false)
 
   e.ElementData.Hide()

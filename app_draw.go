@@ -127,6 +127,92 @@ func (app *App) drawThumbnail(w int, h int, dst unsafe.Pointer) {
   }
 }
 
+// eg. apply gaussian blur
+func (app *App) drawFiltered(program uint32) {
+  if err := app.window.GLMakeCurrent(app.ctx); err != nil {
+    fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
+    return
+  }
+
+  //gl.BindFramebuffer(gl.FRAMEBUFFER, app.framebuffers[0])
+
+  w, h := app.root.GetSize()
+
+  gl.Viewport(0, 0, int32(w), int32(h))
+
+  /*gl.ClearColor(
+    float32(256)/float32(256),
+    float32(0)/float32(256),
+    float32(0)/float32(256),
+    float32(256)/float32(256),
+  )
+  gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)*/
+  //app.drawInner()
+
+  // create the texture
+  /*var texture uint32
+  gl.GenTextures(1, &texture) // TODO: save this texture
+  gl.ActiveTexture(gl.TEXTURE0)
+  gl.BindTexture(gl.TEXTURE_2D, texture)
+  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+  // attach the framebuffer to the texture
+  //gl.BindFramebuffer(gl.READ_FRAMEBUFFER, app.framebuffers[0])
+  gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)*/
+
+  // draw to the screen framebuffer
+  //gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+  gl.Clear(gl.DEPTH_BUFFER_BIT)
+
+  var vbo uint32
+  loc := uint32(gl.GetAttribLocation(program, gl.Str("aCoord\x00")))
+  fmt.Println("aCoord loc:", loc)
+  gl.GenBuffers(1, &vbo)
+
+  gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+  gl.VertexAttribPointer(loc, 2, gl.FLOAT, false, 0, nil)
+  gl.EnableVertexAttribArray(loc)
+
+  // texture coordinates!
+  data := []float32{
+    0.0, 0.0,
+    1.0, 0.0,
+    0.0, 1.0,
+    1.0, 0.0,
+    1.0, 1.0,
+    0.0, 1.0,
+  }
+  gl.BufferData(gl.ARRAY_BUFFER, 4*len(data), gl.Ptr(data), gl.STATIC_DRAW)
+  gl.UseProgram(program)
+  gl.DrawArrays(gl.TRIANGLES, 0, 6) // 2 triangles with 3 vertices each
+
+  // unbind and delete the texture
+  gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+  gl.DisableVertexAttribArray(loc)
+  gl.BindTexture(gl.TEXTURE_2D, 0)
+  //gl.DeleteTextures(1, &texture)
+  gl.DeleteBuffers(1, &vbo)
+
+  // make sure the default framebuffer is also the read framebuffer
+  //gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+  app.window.GLSwap()
+
+  // now bind the framebuffer to a texture so we can apply the filtering
+  if err := app.window.GLMakeCurrent(nil); err != nil {
+    fmt.Fprintf(app.debug, "unable to unmake current: %s\n", err.Error())
+    return
+  }
+}
+
+func (app *App) DrawBlurred() {
+  app.drawFiltered(app.programGaussBlur)
+
+  sdl.Delay(1000)
+}
+
 func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {
   if err := app.window.GLMakeCurrent(app.ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
@@ -158,7 +244,7 @@ func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {
   }
 }
 
-/*func (app *App) initDrawLoop(m *sync.Mutex) {
+func (app *App) initDrawLoop(m *sync.Mutex) {
   m.Lock()
 
   ctx, err := app.window.GLCreateContext()
@@ -198,72 +284,7 @@ func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {
     panic(err)
   }
 
-  app.root.syncSize(app.window)
-  app.root.initGL(app.program1, app.program2)
-
-  //gl.CreateFramebuffers(1, &(app.framebuffers[0]))
-  //gl.CreateFramebuffers(1, &(app.framebuffers[1]))
-
-  gl.GenFramebuffers(1, &(app.framebuffers[0]))
-  gl.GenFramebuffers(1, &(app.framebuffers[1]))
-
-  x, y := app.window.GetPosition()
-  app.x = int(x)
-  app.y = int(y)
-
-  if err := app.window.GLMakeCurrent(nil); err != nil {
-    fmt.Fprintf(app.debug, "unable to unmake current in render: %s\n", err.Error())
-    return
-  }
-
-  m.Unlock()
-
-  for true {
-    <- app.drawCh
-
-    app.draw()
-
-    sdl.Delay(RENDER_LOOP_INTERVAL)
-  }
-
-  sdl.GLDeleteContext(ctx)
-}*/
-
-func (app *App) initDrawLoop(m *sync.Mutex) {
-  m.Lock()
-
-  ctx, err := app.window.GLCreateContext()
-  if err != nil {
-    fmt.Fprintf(app.debug, "unable to create context: %s\n", err.Error())
-    panic(err)
-  }
-
-  app.ctx = ctx
-
-  if err := app.window.GLMakeCurrent(ctx); err != nil {
-    fmt.Fprintf(app.debug, "unable to make current in render: %s\n", err.Error())
-    panic(err)
-  }
-
-  if err := gl.Init(); err != nil {
-    fmt.Fprintf(app.debug, "render gl.Init error: %s\n", err.Error())
-    panic(err)
-  }
-
-  glVersion := gl.GoStr(gl.GetString(gl.VERSION))
-  if glVersion == "" {
-    err := errors.New("empty OpenGL version")
-    fmt.Fprintf(app.debug, "%s\n", err.Error())
-    panic(err)
-  }
-
-  app.program1, err = compileProgram1()
-  if err != nil {
-    fmt.Fprintf(app.debug, "failed to compile OpenGL program1: %s\n", err.Error())
-    panic(err)
-  }
-
-  app.program2, err = compileProgram2()
+  app.programGaussBlur, err = compileProgramGaussBlur()
   if err != nil {
     fmt.Fprintf(app.debug, "failed to compile OpenGL program2: %s\n", err.Error())
     panic(err)

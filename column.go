@@ -177,7 +177,7 @@ func (e *BasicColumn) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
 func newHeadButton(root *Root, caption string) (*Button, *Icon) {
   b := NewButton(root)
 
-  hor := NewHor(root, STRETCH, CENTER, 0)
+  hor := NewHor(root, STRETCH, CENTER, 0).H(-1)
   hor.Padding(0, DEFAULT_COLUMN_PADDING, 0, DEFAULT_COLUMN_PADDING)
 
   icon := NewIcon(root, "arrow-down-drop", 10)
