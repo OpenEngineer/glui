@@ -75,7 +75,7 @@ in vec2  vTCoord;
 
 uniform sampler2D skin;
 
-out vec4 oColor;
+layout(location = 0) out vec4 oColor;
 
 void main() {
   int t = int(vType);
@@ -166,7 +166,7 @@ in vec2  vTCoord;
 
 uniform sampler2D glyphs;
 
-out vec4 oColor;
+layout(location = 0) out vec4 oColor;
 //out float gl_FragDepth;
 
 float calcPixelCoverage(float d, float a) {
@@ -248,12 +248,12 @@ func vertexShaderGaussBlur() string {
   b.WriteString("#version 410\n")
 
   b.WriteString(`
-in vec2 aCoord;
+layout(location = 0) in vec2 aCoord;
 
 out vec2 vCoord;
 
 void main() {
-  gl_Position = vec4(aCoord.x*2.0 - 1.0, aCoord.y*2.0 - 1.0, 0.0, 1.0);
+  gl_Position = vec4(aCoord.x*2.0 - 1.0, aCoord.y*2.0 - 1.0, -0.5, 1.0);
 
   vCoord = aCoord;
 }
@@ -274,8 +274,10 @@ in vec2 vCoord;
 
 out vec4 oColor;
 
+uniform sampler2D frame;
+
 void main() {
-  oColor = vec4(1.0,1.0,0.0,1.0);
+  oColor = mix(vec4(1.0,1.0,0.0,1.0), texture(frame, 2.0*vCoord), 1.0);
 }
 `)
 

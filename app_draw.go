@@ -134,48 +134,56 @@ func (app *App) drawFiltered(program uint32) {
     return
   }
 
-  //gl.BindFramebuffer(gl.FRAMEBUFFER, app.framebuffers[0])
 
   w, h := app.root.GetSize()
 
   gl.Viewport(0, 0, int32(w), int32(h))
 
-  /*gl.ClearColor(
-    float32(256)/float32(256),
-    float32(0)/float32(256),
-    float32(0)/float32(256),
-    float32(256)/float32(256),
-  )
-  gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)*/
-  //app.drawInner()
+  // do an inner draw to framebuffer 0
+  fb := app.framebuffers[0]
+  gl.BindFramebuffer(gl.FRAMEBUFFER, fb)
 
   // create the texture
-  /*var texture uint32
+  var texture uint32
   gl.GenTextures(1, &texture) // TODO: save this texture
-  gl.ActiveTexture(gl.TEXTURE0)
   gl.BindTexture(gl.TEXTURE_2D, texture)
+  gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, int32(w), int32(h), 0, gl.RGB, gl.UNSIGNED_BYTE, nil)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
-  // attach the framebuffer to the texture
-  //gl.BindFramebuffer(gl.READ_FRAMEBUFFER, app.framebuffers[0])
-  gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)*/
+  // attach the framebuffer to the texture (in order to avoid blitting this must be done before
+  //gl.BindFramebuffer(gl.READ_FRAMEBUFFER, fb)
+  var colorAttach uint32 = gl.COLOR_ATTACHMENT0
+  gl.BindFramebuffer(gl.FRAMEBUFFER, fb)
+  gl.FramebufferTexture(gl.FRAMEBUFFER, colorAttach, texture, 0)
+  gl.DrawBuffers(1, &colorAttach)
+  //gl.DrawBuffer(colorAttach)
 
-  // draw to the screen framebuffer
-  //gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+  if gl.CheckFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE {
+    fmt.Println(gl.CheckFramebufferStatus(gl.FRAMEBUFFER))
+    panic("something went wrong")
+  }
 
-  gl.Clear(gl.DEPTH_BUFFER_BIT)
+  // do the inner draw
+  gl.BindFramebuffer(gl.FRAMEBUFFER, fb)
+  gl.Viewport(0, 0, int32(w), int32(h))
+  //gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+  app.drawInner()
 
+
+  gl.UseProgram(program)
+  //gl.DrawBuffer(gl.FRONT)
+  gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+  gl.Viewport(0, 0, int32(w), int32(h))
+  gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+  // buffer the tri data for the filter program
   var vbo uint32
   loc := uint32(gl.GetAttribLocation(program, gl.Str("aCoord\x00")))
-  fmt.Println("aCoord loc:", loc)
   gl.GenBuffers(1, &vbo)
-
   gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
   gl.VertexAttribPointer(loc, 2, gl.FLOAT, false, 0, nil)
   gl.EnableVertexAttribArray(loc)
-
-  // texture coordinates!
   data := []float32{
     0.0, 0.0,
     1.0, 0.0,
@@ -185,18 +193,25 @@ func (app *App) drawFiltered(program uint32) {
     0.0, 1.0,
   }
   gl.BufferData(gl.ARRAY_BUFFER, 4*len(data), gl.Ptr(data), gl.STATIC_DRAW)
-  gl.UseProgram(program)
+
+  // bind texture to program location
+  gl.ActiveTexture(gl.TEXTURE0)
+  gl.BindTexture(gl.TEXTURE_2D, texture)
+  texLoc := gl.GetUniformLocation(program, gl.Str("frame\x00"))
+  gl.Uniform1i(int32(texLoc), 0) // 1 -> gl.TEXTURE1
+  
   gl.DrawArrays(gl.TRIANGLES, 0, 6) // 2 triangles with 3 vertices each
 
-  // unbind and delete the texture
+  // clean up
   gl.BindBuffer(gl.ARRAY_BUFFER, 0)
   gl.DisableVertexAttribArray(loc)
   gl.BindTexture(gl.TEXTURE_2D, 0)
-  //gl.DeleteTextures(1, &texture)
+  gl.DeleteTextures(1, &texture)
   gl.DeleteBuffers(1, &vbo)
+  gl.ActiveTexture(gl.TEXTURE0)
 
   // make sure the default framebuffer is also the read framebuffer
-  //gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+  gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 
   app.window.GLSwap()
 
