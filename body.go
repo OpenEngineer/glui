@@ -3,7 +3,7 @@ package glui
 import (
 )
 
-//go:generate ./gen_element Body "A CalcDepth Padding Spacing"
+//go:generate ./gen_element Body "On A CalcDepth Padding Spacing"
 
 type Body struct {
   ElementData

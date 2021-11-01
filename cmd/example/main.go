@@ -52,20 +52,24 @@ func main() {
   vsplit.MinIntervals([]int{300, 300})
   vsplit.A(table, tabbed)
 
+  body.On("quit", func(evt *glui.Event) {
+    glui.PushFrame(400, 200)
+
+    glui.ActiveBody().A(glui.NewVer(glui.CENTER, glui.CENTER, 40).W(-1).A(glui.NewSans("Are you sure you want to quit?", 12), 
+      glui.NewHor(glui.START, glui.CENTER, 20).A(
+      glui.NewCaptionButton("No").W(100).OnClick(func() {
+        evt.StopPropagation()
+        glui.PopFrame()
+      }), glui.NewCaptionButton("Yes").W(100).OnClick(func() {
+        evt.Callback()
+      }))))
+  })
 
   menuItems:= []glui.MenuItemConfig {
     glui.MenuItemConfig{
       "Close",
       func(){
-        glui.PushFrame(400, 200)
-
-        glui.ActiveBody().A(glui.NewVer(glui.CENTER, glui.CENTER, 40).W(-1).A(glui.NewSans("Are you sure you want to quit?", 12), 
-          glui.NewHor(glui.START, glui.CENTER, 20).A(
-          glui.NewCaptionButton("No").W(100).OnClick(func() {
-            glui.PopFrame()
-          }), glui.NewCaptionButton("Yes").W(100).OnClick(func() {
-            glui.Quit()
-          }))))
+        glui.Quit()
       },
       120,
     },

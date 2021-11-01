@@ -20,11 +20,13 @@ type Event struct {
   Alt   bool
 
   Value string // for text Input
+  AppMsg string // for quit
 
   stopBubblingElement Element // exclusive
   stopBubbling bool
 
   stopPropagation bool // multiple functions can be tied to a single eventlisteners, this stops older functions from being called
+  callback  func() // for async quit
 }
 
 func NewMouseEvent(x, y int) *Event {
@@ -40,7 +42,7 @@ func NewMouseEvent(x, y int) *Event {
   shift := ks[sdl.SCANCODE_LSHIFT] > 0 || ks[sdl.SCANCODE_RSHIFT] > 0
   alt := ks[sdl.SCANCODE_LALT] > 0 || ks[sdl.SCANCODE_RALT] > 0
 
-  return &Event{x, y, 0, 0, "", ctrl, shift, alt, "", nil, false, false}
+  return &Event{x, y, 0, 0, "", ctrl, shift, alt, "", "", nil, false, false, nil}
 }
 
 func NewMouseMoveEvent(x, y int, dx, dy int) *Event {
@@ -52,15 +54,27 @@ func NewMouseMoveEvent(x, y int, dx, dy int) *Event {
 }
 
 func NewKeyboardEvent(keyName string, ctrl bool, shift bool, alt bool) *Event {
-  return &Event{0, 0, 0, 0, keyName, ctrl, shift, alt, "", nil, false, false}
+  return &Event{0, 0, 0, 0, keyName, ctrl, shift, alt, "", "", nil, false, false, nil}
 }
 
 func NewTextInputEvent(str string) *Event {
-  return &Event{0, 0, 0, 0, "", false, false, false, str, nil, false, false}
+  return &Event{0, 0, 0, 0, "", false, false, false, str, "", nil, false, false, nil}
+}
+
+func NewAppEvent(msg string, fn func()) *Event {
+  return &Event{0, 0, 0, 0, "", false, false, false, "", msg, nil, false, false, fn}
 }
 
 func (e *Event) StopBubbling() {
   e.stopBubbling = true
+}
+
+func (e *Event) StopPropagation() {
+  e.stopPropagation = true
+}
+
+func (e *Event) Callback() {
+  e.callback()
 }
 
 func (e *Event) stopBubblingWhenElementReached(stopEl Element) {

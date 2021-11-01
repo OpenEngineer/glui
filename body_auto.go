@@ -1,4 +1,14 @@
 package glui
+func (e *Body) On(name string, fn EventListener) *Body {
+  old := e.evtListeners[name]
+  if old == nil {
+    e.evtListeners[name] = fn
+  } else {
+    e.evtListeners[name] = func(evt *Event) {fn(evt); if !evt.stopPropagation {old(evt)}}
+  }
+  return e
+}
+
 // must return Element in order to implement Container interface
 func (e *Body) A(children ...Element) Element {
   for _, child := range children {

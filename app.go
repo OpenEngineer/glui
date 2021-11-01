@@ -214,7 +214,31 @@ func (app *App) run() error {
   return app.forwardSystemAndUserEvents()
 }
 
+func (app *App) quit() {
+  callback := func() {
+    // XXX: does the timestamp matter?
+    sdl.PushEvent(&sdl.QuitEvent{sdl.QUIT, 0})
+  }
+
+  for i := app.activeFrame; i >= 0; i-- {
+    frame := app.frames[i]
+
+    body := frame.Body
+
+    if hasEvent(body, "quit") {
+      evt := NewAppEvent("quit", callback)
+
+      TriggerEvent(body, "quit", evt)
+
+      return 
+    }
+  }
+
+  callback()
+}
+
 func Quit() {
-  // XXX: does the timestamp matter?
-  sdl.PushEvent(&sdl.QuitEvent{sdl.QUIT, 0})
+  app := getApp()
+
+  app.quit()
 }
