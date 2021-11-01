@@ -1,6 +1,8 @@
 package glui
 
 import (
+  "fmt"
+
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -43,7 +45,9 @@ func (e *Root) syncSize(window *sdl.Window) {
 }
 
 func (e *Root) initGL(prog1 uint32, prog2 uint32) {
+  fmt.Println("initing prog1...")
   e.P1.InitGL(prog1)
+  fmt.Println("initing prog2...")
   e.P2.InitGL(prog2)
 }
 

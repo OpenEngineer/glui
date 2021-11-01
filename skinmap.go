@@ -123,24 +123,34 @@ func (sm *SkinMap) genBordered(d []byte, tb *TextureBuilder, checkT bool) (int, 
 func (s *SkinMap) InitGL(loc uint32) {
   s.loc = loc
 
+  checkGLError()
   gl.GenTextures(1, &s.tid)
 
+  checkGLError()
   gl.ActiveTexture(gl.TEXTURE0)
+  checkGLError()
   gl.Uniform1i(int32(s.loc), 0)
-
+  checkGLError()
   gl.BindTexture(gl.TEXTURE_2D, s.tid)
+  checkGLError()
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+  checkGLError()
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+  checkGLError()
 
   gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(s.width), int32(s.height), 0, gl.RGBA, 
     gl.UNSIGNED_BYTE, unsafe.Pointer(&(s.data[0])))
+  checkGLError()
 
   gl.BindTexture(gl.TEXTURE_2D, 0)
+  checkGLError()
 }
 
 func (s *SkinMap) bind() {
+  checkGLError()
   gl.ActiveTexture(gl.TEXTURE0)
   gl.BindTexture(gl.TEXTURE_2D, s.tid)
+  checkGLError()
 }
 
 func (s *SkinMap) ButtonOrigin() (int, int) {

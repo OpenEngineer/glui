@@ -70,6 +70,7 @@ func newGlyphMap(glyphs map[string]*Glyph) *GlyphMap {
 func (g *GlyphMap) InitGL(loc uint32) {
   g.loc = loc
 
+  checkGLError()
   gl.GenTextures(1, &g.tid)
 
   gl.ActiveTexture(gl.TEXTURE0)
@@ -85,11 +86,14 @@ func (g *GlyphMap) InitGL(loc uint32) {
   gl.BindTexture(gl.TEXTURE_2D, 0)
 
   g.ToImage("glyphs.png")
+  checkGLError()
 }
 
 func (g *GlyphMap) bind() {
+  checkGLError()
   gl.ActiveTexture(gl.TEXTURE0)
   gl.BindTexture(gl.TEXTURE_2D, g.tid)
+  checkGLError()
 }
 
 func (g *GlyphMap) GetGlyph(name string) *Glyph {

@@ -29,7 +29,10 @@ type App struct {
   framebuffers [2]uint32 // for windows thumbnail drawing
   program1 uint32
   program2 uint32
-  programGaussBlur uint32
+
+  gaussBlur uint32
+  intermTex uint32
+  filterVBO uint32
 
   ctx    sdl.GLContext
   debug  *os.File
@@ -96,7 +99,7 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
     [2]uint32{0, 0},
     0,
     0,
-    0,
+    0, 0, 0,
     nil,
     debug,
     newAppState(),

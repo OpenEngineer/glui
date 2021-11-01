@@ -13,6 +13,7 @@ func writeVertexTypes(b *strings.Builder) {
   b.WriteString(fmt.Sprintf("const int PLAIN  = %d;\n", VTYPE_PLAIN))
   b.WriteString(fmt.Sprintf("const int SKIN  = %d;\n", VTYPE_SKIN))
   b.WriteString(fmt.Sprintf("const int GLYPH  = %d;\n", VTYPE_GLYPH))
+  b.WriteString(fmt.Sprintf("const int DUMMY  = %d;\n", VTYPE_DUMMY))
 }
 
 func vertexShader1() string {
@@ -25,7 +26,7 @@ func vertexShader1() string {
   b.WriteString(`
 in vec3 aPos;
 in float aType;
-in float aParam;
+layout(location = 2) in float aParam;
 in vec4 aColor;
 in vec2 aTCoord;
 
@@ -91,6 +92,8 @@ void main() {
       sColor.z*vColor.z,
       sColor.w
     );
+  } else if (t == DUMMY) {
+    oColor = vec4(vParam, vParam, vParam, 1.0); // so that aParam isn't optimized out
   }
 }
 `)
@@ -253,7 +256,7 @@ layout(location = 0) in vec2 aCoord;
 out vec2 vCoord;
 
 void main() {
-  gl_Position = vec4(aCoord.x*2.0 - 1.0, aCoord.y*2.0 - 1.0, -0.5, 1.0);
+  gl_Position = vec4(aCoord.x*2.0 - 1.0, aCoord.y*2.0 - 1.0, 0.0, 1.0);
 
   vCoord = aCoord;
 }
@@ -264,10 +267,23 @@ void main() {
   return b.String()
 }
 
+func gaussBlurWeight(sigma float64, x float64) float64 {
+  return math.Exp(-0.5*x*x/(sigma*sigma))/math.Sqrt(2.0*math.Pi*sigma*sigma)
+}
+
+// for a 5 point stencil
+func writeGaussBlurWeights(b *strings.Builder) {
+  for i := 0; i < 5; i++ {
+    b.WriteString(fmt.Sprintf("const float GBW%d = %f;\n", i, gaussBlurWeight(2.0/3.0, float64(i-2))))
+  }
+}
+
 func fragmentShaderGaussBlur() string {
   var b strings.Builder
 
   b.WriteString("#version 410\n")
+
+  writeGaussBlurWeights(&b)
 
   b.WriteString(`
 in vec2 vCoord;
@@ -275,11 +291,38 @@ in vec2 vCoord;
 out vec4 oColor;
 
 uniform sampler2D frame;
+uniform vec2 size;
+uniform vec2 dir;
+
+vec2 offset(vec2 c, float d) {
+  return vec2((c.x*size.x + d*dir.x)/size.x, (c.y*size.y + d*dir.y)/size.y);
+}
 
 void main() {
-  oColor = mix(vec4(1.0,1.0,0.0,1.0), texture(frame, 2.0*vCoord), 1.0);
-}
 `)
+
+  // should be uneven number
+  nStencil := 31
+  halfStencil := (nStencil - 1)/2
+  sigma := float64(halfStencil)/3.0
+
+  for i := 0; i < nStencil; i++ {
+    b.WriteString(fmt.Sprintf("vec4 a%d = texture(frame, offset(vCoord, float(%d)));\n", i, i - halfStencil))
+  }
+
+  b.WriteString("oColor = ")
+
+  for i := 0; i < nStencil; i++ {
+    b.WriteString(fmt.Sprintf("float(%g)*a%d", gaussBlurWeight(sigma, float64(i - halfStencil)), i))
+
+    if i < nStencil - 1 {
+      b.WriteString(" + ")
+    } else {
+      b.WriteString(";")
+    }
+  }
+
+  b.WriteString("\n}")
 
   b.WriteString("\x00")
 
@@ -288,6 +331,7 @@ void main() {
 
 // copied from https://kylewbanks.com/blog/tutorial-opengl-with-golang-part-1-hello-opengl
 func compileShader(source string, shaderType uint32) (uint32, error) {
+  checkGLError()
   shader := gl.CreateShader(shaderType)
 
   csources, free := gl.Strs(source)
@@ -308,10 +352,12 @@ func compileShader(source string, shaderType uint32) (uint32, error) {
     return 0, fmt.Errorf("failed to compile %v: %v", source, log)
   }
 
+  checkGLError()
   return shader, nil
 }
 
 func compileProgram(vShaderSrc string, fShaderSrc string) (uint32, error) {
+  checkGLError()
   vShader, err := compileShader(vShaderSrc, gl.VERTEX_SHADER)
   if err != nil {
     return 0, err
@@ -340,6 +386,8 @@ func compileProgram(vShaderSrc string, fShaderSrc string) (uint32, error) {
     return 0, fmt.Errorf("failed to link %v", log)
   }
 
+  checkGLError()
+
   return prog, nil
 }
 
@@ -351,7 +399,7 @@ func compileProgram2() (uint32, error) {
   return compileProgram(vertexShader2(), fragmentShader2())
 }
 
-func compileProgramGaussBlur() (uint32, error) {
+func compileGaussBlur() (uint32, error) {
   return compileProgram(vertexShaderGaussBlur(), fragmentShaderGaussBlur())
   //return compileProgram(vertexShader2(), fragmentShader2())
 }

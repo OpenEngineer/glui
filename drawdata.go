@@ -3,6 +3,7 @@ package glui
 import (
   "fmt"
   "math"
+  "strconv"
   "strings"
 
   "github.com/veandco/go-sdl2/sdl"
@@ -17,6 +18,7 @@ const (
   VTYPE_PLAIN  = 1
   VTYPE_SKIN   = 2
   VTYPE_GLYPH  = 3
+  VTYPE_DUMMY  = 4 // so that aParam isn't optimized out
 )
 
 type Float32Buffer struct {
@@ -75,12 +77,20 @@ func NewFloat32Buffer(nComp int) *Float32Buffer {
 func (b *Float32Buffer) InitGL(location uint32) {
   b.loc = location
 
+  checkGLError()
   gl.GenBuffers(1, &b.vbo)
+  checkGLError()
   gl.EnableVertexAttribArray(b.loc)
+  checkGLError()
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
+  checkGLError()
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.FLOAT, false, 0, nil)
+  checkGLError()
   gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+  checkGLError()
   gl.BindVertexArray(0)
+
+  checkGLError()
 
   b.dirty = true
 }
@@ -94,12 +104,16 @@ func NewUInt8Buffer(nComp int) *UInt8Buffer {
 func (b *UInt8Buffer) InitGL(location uint32) {
   b.loc = location
 
+  checkGLError()
+
   gl.GenBuffers(1, &b.vbo)
   gl.EnableVertexAttribArray(b.loc)
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.UNSIGNED_BYTE, false, 0, nil)
   gl.BindBuffer(gl.ARRAY_BUFFER, 0)
   gl.BindVertexArray(0)
+
+  checkGLError()
 
   b.dirty = true
 }
@@ -136,32 +150,66 @@ func newDrawPass2Data(glyphs *GlyphMap) *DrawPass2Data {
   return &DrawPass2Data{newDrawPassData(), glyphs}
 }
 
+func getGLAttribLocation(prog uint32, name string) uint32 {
+  loc := gl.GetAttribLocation(prog, gl.Str(name + "\x00"))
+
+  if loc < 0 {
+    panic(name + " bad attrib location: " + strconv.Itoa(int(loc)))
+  }
+
+  return uint32(loc)
+}
+
+func getGLUniformLocation(prog uint32, name string) uint32 {
+  loc := gl.GetUniformLocation(prog, gl.Str(name + "\x00"))
+
+  if loc < 0 {
+    panic(name + " bad uniform location: " + strconv.Itoa(int(loc)))
+  }
+
+  return uint32(loc)
+}
+
 func (d *DrawPassData) InitGL(prog uint32) {
-  posLoc := gl.GetAttribLocation(prog, gl.Str("aPos\x00"))
-  typeLoc := gl.GetAttribLocation(prog, gl.Str("aType\x00"))
-  paramLoc := gl.GetAttribLocation(prog, gl.Str("aParam\x00"))
-  colorLoc := gl.GetAttribLocation(prog, gl.Str("aColor\x00"))
-  tcoordLoc := gl.GetAttribLocation(prog, gl.Str("aTCoord\x00"))
+  checkGLError()
+
+  posLoc := getGLAttribLocation(prog, "aPos")
+  typeLoc := getGLAttribLocation(prog, "aType")
+  paramLoc := getGLAttribLocation(prog, "aParam")
+  colorLoc := getGLAttribLocation(prog, "aColor")
+  tcoordLoc := getGLAttribLocation(prog, "aTCoord")
+
+  fmt.Println("draw pass param locations", posLoc, typeLoc, paramLoc, colorLoc, tcoordLoc)
 
   d.Pos.InitGL(uint32(posLoc))
   d.Type.InitGL(uint32(typeLoc))
   d.Param.InitGL(uint32(paramLoc))
   d.Color.InitGL(uint32(colorLoc))
   d.TCoord.InitGL(uint32(tcoordLoc))
+
+  checkGLError()
 }
 
 func (d *DrawPass1Data) InitGL(prog uint32) {
+  gl.UseProgram(prog)
+
   d.DrawPassData.InitGL(prog)
 
+  checkGLError()
   skinLoc := gl.GetUniformLocation(prog, gl.Str("skin\x00"))
   d.Skin.InitGL(uint32(skinLoc))
+  checkGLError()
 }
 
 func (d *DrawPass2Data) InitGL(prog uint32) {
+  gl.UseProgram(prog)
+
   d.DrawPassData.InitGL(prog)
 
+  checkGLError()
   glyphLoc := gl.GetUniformLocation(prog, gl.Str("glyphs\x00"))
   d.Glyphs.InitGL(uint32(glyphLoc))
+  checkGLError()
 }
 
 // number of tris
@@ -201,8 +249,10 @@ func (b *Float32Buffer) grow(nTrisNew int) {
   }
 
   if b.vbo != 0 {
+    checkGLError()
     gl.DeleteBuffers(1, &b.vbo)
     gl.GenBuffers(1, &b.vbo)
+    checkGLError()
   }
 
   b.dirty = true
@@ -218,8 +268,10 @@ func (b *UInt8Buffer) grow(nTrisNew int) {
   }
 
   if b.vbo != 0 {
+    checkGLError()
     gl.DeleteBuffers(1, &b.vbo)
     gl.GenBuffers(1, &b.vbo)
+    checkGLError()
   }
 
   b.dirty = true
@@ -472,9 +524,11 @@ func (b *UInt8Buffer) Set4(triId uint32, vertexId uint32, value0 uint8, value1 u
 
 func (b *Float32Buffer) sync() {
   if b.dirty {
+  checkGLError()
     gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
     gl.BufferData(gl.ARRAY_BUFFER, 4*len(b.data), gl.Ptr(b.data), gl.STATIC_DRAW)
     gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+  checkGLError()
 
     b.dirty = false
   }
@@ -482,24 +536,30 @@ func (b *Float32Buffer) sync() {
 
 func (b *UInt8Buffer) sync() {
   if b.dirty {
+  checkGLError()
     gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
     gl.BufferData(gl.ARRAY_BUFFER, len(b.data), gl.Ptr(b.data), gl.STATIC_DRAW)
     gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+  checkGLError()
 
     b.dirty = false
   }
 }
 
 func (b *Float32Buffer) bind() {
+  checkGLError()
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.FLOAT, false, 0, nil)
   gl.EnableVertexAttribArray(b.loc)
+  checkGLError()
 }
 
 func (b *UInt8Buffer) bind() {
+  checkGLError()
   gl.BindBuffer(gl.ARRAY_BUFFER, b.vbo)
   gl.VertexAttribPointer(b.loc, int32(b.nComp), gl.UNSIGNED_BYTE, false, 0, nil)
   gl.EnableVertexAttribArray(b.loc)
+  checkGLError()
 }
 
 func (d *DrawPassData) SetPos(triId uint32, vertexId uint32, x_ int, y_ int, z float32) {
