@@ -29,12 +29,12 @@ type Input struct {
   vBarTick    uint64
 }
 
-func NewInput(root *Root) *Input {
+func NewInput() *Input {
   e := &Input{
-    NewElementData(root, 10*2, 0), 
+    NewElementData(10*2, 0), 
     25,
-    NewText(root, "", "dejavumono", 10), 
-    NewText(root, "", "dejavumono", 10),
+    NewText("", "dejavumono", 10), 
+    NewText("", "dejavumono", 10),
     "", 
     0, 0,
     false, 
@@ -450,13 +450,13 @@ func (e *Input) Show() {
   e.text.Show()
   e.selText.Show()
 
-  showBorderedElement(e.Root, e.p1Tris)
+  e.Root.P1.showBorderedElement(e.p1Tris)
 
   e.ElementData.Show()
 }
 
 func (e *Input) setTypesAndTCoords() {
-  setInputLikeElementTypesAndTCoords(e.Root, e.p1Tris)
+  e.Root.P1.setInputLikeElementTypesAndTCoords(e.p1Tris)
 
   e.setVBarTypeAndColor()
 }
@@ -484,19 +484,19 @@ func (e *Input) fillRightClickMenu() {
 
   bh := 30
 
-  cutItem := NewMenuItem(e.Root, "Cut", func() {
+  cutItem := NewMenuItem("Cut", func() {
     e.cutSel()
   }).H(bh)
 
   e.Root.Menu.AddItem(cutItem, e.hasSel(), false)
 
-  copyItem := NewMenuItem(e.Root, "Copy", func() {
+  copyItem := NewMenuItem("Copy", func() {
     e.copySel()
   }).H(bh)
 
   e.Root.Menu.AddItem(copyItem, e.hasSel(), false)
 
-  pasteItem := NewMenuItem(e.Root, "Paste", func() {
+  pasteItem := NewMenuItem("Paste", func() {
     e.insertClipboard()
   }).H(bh)
 

@@ -59,9 +59,9 @@ type DateColumn struct {
   rows []time.Time
 }
 
-func NewBasicColumn(root *Root, align Align) *BasicColumn {
+func NewBasicColumn(align Align) *BasicColumn {
   c := &BasicColumn{
-    NewElementData(root, 0, 0),
+    NewElementData(0, 0),
     align,
     UNSORTED,
     nil, // registered later
@@ -174,31 +174,31 @@ func (e *BasicColumn) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   return e.InitRect(maxWidth, y)
 }
 
-func newHeadButton(root *Root, caption string) (*Button, *Icon) {
-  b := NewButton(root)
+func newHeadButton(caption string) (*Button, *Icon) {
+  b := NewButton()
 
-  hor := NewHor(root, STRETCH, CENTER, 0).H(-1)
+  hor := NewHor(STRETCH, CENTER, 0).H(-1)
   hor.Padding(0, DEFAULT_COLUMN_PADDING, 0, DEFAULT_COLUMN_PADDING)
 
-  icon := NewIcon(root, "arrow-down-drop", 10)
+  icon := NewIcon("arrow-down-drop", 10)
   icon.Hide() // i.e. UNSORTED
 
-  hor.A(NewSans(root, caption, 10), icon)
+  hor.A(NewSans(caption, 10), icon)
 
   b.A(hor)
 
   return b, icon
 }
 
-func NewTextColumn(root *Root, caption string) *TextColumn {
-  e_ := NewBasicColumn(root, START)
+func NewTextColumn(caption string) *TextColumn {
+  e_ := NewBasicColumn(START)
 
   e := &TextColumn{
     *e_,
     make([]string, 0),
   }
 
-  e.head, e.arrow = newHeadButton(root, caption)
+  e.head, e.arrow = newHeadButton(caption)
   e.head.OnClick(e.onClickSort)
 
   return e
@@ -210,7 +210,7 @@ func (e *TextColumn) AddRow(x_ interface{}) {
     panic("row entry is not a string")
   }
 
-  txt := NewSans(e.Root, x, 10)
+  txt := NewSans(x, 10)
   e.rows = append(e.rows, x)
   e.body = append(e.body, txt)
   e.appendChild(txt)
@@ -236,15 +236,15 @@ func (e *TextColumn) Swap(i, j int) {
   e.BasicColumn.swap(i, j)
 }
 
-func NewDateColumn(root *Root, caption string) *DateColumn {
-  e_ := NewBasicColumn(root, END)
+func NewDateColumn(caption string) *DateColumn {
+  e_ := NewBasicColumn(END)
 
   e := &DateColumn{
     *e_, 
     make([]time.Time, 0),
   }
 
-  e.head, e.arrow = newHeadButton(root, caption)
+  e.head, e.arrow = newHeadButton(caption)
   e.head.OnClick(e.onClickSort)
 
   return e
@@ -268,7 +268,7 @@ func (e *DateColumn) AddRow(x_ interface{}) {
   }
 
   e.rows = append(e.rows, t)
-  txt := NewMono(e.Root, t.Format(DATE_FMT), 10)
+  txt := NewMono(t.Format(DATE_FMT), 10)
   e.body = append(e.body, txt)
   e.appendChild(txt)
 }

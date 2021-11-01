@@ -27,18 +27,18 @@ type Text struct {
   refGlyph *Glyph
 }
 
-func NewSans(root *Root, content string, size float64) *Text {
-  return NewText(root, content, DEFAULT_SANS, size)
+func NewSans(content string, size float64) *Text {
+  return NewText(content, DEFAULT_SANS, size)
 }
 
-func NewMono(root *Root, content string, size float64) *Text {
-  return NewText(root, content ,DEFAULT_MONO, size)
+func NewMono(content string, size float64) *Text {
+  return NewText(content ,DEFAULT_MONO, size)
 }
 
-func NewText(root *Root, content string, font string, size float64) *Text {
-  refGlyph := root.P2.Glyphs.GetGlyph(fmt.Sprintf("%s:%d", font, 'a'))
+func NewText(content string, font string, size float64) *Text {
+  e := &Text{NewElementData(0, 0), "", font, size, BLACK, nil}
 
-  e := &Text{NewElementData(root, 0, 0), "", font, size, BLACK, refGlyph}
+  e.refGlyph = e.Root.P2.Glyphs.GetGlyph(fmt.Sprintf("%s:%d", font, 'a')) 
 
   e.SetContent(content)
 

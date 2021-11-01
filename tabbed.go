@@ -14,9 +14,9 @@ type Tabbed struct {
   tabs []*tabPage
 }
 
-func NewTabbed(root *Root) *Tabbed {
+func NewTabbed() *Tabbed {
   return &Tabbed{
-    NewElementData(root, 0, 0),
+    NewElementData(0, 0),
     -1,
     []*tabLip{},
     []*tabPage{},

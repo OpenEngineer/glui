@@ -14,9 +14,9 @@ type tableBody struct {
   showSel  bool
 }
 
-func newTableBody(root *Root) *tableBody {
+func newTableBody() *tableBody {
   return &tableBody{
-    NewElementData(root, 0, 0),
+    NewElementData(0, 0),
     make([]bool, 0),
     -1,
     false,

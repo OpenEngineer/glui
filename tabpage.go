@@ -14,7 +14,7 @@ type tabPage struct {
 
 func newTabPage(tabbed *Tabbed) *tabPage {
   e := &tabPage{
-    NewElementData(tabbed.Root, 9*2, 0),
+    NewElementData(9*2, 0),
     tabbed,
   }
 

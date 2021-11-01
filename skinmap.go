@@ -40,6 +40,7 @@ type SkinMap struct {
 
   loc uint32
   tid uint32
+  tunit uint32
 }
 
 func newSkinMap(s Skin) *SkinMap {
@@ -120,16 +121,13 @@ func (sm *SkinMap) genBordered(d []byte, tb *TextureBuilder, checkT bool) (int, 
   return x, y, t
 }
 
-func (s *SkinMap) InitGL(loc uint32) {
-  s.loc = loc
+func (s *SkinMap) initGL(uTexLoc uint32, texID uint32, texUnit uint32) {
+  s.loc = uTexLoc
+  s.tid = texID
+  s.tunit = texUnit
 
   checkGLError()
-  gl.GenTextures(1, &s.tid)
-
-  checkGLError()
-  gl.ActiveTexture(gl.TEXTURE0)
-  checkGLError()
-  gl.Uniform1i(int32(s.loc), 0)
+  gl.ActiveTexture(s.tunit)
   checkGLError()
   gl.BindTexture(gl.TEXTURE_2D, s.tid)
   checkGLError()
@@ -148,7 +146,7 @@ func (s *SkinMap) InitGL(loc uint32) {
 
 func (s *SkinMap) bind() {
   checkGLError()
-  gl.ActiveTexture(gl.TEXTURE0)
+  gl.ActiveTexture(s.tunit)
   gl.BindTexture(gl.TEXTURE_2D, s.tid)
   checkGLError()
 }
@@ -219,4 +217,42 @@ func (s *SkinMap) BarOrigin() (int, int) {
 
 func (s *SkinMap) BarThickness() int {
   return s.barT
+}
+
+func (s *SkinMap) getButtonCoords() ([4]int, [4]int) {
+  t := s.ButtonBorderThickness()
+
+  x0, y0 := s.ButtonOrigin()
+
+  return getBorderedSkinCoords(x0, y0, t)
+}
+
+func (s *SkinMap) getCornerCoords() ([4]int, [4]int) {
+  t := s.ButtonBorderThickness()
+
+  x0, y0 := s.CornerOrigin()
+
+  return getBorderedSkinCoords(x0, y0, t)
+}
+
+func (s *SkinMap) getBarCoords() ([2]int, [4]int) {
+  t := s.BarThickness()
+
+  x0, y0 := s.BarOrigin()
+
+  var (
+    x [2]int
+    y [4]int
+  )
+
+  x[0] = x0
+  x[1] = x0 + t
+
+  dt := (t - 1)/2
+  y[0] = y0 
+  y[1] = y0 + dt
+  y[2] = y0 + dt + 1
+  y[3] = y0 + t
+
+  return x, y
 }

@@ -19,23 +19,23 @@ type Icon struct {
   glyph *Glyph
 }
 
-func NewIcon(root *Root, name string, size int) *Icon {
-  glyph := root.P2.Glyphs.GetGlyph(name)
-
+func NewIcon(name string, size int) *Icon {
   color := sdl.Color{0x00, 0x00, 0x00, 0xff}
 
   shadowColor := sdl.Color{0xff, 0xff, 0xff, 0xff}
 
   // tri 0 and 1 are used for shadow, 2 and 3 are the actual icon
   e := &Icon{
-    NewElementData(root, 0, 2*2), 
+    NewElementData(0, 2*2), 
     name, 
     size, 
     color, 
     false, 
     shadowColor, 
-    glyph,
+    nil,
   }
+
+  e.glyph = e.Root.P2.Glyphs.GetGlyph(name)
 
   e.Show()
 

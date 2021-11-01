@@ -16,7 +16,7 @@ func writeVertexTypes(b *strings.Builder) {
   b.WriteString(fmt.Sprintf("const int DUMMY  = %d;\n", VTYPE_DUMMY))
 }
 
-func vertexShader1() string {
+func skinPassVertexShader() string {
   var b strings.Builder
   
   b.WriteString("#version 410\n")
@@ -59,7 +59,7 @@ void main() {
   return b.String()
 }
 
-func fragmentShader1() string {
+func skinPassFragmentShader() string {
   var b strings.Builder
 
   b.WriteString("#version 410\n")
@@ -74,17 +74,20 @@ in float vParam;
 in vec4  vColor;
 in vec2  vTCoord;
 
-uniform sampler2D skin;
+uniform sampler2D uTex;
 
 layout(location = 0) out vec4 oColor;
 
 void main() {
   int t = int(vType);
 
+  if (t == t) {
+    oColor = vec4(0.5, 1.0, 0.0, 1.0);
+  }
   if (t == PLAIN) {
     oColor = vColor;
   } else if (t == SKIN) {
-    vec4 sColor = texture(skin, vTCoord);
+    vec4 sColor = texture(uTex, vTCoord);
 
     oColor = vec4(
       sColor.x*vColor.x, 
@@ -103,7 +106,7 @@ void main() {
   return b.String()
 }
 
-func vertexShader2() string {
+func glyphPassVertexShader() string {
   var b strings.Builder
   
   b.WriteString("#version 410\n")
@@ -148,7 +151,7 @@ void main() {
   return b.String()
 }
 
-func fragmentShader2() string {
+func glyphPassFragmentShader() string {
   var b strings.Builder
 
   b.WriteString("#version 410\n")
@@ -167,7 +170,7 @@ in float vParam;
 in vec4  vColor;
 in vec2  vTCoord;
 
-uniform sampler2D glyphs;
+uniform sampler2D uTex;
 
 layout(location = 0) out vec4 oColor;
 //out float gl_FragDepth;
@@ -206,7 +209,7 @@ void main() {
   int t = int(vType);
 
   if (t == GLYPH) {
-    vec4 gData = texture(glyphs, vTCoord);
+    vec4 gData = texture(uTex, vTCoord);
 
     float d = (gData.x - 0.5)*(vParam*255.0/D_PER_PX);
     float a = gData.y*(0.25*PI);
@@ -245,7 +248,7 @@ void main() {
   return b.String()
 }
 
-func vertexShaderGaussBlur() string {
+func blurPassVertexShader() string {
   var b strings.Builder
   
   b.WriteString("#version 410\n")
@@ -278,7 +281,7 @@ func writeGaussBlurWeights(b *strings.Builder) {
   }
 }
 
-func fragmentShaderGaussBlur() string {
+func blurPassFragmentShader() string {
   var b strings.Builder
 
   b.WriteString("#version 410\n")
@@ -288,14 +291,15 @@ func fragmentShaderGaussBlur() string {
   b.WriteString(`
 in vec2 vCoord;
 
-out vec4 oColor;
+layout(location = 0) out vec4 oColor;
 
-uniform sampler2D frame;
-uniform vec2 size;
-uniform vec2 dir;
+uniform vec2 uSize;
+uniform vec2 uDir;
+
+uniform sampler2D uTex;
 
 vec2 offset(vec2 c, float d) {
-  return vec2((c.x*size.x + d*dir.x)/size.x, (c.y*size.y + d*dir.y)/size.y);
+  return vec2((c.x*uSize.x + d*uDir.x)/uSize.x, (c.y*uSize.y + d*uDir.y)/uSize.y);
 }
 
 void main() {
@@ -307,7 +311,7 @@ void main() {
   sigma := float64(halfStencil)/3.0
 
   for i := 0; i < nStencil; i++ {
-    b.WriteString(fmt.Sprintf("vec4 a%d = texture(frame, offset(vCoord, float(%d)));\n", i, i - halfStencil))
+    b.WriteString(fmt.Sprintf("vec4 a%d = texture(uTex, offset(vCoord, float(%d)));\n", i, i - halfStencil))
   }
 
   b.WriteString("oColor = ")
@@ -391,15 +395,14 @@ func compileProgram(vShaderSrc string, fShaderSrc string) (uint32, error) {
   return prog, nil
 }
 
-func compileProgram1() (uint32, error) {
-  return compileProgram(vertexShader1(), fragmentShader1())
+func compileSkinPass() (uint32, error) {
+  return compileProgram(skinPassVertexShader(), skinPassFragmentShader())
 }
 
-func compileProgram2() (uint32, error) {
-  return compileProgram(vertexShader2(), fragmentShader2())
+func compileGlyphPass() (uint32, error) {
+  return compileProgram(glyphPassVertexShader(), glyphPassFragmentShader())
 }
 
-func compileGaussBlur() (uint32, error) {
-  return compileProgram(vertexShaderGaussBlur(), fragmentShaderGaussBlur())
-  //return compileProgram(vertexShader2(), fragmentShader2())
+func compileBlurPass() (uint32, error) {
+  return compileProgram(blurPassVertexShader(), blurPassFragmentShader())
 }

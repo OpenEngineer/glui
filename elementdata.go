@@ -9,7 +9,7 @@ type ElementData struct {
   parent       Element
   children     []Element
 
-  Root       *Root
+  Root       *Frame
   p1Tris     []uint32
   p2Tris     []uint32
   closerThan []Element // these elements must get a smaller z-index than self (i.e. be further away from viewer)
@@ -30,26 +30,31 @@ type ElementData struct {
   deleted bool
 }
 
-func NewElementData(root *Root, nInitTris1 int, nInitTris2 int) ElementData {
+func newElementData(frame *Frame, nInitTris1 int, nInitTris2 int) ElementData {
   p1Tris := make([]uint32, 0)
   if nInitTris1 > 0 {
-    p1Tris = root.P1.Alloc(nInitTris1)
+    p1Tris = frame.P1.Alloc(nInitTris1)
   }
 
   p2Tris := make([]uint32, 0)
   if nInitTris2 > 0 {
-    p2Tris = root.P2.Alloc(nInitTris2)
+    p2Tris = frame.P2.Alloc(nInitTris2)
   }
 
   return ElementData{
     nil,
     make([]Element, 0),
-    root, p1Tris, p2Tris,
+    frame, p1Tris, p2Tris,
     make([]Element, 0),
     make(map[string]EventListener),
     0, 0, [4]int{0, 0, 0, 0}, 0,
     Rect{0, 0, 0, 0}, -1, true, true, false,
   }
+}
+func NewElementData(nInitTris1 int, nInitTris2 int) ElementData {
+  frame := ActiveFrame()
+
+  return newElementData(frame, nInitTris1, nInitTris2)
 }
 
 func (e *ElementData) ZIndex() int {
@@ -282,17 +287,11 @@ func (e *ElementData) Z(maxZIndex int) float32 {
 }
 
 func (e *ElementData) SetButtonStyle() {
-  x0, y0 := e.Root.P1.Skin.ButtonOrigin()
-
-  c := e.Root.P1.Skin.BGColor()
-
-  t := e.Root.P1.Skin.ButtonBorderThickness()
-
-  setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, c)
+  e.Root.P1.setButtonStyle(e.p1Tris)
 }
 
 func (e *ElementData) SetBorderedElementPos(w, h, t, maxZIndex int) {
-  setBorderedElementPos(e.Root, e.p1Tris, w, h, t, e.Z(maxZIndex))
+  e.Root.P1.setBorderedElementPos(e.p1Tris, w, h, t, e.Z(maxZIndex))
 }
 
 func (e *ElementData) SetButtonPos(maxWidth, maxHeight, maxZIndex int) (int, int) {

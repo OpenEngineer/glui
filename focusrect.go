@@ -1,9 +1,6 @@
 package glui
 
 import (
-  "fmt"
-  "reflect"
-
   "github.com/veandco/go-sdl2/sdl"
 )
 
@@ -14,13 +11,13 @@ type FocusRect struct {
 
   tris []uint32 // 8 tris
 
-  root *Root
+  Root *Frame
 }
 
-func newFocusRect(root *Root) *FocusRect {
-  tris := root.P1.Alloc(9*2) // the center quad is hidden, but allows for easy indexing
+func newFocusRect(frame *Frame) *FocusRect {
+  tris := frame.P1.Alloc(9*2) // the center quad is hidden, but allows for easy indexing
 
-  e := &FocusRect{0, nil, tris, root}
+  e := &FocusRect{0, nil, tris, frame}
 
   e.setTypesAndTCoords()
 
@@ -28,19 +25,19 @@ func newFocusRect(root *Root) *FocusRect {
 }
 
 func (e *FocusRect) setTypesAndTCoords() {
-  x0, y0 := e.root.P1.Skin.FocusOrigin()
-  e.t = e.root.P1.Skin.FocusThickness()
+  x0, y0 := e.Root.P1.Skin.FocusOrigin()
+  e.t = e.Root.P1.Skin.FocusThickness()
 
-  setBorderedElementTypesAndTCoords(e.root, e.tris, x0, y0, e.t, sdl.Color{0xff, 0xff, 0xff, 0xff})
+  e.Root.P1.setBorderedElementTypesAndTCoords(e.tris, x0, y0, e.t, sdl.Color{0xff, 0xff, 0xff, 0xff})
 
   for _, tri := range e.tris {
-    e.root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
+    e.Root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
   }
   tri0 := e.tris[8]
   tri1 := e.tris[9]
 
-  e.root.P1.Type.Set1Const(tri0, VTYPE_HIDDEN)
-  e.root.P1.Type.Set1Const(tri1, VTYPE_HIDDEN)
+  e.Root.P1.Type.Set1Const(tri0, VTYPE_HIDDEN)
+  e.Root.P1.Type.Set1Const(tri1, VTYPE_HIDDEN)
 }
 
 func (e *FocusRect) Show(anchor Element) {
@@ -48,7 +45,7 @@ func (e *FocusRect) Show(anchor Element) {
 
   for i, tri := range e.tris {
     if i < 8 || i > 9 {
-      e.root.P1.Type.Set1Const(tri, VTYPE_SKIN)
+      e.Root.P1.Type.Set1Const(tri, VTYPE_SKIN)
     }
   }
 }
@@ -57,7 +54,7 @@ func (e *FocusRect) Hide() {
   e.anchor = nil
 
   for _, tri := range e.tris {
-    e.root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
+    e.Root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
   }
 }
 
@@ -68,19 +65,23 @@ func (e *FocusRect) CalcPos(maxWidth, maxHeight, maxZIndex int) {
     return
   } 
   
-  fmt.Println("focusrect anchor: ", reflect.TypeOf(e.anchor).String())
-
   // z should be pretty high
   zId := e.anchor.ZIndex()
-  zId = e.root.Menu.ZIndex() - 1
+  zId = e.Root.Menu.ZIndex() - 1
   z := normalizeZIndex(zId, maxZIndex)
 
   r := e.anchor.Rect()
 
-  setBorderedElementPos(e.root, e.tris, r.W + e.t*2, r.H + e.t*2, e.t, z)
+  e.Root.P1.setBorderedElementPos(e.tris, r.W + e.t*2, r.H + e.t*2, e.t, z)
 
   for _, tri := range e.tris {
-    e.root.P1.TranslateTri(tri, r.X - e.t, r.Y - e.t, 0.0)
+    e.Root.P1.TranslateTri(tri, r.X - e.t, r.Y - e.t, 0.0)
+  }
+}
+
+func (e *FocusRect) Translate(dx, dy int) {
+  for _, tri := range e.tris {
+    e.Root.P1.TranslateTri(tri, dx, dy, 0.0)
   }
 }
 

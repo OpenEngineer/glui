@@ -23,9 +23,9 @@ type VSplit struct {
   startRight   int
 }
 
-func NewVSplit(root *Root) *VSplit {
+func NewVSplit() *VSplit {
   e := &VSplit{
-    NewElementData(root, 0, 0),
+    NewElementData(0, 0),
     make([]int, 0),
     nil,
     false,
@@ -174,7 +174,7 @@ func (e *VSplit) Show() {
       e.p1Tris = e.p1Tris[0:n*TRIS_PER_BAR]
     }
 
-    texX_, texY := getBarSkinCoords(e.Root)
+    texX_, texY := e.Root.P1.Skin.getBarCoords()
     texX := [4]int{texX_[0], texX_[1], 0, 0}
 
     for barI := 0; barI < n; barI++ {
@@ -187,7 +187,7 @@ func (e *VSplit) Show() {
         e.Root.P1.SetColorConst(tri0, sdl.Color{0xff, 0xff, 0xff, 0xff})
         e.Root.P1.SetColorConst(tri1, sdl.Color{0xff, 0xff, 0xff, 0xff})
 
-        setQuadSkinCoords(e.Root, tri0, tri1, 0, j, texX, texY)
+        e.Root.P1.setQuadSkinCoords(tri0, tri1, 0, j, texX, texY)
       }
     }
   }

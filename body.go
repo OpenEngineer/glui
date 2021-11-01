@@ -10,9 +10,9 @@ type Body struct {
 }
 
 // windows can't be made transparent like this sadly, so alpha stays 255
-func newBody(root *Root) *Body {
+func newBody(frame *Frame) *Body {
   return &Body{
-    NewElementData(root, 0, 0),
+    newElementData(frame, 0, 0),
   }
 }
 

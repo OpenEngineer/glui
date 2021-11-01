@@ -25,13 +25,13 @@ type MenuItem struct {
   onClick func()
 }
 
-func NewMenuItem(root *Root, captionText string, callback func()) *MenuItem {
-  menu := root.Menu
+func NewMenuItem(captionText string, callback func()) *MenuItem {
+  menu := ActiveFrame().Menu
 
-  caption := NewSansCaption(root, captionText, 10)
+  caption := NewSansCaption(captionText, 10)
 
   e := &MenuItem{
-    NewElementData(root, 2, 0),
+    NewElementData(2, 0),
     menu,
     caption,
     false,
@@ -47,13 +47,13 @@ func NewMenuItem(root *Root, captionText string, callback func()) *MenuItem {
   e.On("mouseleave", e.onMouseLeave)
   e.On("mouseenter", e.onMouseEnter)
   
-  e.appendChild(NewHor(root, START, CENTER, 0).H(-1).A(caption))
+  e.appendChild(NewHor(START, CENTER, 0).H(-1).A(caption))
 
   return e
 }
 
-func newMenuItemFromConfig(root *Root, cfg MenuItemConfig) *MenuItem {
-  item := NewMenuItem(root, cfg.Caption, cfg.Callback)
+func newMenuItemFromConfig(cfg MenuItemConfig) *MenuItem {
+  item := NewMenuItem(cfg.Caption, cfg.Callback)
 
   if cfg.Width != 0 {
     item.W(cfg.Width)

@@ -1,15 +1,14 @@
 package glui
 
 import (
-  "fmt"
-
-  "github.com/veandco/go-sdl2/sdl"
 )
 
 // wrapper for Body, Menu and FocusRect
-type Root struct {
-  w         int
-  h         int
+type Frame struct {
+  winW      int
+  winH      int
+  maxW      int
+  maxH      int
   maxZIndex int
 
   P1        *DrawPass1Data
@@ -18,65 +17,81 @@ type Root struct {
   Body      *Body
   Menu      *Menu
   FocusRect *FocusRect
+
+  state     *FrameState
 }
 
 // skinmap and glyphmap can be shared across multiple windows/frames/layers
-func newRoot(skin *SkinMap, glyphs *GlyphMap) *Root {
-  r := &Root{
-    0, 0, 0,
+func newFrame(skin *SkinMap, glyphs *GlyphMap) *Frame {
+  frame := &Frame{
+    0, 0, 0, 0, 0,
     newDrawPass1Data(skin), newDrawPass2Data(glyphs),
-    nil, nil, nil,
+    nil, nil, nil, newFrameState(),
   }
 
-  r.Body      = newBody(r)
-  r.Menu      = newMenu(r)
-  r.FocusRect = newFocusRect(r)
+  frame.Body      = newBody(frame)
+  frame.Menu      = newMenu(frame)
+  frame.FocusRect = newFocusRect(frame)
 
-  return r
+  return frame
 }
 
-func (e *Root) syncSize(window *sdl.Window) {
-  w_, h_ := window.GLGetDrawableSize()
-  w, h := int(w_), int(h_)
-
-  e.w, e.h = w, h
-  e.P1.w, e.P1.h = w, h
-  e.P2.w, e.P2.h = w, h
+func (e *Frame) syncWindowSize(winW, winH int) {
+  e.winW, e.winH = winW, winH
+  e.P1.winW, e.P1.winH = winW, winH
+  e.P2.winW, e.P2.winH = winW, winH
 }
 
-func (e *Root) initGL(prog1 uint32, prog2 uint32) {
-  fmt.Println("initing prog1...")
-  e.P1.InitGL(prog1)
-  fmt.Println("initing prog2...")
-  e.P2.InitGL(prog2)
-}
-
-func (e *Root) dirty() bool {
+func (e *Frame) dirty() bool {
   return e.P1.dirty() || e.P2.dirty()
 }
 
-func (e *Root) posDirty() bool {
+func (e *Frame) posDirty() bool {
   return e.P1.posDirty() || e.P2.posDirty()
 }
 
-func (e *Root) clearPosDirty() {
+func (e *Frame) clearPosDirty() {
   e.P1.clearPosDirty()
   e.P2.clearPosDirty()
 }
 
-func (e *Root) ForcePosDirty() {
+func (e *Frame) ForcePosDirty() {
   e.P1.Type.dirty = true
 }
 
-func (e *Root) GetSize() (int, int) {
-  return e.w, e.h
+func (e *Frame) GetPos() (int, int) {
+  x, y := 0, 0
+
+  if e.maxW < e.winW {
+    x = (e.winW - e.maxW)/2
+  }
+
+  if e.maxH < e.winH {
+    y = (e.winH - e.maxH)/2
+  }
+
+  return x, y
 }
 
-func (e *Root) show() {
+func (e *Frame) GetSize() (int, int) {
+  w, h := e.winW, e.winH
+
+  if w > e.maxW {
+    w = e.maxW
+  }
+
+  if h > e.maxH {
+    h = e.maxH
+  }
+
+  return w, h
+}
+
+func (e *Frame) show() {
   e.Body.Show()
 }
 
-func (e *Root) CalcDepth() {
+func (e *Frame) CalcDepth() {
   stack := newElementStack()
 
   for ; stack.dirty; {
@@ -100,19 +115,28 @@ func (e *Root) CalcDepth() {
   e.maxZIndex = stack.maxZIndex()
 }
 
-func (e *Root) CalcPos() {
+func (e *Frame) CalcPos() {
   if e.maxZIndex == 0 {
     panic("depth not yet calculated")
   }
 
-  e.Body.CalcPos(e.w, e.h, e.maxZIndex)
+  x, y := e.GetPos()
+  w, h := e.GetSize()
 
-  e.Menu.CalcPos(e.w, e.h, e.maxZIndex)
+  e.Body.CalcPos(w, h, e.maxZIndex)
 
-  e.FocusRect.CalcPos(e.w, e.h, e.maxZIndex)
+  e.Menu.CalcPos(w, h, e.maxZIndex)
+
+  e.FocusRect.CalcPos(w, h, e.maxZIndex)
+
+  if x != 0 || y != 0 {
+    e.Body.Translate(x, y)
+    e.Menu.Translate(x, y)
+    e.FocusRect.Translate(x, y)
+  }
 }
 
-func (e *Root) Animate(tick uint64) {
+func (e *Frame) Animate(tick uint64) {
   e.Body.Animate(tick)
 
   e.Menu.Animate(tick)
@@ -121,7 +145,7 @@ func (e *Root) Animate(tick uint64) {
 }
 
 // if this function returns `false` incorrectly, then oldMouseElement probably doesnt correctly have Body as ancestor
-func (e *Root) findMouseElement(oldMouseElement Element, x, y int) (Element, bool) {
+func (e *Frame) findMouseElement(oldMouseElement Element, x, y int) (Element, bool) {
   if e.Menu.IsHit(x, y) {
     if oldMouseElement == nil {
       oldMouseElement = e.Menu

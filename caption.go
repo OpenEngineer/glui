@@ -17,15 +17,15 @@ type Caption struct {
   backColor sdl.Color
 }
 
-func NewSansCaption(root *Root, content string, size float64) *Caption {
-  return NewCaption(root, content, DEFAULT_SANS, size)
+func NewSansCaption(content string, size float64) *Caption {
+  return NewCaption(content, DEFAULT_SANS, size)
 }
 
-func NewCaption(root *Root, content string, font string, size float64) *Caption {
+func NewCaption(content string, font string, size float64) *Caption {
   e := &Caption{
-    NewElementData(root, 0, 0),
-    NewText(root, content, font, size),
-    NewText(root, content, font, size),
+    NewElementData(0, 0),
+    NewText(content, font, size),
+    NewText(content, font, size),
     sdl.Color{0x00, 0x00, 0x00, 0xff},
     sdl.Color{0xff, 0xff, 0xff, 0xff},
   }

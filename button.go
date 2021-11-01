@@ -18,29 +18,29 @@ type Button struct {
   onClick func()
 }
 
-func NewButton(root *Root) *Button {
-  return newButton(root, false, false)
+func NewButton() *Button {
+  return newButton(false, false)
 }
 
-func NewFlatButton(root *Root) *Button {
-  return newButton(root, true, false)
+func NewFlatButton() *Button {
+  return newButton(true, false)
 }
 
-func NewFlatIconButton(root *Root, iconName string, iconSize int) *Button {
-  icon := NewIcon(root, iconName, iconSize)
+func NewFlatIconButton(iconName string, iconSize int) *Button {
+  icon := NewIcon(iconName, iconSize)
 
-  button := NewFlatButton(root)
-  button.A(NewHor(root, CENTER, CENTER, 0).H(-1).A(icon))
+  button := NewFlatButton()
+  button.A(NewHor(CENTER, CENTER, 0).H(-1).A(icon))
 
   return button
 }
 
-func NewStickyFlatButton(root *Root) *Button {
-  return newButton(root, true, true)
+func NewStickyFlatButton() *Button {
+  return newButton(true, true)
 }
 
-func NewCaptionButton(root *Root, caption string, optArgs ...interface{}) *Button {
-  b := NewButton(root)
+func NewCaptionButton(caption string, optArgs ...interface{}) *Button {
+  b := NewButton()
 
   var (
     hAlign Align = CENTER
@@ -74,9 +74,9 @@ func NewCaptionButton(root *Root, caption string, optArgs ...interface{}) *Butto
     panic("unexpected number of args")
   }
 
-  hor := NewHor(root, hAlign, vAlign, 0).H(-1)
+  hor := NewHor(hAlign, vAlign, 0).H(-1)
 
-  hor.A(NewSans(root, caption, 10))
+  hor.A(NewSans(caption, 10))
   hor.Padding(0, lrPadding, 0, lrPadding)
 
   b.A(hor)
@@ -84,9 +84,9 @@ func NewCaptionButton(root *Root, caption string, optArgs ...interface{}) *Butto
   return b
 }
 
-func newButton(root *Root, flat bool, sticky bool) *Button {
+func newButton(flat bool, sticky bool) *Button {
   e := &Button{
-    NewElementData(root, 9*2, 0), 
+    NewElementData(9*2, 0), 
     flat, sticky, 
     false, false,
     nil,
@@ -241,12 +241,12 @@ func (e *Button) setTypesAndTCoords(pressed bool) {
   if pressed {
     x0, y0 := e.Root.P1.Skin.ButtonPressedOrigin()
 
-    setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, e.Root.P1.Skin.BGColor())
+    e.Root.P1.setBorderedElementTypesAndTCoords(e.p1Tris, x0, y0, t, e.Root.P1.Skin.BGColor())
   } else if e.flat {
     if e.inside {
       x0, y0 := e.Root.P1.Skin.InsetOrigin()
 
-      setBorderedElementTypesAndTCoords(e.Root, e.p1Tris, x0, y0, t, e.Root.P1.Skin.BGColor())
+      e.Root.P1.setBorderedElementTypesAndTCoords(e.p1Tris, x0, y0, t, e.Root.P1.Skin.BGColor())
 
       // hide the center tris
       tri0 := e.p1Tris[(3+1)*2 + 0]

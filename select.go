@@ -26,22 +26,22 @@ type Select struct {
 }
 
 
-func NewSelect(root *Root, options []string) *Select {
+func NewSelect(options []string) *Select {
   e := &Select{
-    NewElementData(root, 9*2, 0),
+    NewElementData(9*2, 0),
     options, 
-    NewSans(root, "Choose animal", 10), 
-    NewIcon(root, "arrow-down-drop", 10),
+    NewSans("Choose animal", 10), 
+    NewIcon("arrow-down-drop", 10),
     nil,
     "",
   }
   
-  e.wrapper = &SelectWrapper{NewElementData(root, 0, 0), e}
+  e.wrapper = &SelectWrapper{NewElementData(0, 0), e}
 
   e.Size(200, 50)
   e.Padding(e.Root.P1.Skin.ButtonBorderThickness())
 
-  e.appendChild(NewHor(root, STRETCH, CENTER, 0).H(-1).Padding(0, 10).A(e.text, e.arrow))
+  e.appendChild(NewHor(STRETCH, CENTER, 0).H(-1).Padding(0, 10).A(e.text, e.arrow))
   e.Show()
 
   e.On("mousedown", e.onMouseDown)
@@ -215,7 +215,7 @@ func (e *Select) onShowMenu() {
   for _, option := range e.options {
     option_ := option
 
-    item := NewMenuItem(e.Root, option_, func() {
+    item := NewMenuItem(option_, func() {
       e.SetValue(option_)
     }).H(e.height)
 

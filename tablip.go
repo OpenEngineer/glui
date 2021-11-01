@@ -30,13 +30,11 @@ type tabLip struct {
 }
 
 func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool) *tabLip {
-  root := tabbed.Root
-
-  caption_ := NewSans(root, captionText, TABLIP_CAPTION_SIZE)
+  caption_ := NewSans(captionText, TABLIP_CAPTION_SIZE)
   caption := &tabLipCaption{*caption_, nil}
 
   e := &tabLip{
-    NewElementData(root, 9*2, 0),
+    NewElementData(9*2, 0),
     tabbed,
     tab,
     caption,
@@ -50,13 +48,13 @@ func newTabLip(tabbed *Tabbed, tab *tabPage, captionText string, closeable bool)
   e.closerThan = []Element{tab}
 
   if closeable {
-    closeButton := NewFlatIconButton(root, "close-thick", TABLIP_CLOSE_INNER_SIZE).Size(TABLIP_CLOSE_OUTER_SIZE, TABLIP_CLOSE_OUTER_SIZE)
+    closeButton := NewFlatIconButton("close-thick", TABLIP_CLOSE_INNER_SIZE).Size(TABLIP_CLOSE_OUTER_SIZE, TABLIP_CLOSE_OUTER_SIZE)
 
     closeButton.OnClick(e.onClickCloseButton)
 
-    e.appendChild(NewHor(root, STRETCH, CENTER, 0).H(-1).Padding(0, 10).A(caption, closeButton))
+    e.appendChild(NewHor(STRETCH, CENTER, 0).H(-1).Padding(0, 10).A(caption, closeButton))
   } else {
-    e.appendChild(NewHor(root, START, CENTER, 0).H(-1).Padding(0, 10).A(caption))
+    e.appendChild(NewHor(START, CENTER, 0).H(-1).Padding(0, 10).A(caption))
   }
 
   e.On("mousedown", e.onMouseDown)
@@ -121,7 +119,7 @@ func (e *tabLip) Show() {
 
   bgColor := e.Root.P1.Skin.BGColor()
 
-  xCornerTex, yCornerTex := getCornerSkinCoords(e.Root)
+  xCornerTex, yCornerTex := e.Root.P1.Skin.getCornerCoords()
 
   active := e.isActive()
 
@@ -133,9 +131,9 @@ func (e *tabLip) Show() {
     if active {
       if i == 0 {
         if e.tabbed.isFirstLip(e) {
-          setQuadSkinCoords(e.Root, tri0, tri1, 0, 1, xCornerTex, yCornerTex)
+          e.Root.P1.setQuadSkinCoords(tri0, tri1, 0, 1, xCornerTex, yCornerTex)
         } else {
-          setQuadSkinCoords(e.Root, tri0, tri1, 0, 0, xCornerTex, yCornerTex)
+          e.Root.P1.setQuadSkinCoords(tri0, tri1, 0, 0, xCornerTex, yCornerTex)
         }
       } else if i == 1 {
         e.Root.P1.Type.Set1Const(tri0, VTYPE_PLAIN)
@@ -145,13 +143,13 @@ func (e *tabLip) Show() {
         e.Root.P1.SetColorConst(tri1, bgColor)
       } else if i == 2 {
         if e.touchesRightSide_ {
-          setQuadSkinCoords(e.Root, tri0, tri1, 2, 1, xCornerTex, yCornerTex)
+          e.Root.P1.setQuadSkinCoords(tri0, tri1, 2, 1, xCornerTex, yCornerTex)
         } else {
-          setQuadSkinCoords(e.Root, tri0, tri1, 2, 0, xCornerTex, yCornerTex)
+          e.Root.P1.setQuadSkinCoords(tri0, tri1, 2, 0, xCornerTex, yCornerTex)
         }
       }
     } else {
-      setQuadSkinCoords(e.Root, tri0, tri1, 1, 0, xCornerTex, yCornerTex)
+      e.Root.P1.setQuadSkinCoords(tri0, tri1, 1, 0, xCornerTex, yCornerTex)
 
       j_ := 1
 

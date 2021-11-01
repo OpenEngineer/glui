@@ -15,65 +15,33 @@ const (
   RENDER_LOOP_INTERVAL    = 16 // ms
 )
 
+// app is stored in global variable because this makes it easier to access to active frame when creating new elements
+var _app *App = nil
+
 type App struct {
   name string
 
   x int
   y int
+  winW int
+  winH int
 
   drawCh  chan bool
   eventCh chan interface{}
 
-  root   *Root
-  window *sdl.Window
-  framebuffers [2]uint32 // for windows thumbnail drawing
-  program1 uint32
-  program2 uint32
+  window   *sdl.Window
+  programs *Programs
+  skinMap  *SkinMap
+  glyphMap *GlyphMap
 
-  gaussBlur uint32
-  intermTex uint32
-  filterVBO uint32
+  frames      []*Frame
+  activeFrame int
 
   ctx    sdl.GLContext
   debug  *os.File
-
-  state   AppState
 }
 
-type AppState struct {
-  mouseElement   Element
-  focusElement   Element
-  cursor         int
-  lastDown       Element
-  outside        bool
-  lastDownX      int
-  lastDownY      int
-  mouseMoveSumX  int
-  mouseMoveSumY  int
-  lastUpX        int
-  lastUpY        int
-  upCount        int // limited to three
-  lastTick       uint64
-  lastUpTick     uint64
-  blockNextMouseButtonEvent bool
-}
-
-func newAppState() AppState {
-  return AppState{
-    nil,
-    nil,
-    -1,
-    nil,
-    false,
-    0,0, 0,0,
-    0,0,
-    0,
-    0,0,
-    false,
-  }
-}
-
-func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
+func NewApp(name string, skin Skin, glyphs map[string]*Glyph, nFrames int) {
   debug, err := os.Create(name + ".log")
   if err != nil {
     panic(err)
@@ -87,36 +55,94 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph) *App {
 
   skinMap := newSkinMap(skin)
   glyphMap := newGlyphMap(glyphs)
-  root := newRoot(skinMap, glyphMap)
 
-  return &App{
+  if nFrames < 1 {
+    panic("need at least one frame")
+  }
+
+  frames := make([]*Frame, nFrames)
+  for i := 0; i < nFrames; i++ {
+    // skinMap and glyphMap are shared across frames
+    frames[i] = newFrame(skinMap, glyphMap)
+  }
+
+  if _app != nil {
+    panic("app already initialized")
+  }
+
+  // saved in a global variable
+  _app = &App{
     name,
-    0, 0,
+    0, 0, 0, 0,
     make(chan bool),
     make(chan interface{}),
-    root,
     nil,
-    [2]uint32{0, 0},
+    &Programs{},
+    skinMap,
+    glyphMap,
+    frames,
     0,
-    0,
-    0, 0, 0,
     nil,
     debug,
-    newAppState(),
   }
 }
 
-func (app *App) Root() *Root {
-  return app.root
+func getApp() *App {
+  if _app == nil {
+    panic("app not yet initialized (hint: call NewApp(name, skin, glyphs, nFrames)")
+  }
+
+  return _app
 }
 
-func (app *App) Body() *Body {
-  return app.root.Body
+func (app *App) ActiveFrame() *Frame {
+  return app.frames[app.activeFrame]
 }
 
-func (app *App) Run() {
+func ActiveFrame() *Frame {
+  app := getApp()
+
+  return app.ActiveFrame()
+}
+
+
+func ActiveBody() *Body {
+  app := getApp()
+
+  frame := app.ActiveFrame()
+
+  return frame.Body
+}
+
+func Run() {
+  app := getApp()
+
   if err := app.run(); err != nil {
     fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+  }
+}
+
+// additional frames are always displayed in the center
+func PushFrame(maxW, maxH int) {
+  app := getApp()
+
+  app.activeFrame++
+
+  if app.activeFrame >= len(app.frames) {
+    panic("not enough frames allocated")
+  }
+
+  f := app.ActiveFrame()
+  f.maxW, f.maxH = maxW, maxH
+}
+
+func PopFrame() {
+  app := getApp()
+
+  app.activeFrame--
+
+  if app.activeFrame < 0 {
+    panic("already at base frame")
   }
 }
 
@@ -128,13 +154,12 @@ func (app *App) run() error {
   defer sdl.Quit()
 
   // can we get the size of the displayable area before creating the window?
-  dm, err := sdl.GetCurrentDisplayMode(0)
+  /*dm, err := sdl.GetCurrentDisplayMode(0)
   if err != nil {
     return err
-  }
+  }*/
 
-  fmt.Println(dm.W, dm.H)
-
+  var err error
   app.window, err = sdl.CreateWindow(
     app.name, 
     sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
@@ -156,7 +181,7 @@ func (app *App) run() error {
   // give opengl some time to initialize
   sdl.Delay(START_DELAY)
 
-  app.root.show()
+  app.ActiveFrame().show()
 
   m := &sync.Mutex{}
 
@@ -180,7 +205,7 @@ func (app *App) run() error {
   return app.forwardSystemAndUserEvents()
 }
 
-func (app *App) Quit() {
+func Quit() {
   // XXX: does the timestamp matter?
   sdl.PushEvent(&sdl.QuitEvent{sdl.QUIT, 0})
 }

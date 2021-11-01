@@ -14,6 +14,7 @@ type GlyphMap struct {
 
   loc uint32
   tid uint32
+  tunit uint32
 }
 
 func glyphTextureSize(nGlyphs int) int {
@@ -64,18 +65,15 @@ func newGlyphMap(glyphs map[string]*Glyph) *GlyphMap {
     }
   }
 
-  return &GlyphMap{glyphs, texSize, data, 0, 0}
+  return &GlyphMap{glyphs, texSize, data, 0, 0, 0}
 }
 
-func (g *GlyphMap) InitGL(loc uint32) {
-  g.loc = loc
+func (g *GlyphMap) initGL(uTexLoc uint32, texID uint32, texUnit uint32) {
+  g.loc = uTexLoc
+  g.tid = texID
+  g.tunit = texUnit
 
-  checkGLError()
-  gl.GenTextures(1, &g.tid)
-
-  gl.ActiveTexture(gl.TEXTURE0)
-  gl.Uniform1i(int32(g.loc), 0)
-
+  gl.ActiveTexture(g.tunit)
   gl.BindTexture(gl.TEXTURE_2D, g.tid)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
@@ -91,7 +89,7 @@ func (g *GlyphMap) InitGL(loc uint32) {
 
 func (g *GlyphMap) bind() {
   checkGLError()
-  gl.ActiveTexture(gl.TEXTURE0)
+  gl.ActiveTexture(g.tunit)
   gl.BindTexture(gl.TEXTURE_2D, g.tid)
   checkGLError()
 }

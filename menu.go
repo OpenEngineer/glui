@@ -15,9 +15,9 @@ type Menu struct {
   anchorY float64
 }
 
-func newMenu(root *Root) *Menu {
+func newMenu(frame *Frame) *Menu {
   e := &Menu{
-    NewElementData(root, 9*2, 0),
+    newElementData(frame, 9*2, 0),
     nil,
     0.0,
     0.0,
@@ -25,7 +25,7 @@ func newMenu(root *Root) *Menu {
 
   e.setTypesAndTCoords()
 
-  e.Padding(root.P1.Skin.ButtonBorderThickness())
+  e.Padding(e.Root.P1.Skin.ButtonBorderThickness())
 
   e.Hide()
 

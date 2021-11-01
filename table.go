@@ -19,11 +19,11 @@ type Table struct {
 }
 
 // the table itself is styled like an input
-func NewTable(root *Root) *Table {
+func NewTable() *Table {
   e := &Table{
-    NewElementData(root, 9*2, 0), // after the first 18 tris come the sel tris
+    NewElementData(9*2, 0), // after the first 18 tris come the sel tris
     make([]*Button, 0),
-    newTableBody(root),
+    newTableBody(),
     false,
     -1,
     nil, UNSORTED,
@@ -55,7 +55,7 @@ func (e *Table) LineHeight() int {
 }
 
 func (e *Table) setTypesAndTCoords() {
-  setInputLikeElementTypesAndTCoords(e.Root, e.p1Tris)
+  e.Root.P1.setInputLikeElementTypesAndTCoords(e.p1Tris)
 }
 
 func (e *Table) borderT() int {

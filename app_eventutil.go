@@ -29,22 +29,25 @@ func TriggerEvent(e Element, name string, evt *Event) {
 }
 
 func (app *App) triggerHitEvent(name string, evt *Event) {
-  if elementNotNil(app.state.mouseElement) {
-    TriggerEvent(app.state.mouseElement, name, evt)
+  frame := app.ActiveFrame()
+
+  if elementNotNil(frame.state.mouseElement) {
+    TriggerEvent(frame.state.mouseElement, name, evt)
   }
 }
 
-// XXX: one focus element per root?
 func (app *App) changeFocusElement(newFocusable Element, blurEvt, focusEvt *Event) {
-  if newFocusable != app.state.focusElement {
-    if elementNotNil(app.state.focusElement) {
-      TriggerEvent(app.state.focusElement, "blur", blurEvt)
+  frame := app.ActiveFrame()
+
+  if newFocusable != frame.state.focusElement {
+    if elementNotNil(frame.state.focusElement) {
+      TriggerEvent(frame.state.focusElement, "blur", blurEvt)
     }
 
-    app.state.focusElement = newFocusable
+    frame.state.focusElement = newFocusable
 
     if elementNotNil(newFocusable) {
-      TriggerEvent(app.state.focusElement, "focus", focusEvt)
+      TriggerEvent(frame.state.focusElement, "focus", focusEvt)
     }
   }
 }
@@ -64,6 +67,8 @@ func (app *App) mouseInWindow() bool {
 }
 
 func (app *App) updateMouseElement(x, y int, dx, dy int) {
+  frame := app.ActiveFrame()
+
   if x < 0 {
     x_, y_, _ := sdl.GetMouseState()
 
@@ -71,14 +76,14 @@ func (app *App) updateMouseElement(x, y int, dx, dy int) {
     y = int(y_)
   }
 
-  newMouseElement, isSameOrChildOfOld := app.root.findMouseElement(app.state.mouseElement, x, y)
+  newMouseElement, isSameOrChildOfOld := frame.findMouseElement(frame.state.mouseElement, x, y)
 
 
   // trigger mouse leave event if new mouseElement isn't child of old
-  if elementNotNil(app.state.mouseElement) && !isSameOrChildOfOld {
+  if elementNotNil(frame.state.mouseElement) && !isSameOrChildOfOld {
     evt := NewMouseEvent(x, y)
 
-    ca := commonAncestor(app.state.mouseElement, newMouseElement)
+    ca := commonAncestor(frame.state.mouseElement, newMouseElement)
 
     evt.stopBubblingWhenElementReached(ca)
 
@@ -86,22 +91,22 @@ func (app *App) updateMouseElement(x, y int, dx, dy int) {
   }
 
 
-  if !elementNotNil(app.state.mouseElement) {
+  if !elementNotNil(frame.state.mouseElement) {
     evt := NewMouseEvent(x, y)
-    app.state.mouseElement = newMouseElement
+    frame.state.mouseElement = newMouseElement
     app.triggerHitEvent("mouseenter", evt)
-  } else if app.state.mouseElement != newMouseElement {
+  } else if frame.state.mouseElement != newMouseElement {
     evt := NewMouseEvent(x, y)
 
-    ca := commonAncestor(app.state.mouseElement, newMouseElement)
+    ca := commonAncestor(frame.state.mouseElement, newMouseElement)
 
     evt.stopBubblingWhenElementReached(ca)
 
-    app.state.mouseElement = newMouseElement
-    if app.state.mouseElement == nil {
+    frame.state.mouseElement = newMouseElement
+    if frame.state.mouseElement == nil {
       fmt.Println("mouseElement is nil")
     } else {
-      fmt.Println("mouseElement is ", reflect.TypeOf(app.state.mouseElement).String())
+      fmt.Println("mouseElement is ", reflect.TypeOf(frame.state.mouseElement).String())
     }
 
     if ca != newMouseElement {
@@ -112,22 +117,22 @@ func (app *App) updateMouseElement(x, y int, dx, dy int) {
   mouseMove := dx != 0 || dy != 0
   // mousemove event must be triggered before cursor is updated, as mousemove might change cursor
   if mouseMove {
-    if elementNotNil(app.state.mouseElement) {
-      app.state.mouseMoveSumX += dx
-      app.state.mouseMoveSumY += dy
+    if elementNotNil(frame.state.mouseElement) {
+      frame.state.mouseMoveSumX += dx
+      frame.state.mouseMoveSumY += dy
 
-      if app.state.lastDownX + app.state.mouseMoveSumX != x {
-        dx += x - app.state.lastDownX - app.state.mouseMoveSumX
-        app.state.mouseMoveSumX = x
+      if frame.state.lastDownX + frame.state.mouseMoveSumX != x {
+        dx += x - frame.state.lastDownX - frame.state.mouseMoveSumX
+        frame.state.mouseMoveSumX = x
       }
 
-      if app.state.lastDownY + app.state.mouseMoveSumY != y {
-        dy += y - app.state.lastDownY - app.state.mouseMoveSumY
-        app.state.mouseMoveSumY = y
+      if frame.state.lastDownY + frame.state.mouseMoveSumY != y {
+        dy += y - frame.state.lastDownY - frame.state.mouseMoveSumY
+        frame.state.mouseMoveSumY = y
       }
 
-      if elementNotNil(app.state.lastDown) && app.state.lastDown != app.state.mouseElement {
-        TriggerEvent(app.state.lastDown, "mousemove", NewMouseMoveEvent(x, y, dx, dy))
+      if elementNotNil(frame.state.lastDown) && frame.state.lastDown != frame.state.mouseElement {
+        TriggerEvent(frame.state.lastDown, "mousemove", NewMouseMoveEvent(x, y, dx, dy))
       }
 
       app.triggerHitEvent("mousemove", NewMouseMoveEvent(x, y, dx, dy))
@@ -138,8 +143,10 @@ func (app *App) updateMouseElement(x, y int, dx, dy int) {
 }
 
 func (app *App) updateCursor() {
+  frame := app.ActiveFrame()
+
   cursor := -1
-  e := app.state.mouseElement
+  e := frame.state.mouseElement
   for cursor < 0 && elementNotNil(e) {
     cursor = e.Cursor()
     e = e.Parent()
@@ -149,15 +156,15 @@ func (app *App) updateCursor() {
     cursor = sdl.SYSTEM_CURSOR_ARROW
   }
 
-  if cursor != app.state.cursor {
-    app.state.cursor = cursor
+  if cursor != frame.state.cursor {
+    frame.state.cursor = cursor
 
-    if app.state.cursor >= 0 && app.state.cursor < sdl.NUM_SYSTEM_CURSORS {
+    if frame.state.cursor >= 0 && frame.state.cursor < sdl.NUM_SYSTEM_CURSORS {
       sdl.ShowCursor(sdl.ENABLE)
 
       oldCursor := sdl.GetCursor()
 
-      c := sdl.CreateSystemCursor((sdl.SystemCursor)(app.state.cursor))
+      c := sdl.CreateSystemCursor((sdl.SystemCursor)(frame.state.cursor))
 
       sdl.SetCursor(c)
 
@@ -169,7 +176,9 @@ func (app *App) updateCursor() {
 }
 
 func (app *App) hideMenuIfVisible() {
-  if app.root.Menu.Visible() {
-    app.root.Menu.Hide()
+  frame := app.ActiveFrame()
+
+  if frame.Menu.Visible() {
+    frame.Menu.Hide()
   }
 }

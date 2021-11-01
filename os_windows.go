@@ -18,7 +18,10 @@ import (
   "github.com/veandco/go-sdl2/sdl"
 )
 
-func getWindowHandle(window *sdl.Window) (*C.struct_HWND__, error) {
+// NOTE: I could get correct partial-overlap thumbnails/previewicons to work on windows 7, but the same code doesn't work on windows 10
+//  Now I honestly dont care about this feature anymore, and it's up to someone else to implement it
+
+/*func getWindowHandle(window *sdl.Window) (*C.struct_HWND__, error) {
   info_, err := window.GetWMInfo()
   if err != nil {
     return nil, err
@@ -27,10 +30,12 @@ func getWindowHandle(window *sdl.Window) (*C.struct_HWND__, error) {
   info := info_.GetWindowsInfo()
 
   return (*C.struct_HWND__)(info.Window), nil
-}
+}*/
 
 func InitOS(window *sdl.Window) error {
-  hwnd, err := getWindowHandle(window)
+  return nil
+
+  /*hwnd, err := getWindowHandle(window)
   if err != nil {
     return err
   }
@@ -39,11 +44,12 @@ func InitOS(window *sdl.Window) error {
 
   sdl.EventState(sdl.SYSWMEVENT, sdl.ENABLE)
 
-  return nil
+  return nil*/
 }
 
 func HandleSysWMEvent(app *App, event *sdl.SysWMEvent) error {
-  sysMsg := (*C.SDL_SysWMmsg)(unsafe.Pointer(event.Msg))
+  return nil
+  /*sysMsg := (*C.SDL_SysWMmsg)(unsafe.Pointer(event.Msg))
   switch C.GetSysWMmsgType(sysMsg) {
   case C.WM_DWMSENDICONICLIVEPREVIEWBITMAP:
     fmt.Println("received SENDICONICLIVEPREVIEW request\n")
@@ -75,30 +81,30 @@ func HandleSysWMEvent(app *App, event *sdl.SysWMEvent) error {
     app.drawThumbnail(int(wMax), int(hMax), bUnsafe)
 
     // also save as image
-    /*bmpRect := image.Rect(0, 0, int(wMax), int(hMax))
-    bmp := image.NewRGBA(bmpRect)
-    for i := 0; i < int(wMax); i++ {
-      for j := 0; j < int(hMax); j++ {
-        k := i*int(hMax) + j
+    //bmpRect := image.Rect(0, 0, int(wMax), int(hMax))
+    //bmp := image.NewRGBA(bmpRect)
+    //for i := 0; i < int(wMax); i++ {
+      //for j := 0; j < int(hMax); j++ {
+        //k := i*int(hMax) + j
 
         //if (i == 0 && j == 0) {
           //fmt.Printf("%d, %d, %d, %d\n", b[k*4+0], b[k*4+1], b[k*4+2], b[k*4+3])
         //}
 
-        bmp.SetRGBA(i, j, color.RGBA{b[k*4+0], b[k*4+1], b[k*4+2], b[k*4+3]})
-      }
-    }*/
+        //bmp.SetRGBA(i, j, color.RGBA{b[k*4+0], b[k*4+1], b[k*4+2], b[k*4+3]})
+      //}
+    //}
 
     // save for debugging
-    /*f, err := os.Create("thumbnail.png")
-    if err != nil {
-      fmt.Fprintf(os.Stderr, "failed to create file for thumbnail")
-    } else {
-      if err := png.Encode(f, bmp); err != nil {
-        fmt.Fprintf(os.Stderr, "thumbnail generation failed")
-      }
-    }
-    f.Close()*/
+    //f, err := os.Create("thumbnail.png")
+    //if err != nil {
+      //fmt.Fprintf(os.Stderr, "failed to create file for thumbnail")
+    //} else {
+      //if err := png.Encode(f, bmp); err != nil {
+        //fmt.Fprintf(os.Stderr, "thumbnail generation failed")
+      //}
+    //}
+    //f.Close()
 
     hwnd, err := getWindowHandle(app.window)
     if err != nil {
@@ -108,16 +114,17 @@ func HandleSysWMEvent(app *App, event *sdl.SysWMEvent) error {
     C.SetIconicThumbnail(hwnd, (C.uint32_t)(wMax), (C.uint32_t)(hMax), (*C.uchar)(bUnsafe))
   }
 
-  return nil
+  return nil*/
 }
 
 func OnAfterDrawOS(app *App) error {
-  hwnd, err := getWindowHandle(app.window)
+  return nil
+  /*hwnd, err := getWindowHandle(app.window)
   if err != nil {
     return err
   }
 
   C.InvalidateIconicBitmaps(hwnd)
 
-  return nil
+  return nil*/
 }

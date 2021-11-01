@@ -3,29 +3,128 @@ package glui
 import (
   "errors"
   "fmt"
-  "strconv"
   "sync"
-  "unsafe"
 
   "github.com/go-gl/gl/v4.1-core/gl"
   "github.com/veandco/go-sdl2/sdl"
 )
 
+func (app *App) initDrawLoop(m *sync.Mutex) {
+  m.Lock()
+
+  ctx, err := app.window.GLCreateContext()
+  if err != nil {
+    fmt.Fprintf(app.debug, "unable to create context: %s\n", err.Error())
+    panic(err)
+  }
+
+  app.ctx = ctx
+
+  if err := app.window.GLMakeCurrent(ctx); err != nil {
+    fmt.Fprintf(app.debug, "unable to make current in render: %s\n", err.Error())
+    panic(err)
+  }
+
+  if err := gl.Init(); err != nil {
+    fmt.Fprintf(app.debug, "render gl.Init error: %s\n", err.Error())
+    panic(err)
+  }
+
+  checkGLError()
+
+  glVersion := gl.GoStr(gl.GetString(gl.VERSION))
+  if glVersion == "" {
+    err := errors.New("empty OpenGL version")
+    fmt.Fprintf(app.debug, "%s\n", err.Error())
+    panic(err)
+  }
+
+  app.programs.initPtrs(app.debug)
+
+  app.skinMap.initGL(
+    app.programs.skinPass_uTexLoc, 
+    app.programs.skinPass_texID, 
+    app.programs.skinPass_texUnit,
+  )
+
+  app.glyphMap.initGL(
+    app.programs.glyphPass_uTexLoc,
+    app.programs.glyphPass_texID,
+    app.programs.glyphPass_texUnit,
+  )
+
+  for _, frame := range app.frames {
+    frame.P1.initGL(
+      app.programs.skinPass_aPosLoc,
+      app.programs.skinPass_aTypeLoc,
+      app.programs.skinPass_aParamLoc,
+      app.programs.skinPass_aColorLoc,
+      app.programs.skinPass_aTCoordLoc,
+      app.programs.skinPass_aPosVAO,
+      app.programs.skinPass_aTypeVAO,
+      app.programs.skinPass_aParamVAO,
+      app.programs.skinPass_aColorVAO,
+      app.programs.skinPass_aTCoordVAO,
+      app.programs.skinPass_aPosVBO,
+      app.programs.skinPass_aTypeVBO,
+      app.programs.skinPass_aParamVBO,
+      app.programs.skinPass_aColorVBO,
+      app.programs.skinPass_aTCoordVBO,
+    )
+
+    frame.P2.initGL(
+      app.programs.glyphPass_aPosLoc,
+      app.programs.glyphPass_aTypeLoc,
+      app.programs.glyphPass_aParamLoc,
+      app.programs.glyphPass_aColorLoc,
+      app.programs.glyphPass_aTCoordLoc,
+      app.programs.glyphPass_aPosVAO,
+      app.programs.glyphPass_aTypeVAO,
+      app.programs.glyphPass_aParamVAO,
+      app.programs.glyphPass_aColorVAO,
+      app.programs.glyphPass_aTCoordVAO,
+      app.programs.glyphPass_aPosVBO,
+      app.programs.glyphPass_aTypeVBO,
+      app.programs.glyphPass_aParamVBO,
+      app.programs.glyphPass_aColorVBO,
+      app.programs.glyphPass_aTCoordVBO,
+    )
+  }
+
+  app.syncWindowSize()
+
+  checkGLError()
+
+  x, y := app.window.GetPosition()
+  app.x = int(x)
+  app.y = int(y)
+
+  if err := app.window.GLMakeCurrent(nil); err != nil {
+    fmt.Fprintf(app.debug, "unable to unmake current in render: %s\n", err.Error())
+    return
+  }
+
+  m.Unlock()
+  checkGLError()
+}
+
 func (app *App) DrawIfDirty() {
-  if app.root.posDirty() {
+  frame := app.ActiveFrame()
+
+  if frame.posDirty() {
     fmt.Println("recalculating...")
 
-    app.root.CalcDepth()
+    frame.CalcDepth()
 
-    app.root.CalcPos()
+    frame.CalcPos()
 
     if app.mouseInWindow() {
       app.updateMouseElement(-1, -1, 0, 0)
     }
   }
 
-  if app.root.dirty() {
-    fmt.Println("redrawing...", app.root.P1.nTris(), "&", app.root.P2.nTris())
+  if frame.dirty() {
+    fmt.Println("redrawing...", frame.P1.nTris(), "&", frame.P2.nTris())
 
     app.draw()
   }
@@ -37,20 +136,23 @@ func (app *App) Draw() {
 }
 
 func (app *App) draw() {
+  frame := app.ActiveFrame()
+
   if err := app.window.GLMakeCurrent(app.ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
     return
   }
 
-  w, h := app.root.GetSize()
+  x, y := frame.GetPos()
+  w, h := frame.GetSize()
 
   checkGLError()
 
-  gl.Viewport(0, 0, int32(w), int32(h))
+  gl.Viewport(int32(x), int32(y), int32(w), int32(h))
 
   checkGLError()
 
-  app.drawInner()
+  app.drawFrame(frame)
 
   app.window.GLSwap()
 
@@ -67,8 +169,8 @@ func (app *App) draw() {
   checkGLError()
 }
 
-func (app *App) drawInner() {
-  color := app.root.P1.Skin.BGColor()
+func (app *App) drawFrame(frame *Frame) {
+  color := frame.P1.Skin.BGColor()
 
   checkGLError()
 
@@ -89,22 +191,29 @@ func (app *App) drawInner() {
   gl.Enable(gl.DEPTH_TEST)
   gl.DepthFunc(gl.LESS)
 
-  gl.UseProgram(app.program1)
+  checkGLError()
+  gl.UseProgram(app.programs.skinPass)
 
-  app.root.P1.SyncAndBind()
+  checkGLError()
 
-  gl.DrawArrays(gl.TRIANGLES, 0, int32(app.root.P1.Len())*3)
+  frame.P1.SyncAndBind()
 
-  gl.UseProgram(app.program2)
+  checkGLError()
+  gl.DrawArrays(gl.TRIANGLES, 0, int32(frame.P1.Len())*3)
 
-  app.root.P2.SyncAndBind()
+  checkGLError()
+  gl.UseProgram(app.programs.glyphPass)
 
-  gl.DrawArrays(gl.TRIANGLES, 0, int32(app.root.P2.Len())*3)
+  checkGLError()
+  frame.P2.SyncAndBind()
+
+  checkGLError()
+  gl.DrawArrays(gl.TRIANGLES, 0, int32(frame.P2.Len())*3)
 
   checkGLError()
 }
 
-func (app *App) drawThumbnail(w int, h int, dst unsafe.Pointer) {
+/*func (app *App) drawThumbnail(w int, h int, dst unsafe.Pointer) {
   if err := app.window.GLMakeCurrent(app.ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
     return
@@ -140,11 +249,11 @@ func (app *App) drawThumbnail(w int, h int, dst unsafe.Pointer) {
   }
 
   checkGLError()
-}
+}*/
 
 // eg. apply gaussian blur
 // everything generated should be done initialy?
-func (app *App) drawFiltered(program uint32) {
+/*func (app *App) drawFiltered(program uint32) {
   if err := app.window.GLMakeCurrent(app.ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
     return
@@ -283,9 +392,9 @@ func (app *App) drawFiltered(program uint32) {
   }
 
   checkGLError()
-}
+}*/
 
-func (app *App) drawFiltered1D(fbIn uint32, fbOut uint32, dirX float32, dirY float32, colorAttachment uint32, texUnit uint32, fnDraw func()) {
+/*func (app *App) drawFiltered1D(fbIn uint32, fbOut uint32, dirX float32, dirY float32, colorAttachment uint32, texUnit uint32, fnDraw func()) {
   w, h := app.root.GetSize()
 
   checkGLError()
@@ -423,9 +532,9 @@ func (app *App) DrawBlurred() {
   checkGLError()
 
   sdl.Delay(10000)
-}
+}*/
 
-func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {
+/*func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {
   checkGLError()
   if err := app.window.GLMakeCurrent(app.ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
@@ -460,134 +569,8 @@ func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {
     return
   }
   checkGLError()
-}
-
-func (app *App) initDrawLoop(m *sync.Mutex) {
-  m.Lock()
-
-  ctx, err := app.window.GLCreateContext()
-  if err != nil {
-    fmt.Fprintf(app.debug, "unable to create context: %s\n", err.Error())
-    panic(err)
-  }
-
-  app.ctx = ctx
-
-  if err := app.window.GLMakeCurrent(ctx); err != nil {
-    fmt.Fprintf(app.debug, "unable to make current in render: %s\n", err.Error())
-    panic(err)
-  }
-
-  if err := gl.Init(); err != nil {
-    fmt.Fprintf(app.debug, "render gl.Init error: %s\n", err.Error())
-    panic(err)
-  }
-
-  checkGLError()
-
-  glVersion := gl.GoStr(gl.GetString(gl.VERSION))
-  if glVersion == "" {
-    err := errors.New("empty OpenGL version")
-    fmt.Fprintf(app.debug, "%s\n", err.Error())
-    panic(err)
-  }
-
-  app.program1, err = compileProgram1()
-  if err != nil {
-    fmt.Fprintf(app.debug, "failed to compile OpenGL program1: %s\n", err.Error())
-    panic(err)
-  }
-
-  app.program2, err = compileProgram2()
-  if err != nil {
-    fmt.Fprintf(app.debug, "failed to compile OpenGL program2: %s\n", err.Error())
-    panic(err)
-  }
-
-  if err := app.initGaussBlur(); err != nil {
-    fmt.Fprintf(app.debug, "failed to compile OpenGL program2: %s\n", err.Error())
-    panic(err)
-  }
-
-  app.initFramebuffers()
-
-  app.root.syncSize(app.window)
-  // TODO: how to do initGL for multiple roots?
-  app.root.initGL(app.program1, app.program2)
-
-  checkGLError()
-
-  x, y := app.window.GetPosition()
-  app.x = int(x)
-  app.y = int(y)
-
-  if err := app.window.GLMakeCurrent(nil); err != nil {
-    fmt.Fprintf(app.debug, "unable to unmake current in render: %s\n", err.Error())
-    return
-  }
-
-  m.Unlock()
-  checkGLError()
-}
-
-func (app *App) initFramebuffers() {
-
-  gl.GenFramebuffers(2, &(app.framebuffers[0]))
-
-  anyNonZero := false
-  for i, fb := range app.framebuffers {
-    if app.framebuffers[i] < 0 {
-      panic("bad framebuffer" + strconv.Itoa(i)  + ": " + strconv.Itoa(int(fb)))
-    } else if app.framebuffers[i] > 0 {
-      anyNonZero = true
-    }
-  }
-
-  if !anyNonZero {
-    fmt.Println("generated framebuffers:", app.framebuffers)
-    panic("wtf, all framebuffers are 0")
-  }
-
-  checkGLError()
-}
-
-func checkGLError() {
-  errNum := gl.GetError()
-  if errNum != gl.NO_ERROR {
-    switch errNum {
-    case gl.INVALID_ENUM:
-      panic("gl.INVALID_ENUM")
-    case gl.INVALID_VALUE:
-      panic("gl.INVALID_VALUE")
-    case gl.INVALID_OPERATION:
-      panic("gl.INVALID_OPERATION")
-    case gl.STACK_OVERFLOW:
-      panic("gl.STACK_OVERFLOW")
-    case gl.STACK_UNDERFLOW:
-      panic("gl.STACK_UNDERFLOW")
-    case gl.OUT_OF_MEMORY:
-      panic("gl.OUT_OF_MEMORY")
-    }
-  }
-}
+}*/
 
 func (app *App) endDrawLoop() {
   sdl.GLDeleteContext(app.ctx)
-}
-
-func (app *App) initGaussBlur() error {
-
-  checkGLError()
-  var err error
-  app.gaussBlur, err = compileGaussBlur()
-  if err != nil {
-    return err
-  }
-
-
-  gl.GenTextures(1, &(app.intermTex))
-  gl.BindTexture(gl.TEXTURE_2D, app.intermTex)
-  checkGLError()
-
-  return nil
 }

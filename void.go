@@ -6,9 +6,9 @@ type Void struct {
   ElementData
 }
 
-func NewVoid(root *Root) Void {
+func NewVoid() Void {
   return Void{
-    NewElementData(root, 0, 0),
+    NewElementData(0, 0),
   }
 }
 

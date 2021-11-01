@@ -14,9 +14,9 @@ type Hor struct {
   vAlign  Align
 }
 
-func NewHor(root *Root, hAlign, vAlign Align, spacing int) *Hor {
+func NewHor(hAlign, vAlign Align, spacing int) *Hor {
   e := &Hor{
-    NewElementData(root, 0, 0), 
+    NewElementData(0, 0), 
     hAlign, 
     vAlign,
   }
