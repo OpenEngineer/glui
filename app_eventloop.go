@@ -49,6 +49,10 @@ func (app *App) getScreenSize() (int, int, error) {
   return int(dm.W), int(dm.H), nil
 }
 
+func (app *App) getWindowSize() (int, int) {
+  return app.winW, app.winH
+}
+
 func (app *App) syncWindowSize() {
   w_, h_ := app.window.GLGetDrawableSize()
   w, h := int(w_), int(h_)
@@ -382,9 +386,11 @@ func (app *App) onKeyPress(event *sdl.KeyboardEvent) {
 func (app *App) onShowOrResize() {
   app.syncWindowSize()
 
-  frame := app.ActiveFrame()
-
-  frame.ForcePosDirty()
+  for i, frame := range app.frames {
+    if i <= app.activeFrame {
+      frame.ForcePosDirty()
+    }
+  }
 }
 
 func (app *App) onBlur() {

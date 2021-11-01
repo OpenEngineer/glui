@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-  glui.NewApp("test", &glui.ClassicSkin{}, MakeGlyphs(), 1)
+  glui.NewApp("test", &glui.ClassicSkin{}, MakeGlyphs(), 2)
 
   body := glui.ActiveBody()
   body.Padding(10)
@@ -56,7 +56,17 @@ func main() {
   menuItems:= []glui.MenuItemConfig {
     glui.MenuItemConfig{
       "Close",
-      func(){glui.Quit()},
+      func(){
+        glui.PushFrame(400, 200)
+
+        glui.ActiveBody().A(glui.NewVer(glui.CENTER, glui.CENTER, 40).W(-1).A(glui.NewSans("Are you sure you want to quit?", 12), 
+          glui.NewHor(glui.START, glui.CENTER, 20).A(
+          glui.NewCaptionButton("No").W(100).OnClick(func() {
+            glui.PopFrame()
+          }), glui.NewCaptionButton("Yes").W(100).OnClick(func() {
+            glui.Quit()
+          }))))
+      },
       120,
     },
   }
@@ -65,4 +75,5 @@ func main() {
   body.A(vsplit)
 
   glui.Run()
+
 }

@@ -1,6 +1,6 @@
 package glui
 // must return Element in order to implement Container interface
-func (e *Button) A(children ...Element) Element {
+func (e *Ver) A(children ...Element) Element {
   for _, child := range children {
     e.children = append(e.children, child)
     child.RegisterParent(e)
@@ -8,31 +8,14 @@ func (e *Button) A(children ...Element) Element {
   return e
 }
 
-func (e *Button) CalcDepth(stack *ElementStack) {
+func (e *Ver) CalcDepth(stack *ElementStack) {
   e.zIndex = stack.Add(e, e.closerThan)
   for _, child := range e.Children() {
     child.CalcDepth(stack)
   }
 }
 
-func (e *Button) On(name string, fn EventListener) *Button {
-  old := e.evtListeners[name]
-  if old == nil {
-    e.evtListeners[name] = fn
-  } else {
-    e.evtListeners[name] = func(evt *Event) {fn(evt); if !evt.stopPropagation {old(evt)}}
-  }
-  return e
-}
-
-func (e *Button) Size(w, h int) *Button {
-  e.width = w
-  e.height = h
-  e.Root.ForcePosDirty()
-  return e
-}
-
-func (e *Button) Padding(p ...int) *Button {
+func (e *Ver) Padding(p ...int) *Ver {
   switch len(p) {
   case 1:
     e.padding = [4]int{p[0], p[0], p[0], p[0]}
@@ -53,13 +36,13 @@ func (e *Button) Padding(p ...int) *Button {
   return e
 }
 
-func (e *Button) H(h int) *Button {
-  e.height = h
+func (e *Ver) Spacing(s int) *Ver {
+  e.spacing = s
   e.Root.ForcePosDirty()
   return e
 }
 
-func (e *Button) W(w int) *Button {
+func (e *Ver) W(w int) *Ver {
   e.width = w
   e.Root.ForcePosDirty()
   return e

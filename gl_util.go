@@ -61,3 +61,25 @@ func setupFloatVAO(loc uint32, vao uint32, nComp int32) {
 
   //checkGLError()
 }
+
+func setupRenderToTextureFBO(w, h int, fbo, texID, drawBuf uint32) {
+  gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
+  gl.Viewport(0, 0, int32(w), int32(h))
+
+  checkGLError()
+
+  gl.BindTexture(gl.TEXTURE_2D, texID)
+  gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, int32(w), int32(h), 0, gl.RGB, gl.UNSIGNED_BYTE, nil)
+  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+
+  gl.NamedFramebufferTexture(fbo, drawBuf, texID, 0)
+  gl.DrawBuffers(1, &drawBuf)
+
+  if gl.CheckFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE {
+    panic("something went wrong")
+  }
+  checkGLError()
+}

@@ -3,7 +3,7 @@ package glui
 import (
 )
 
-//go:generate ./gen_element Button "A CalcDepth On Size Padding"
+//go:generate ./gen_element Button "A CalcDepth On Size Padding H W"
 
 type Button struct {
   ElementData
@@ -114,8 +114,10 @@ func (e *Button) Cursor() int {
 }
 
 // set onClick here, so it can also be accessed by the keypresses
-func (e *Button) OnClick(fn func()) {
+func (e *Button) OnClick(fn func()) *Button {
   e.onClick = fn
+
+  return e
 }
 
 func (e *Button) setState(down bool, inside bool) {

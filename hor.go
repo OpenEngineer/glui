@@ -6,7 +6,7 @@ import (
 
 //go:generate ./gen_element Hor "A CalcDepth Padding Spacing H"
 
-// special element that is just used for positioning of children
+// special element that is just used for horizontal positioning of children
 type Hor struct {
   ElementData
 
@@ -45,8 +45,6 @@ func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
       x += e.spacing
     }
 
-    assertReal(float32(x), "xPre in Hor")
-
     childW, childH := child.CalcPos(
       maxWidth - x - e.padding[1], 
       maxHeight - e.padding[0] - e.padding[2], 
@@ -55,15 +53,10 @@ func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     childWs[i] = childW
     childHs[i] = childH
 
-    assertReal(float32(childW), "childW in Hor")
-
-    assertReal(float32(x), "xPre in Hor")
-
     child.Translate(x, 0)
 
     x += childW
 
-    assertReal(float32(x), "xPost in Hor")
     if childH > maxChildH {
       maxChildH = childH
     }
@@ -80,23 +73,20 @@ func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
         dx[i] = dxAll
       }
       someDXSet = true
-      break
     case END:
       dxAll := maxWidth - x - e.padding[1]
       for i, _ := range e.children {
         dx[i] = dxAll
       }
       someDXSet = true
-      break
     case STRETCH:
-      rem := maxWidth - e.padding[1] - x
+      rem := maxWidth - x - e.padding[1]
       remPerChild := float64(rem)/float64(len(e.children) - 1)
 
       for i, _ := range e.children {
         dx[i] = int(math.Floor(float64(i)*remPerChild))
       }
       someDXSet = true
-      break
     }
   }
 
@@ -114,10 +104,8 @@ func (e *Hor) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
       switch e.vAlign {
       case CENTER:
         dy = (h - childHs[i] - e.padding[0] - e.padding[2])/2
-        break
       case END:
         dy = (h - childHs[i] - e.padding[2])
-        break
       }
 
       child.Translate(dx[i], dy)

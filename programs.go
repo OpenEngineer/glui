@@ -10,6 +10,7 @@ import (
 // a collection of gl ptrs
 type Programs struct {
   fbos         [2]uint32 // framebuffers 
+  fbo_texIDs   [2]uint32 
   fbo_texUnits [2]uint32 // {gl.TEXTURE0, gl.TEXTURE1}
   fbo_drawBufs [2]uint32 // {gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1}
 
@@ -61,6 +62,7 @@ type Programs struct {
   blurPass_uTexLoc     uint32
   blurPass_aCoordVAO   uint32
   blurPass_aCoordVBO   uint32
+  blurPass_texIDs      [2]uint32
 }
 
 func (p *Programs) initPtrs(debug *os.File) {
@@ -94,8 +96,8 @@ func (p *Programs) initPtrs(debug *os.File) {
     panic(err)
   }
 
-  texIDs := [2]uint32{0, 0}
-  gl.GenTextures(2, &(texIDs[0]))
+  texIDs := make([]uint32, 4)
+  gl.GenTextures(int32(len(texIDs)), &(texIDs[0]))
 
   for _, texID := range texIDs {
     if texID < 0 {
@@ -122,6 +124,8 @@ func (p *Programs) initPtrs(debug *os.File) {
       panic("negative vbo")
     }
   }
+  p.fbo_texIDs[0] = texIDs[2]
+  p.fbo_texIDs[1] = texIDs[3]
 
   p.skinPass_aPosLoc    = getGLAttribLocation(p.skinPass, "aPos")
   p.skinPass_aTypeLoc   = getGLAttribLocation(p.skinPass, "aType")

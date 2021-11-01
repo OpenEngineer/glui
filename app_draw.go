@@ -109,50 +109,88 @@ func (app *App) initDrawLoop(m *sync.Mutex) {
 }
 
 func (app *App) DrawIfDirty() {
-  frame := app.ActiveFrame()
+  anyDirty := false
+  for i, frame := range app.frames {
+    if i > app.activeFrame {
+      break
+    }
 
-  if frame.posDirty() {
-    fmt.Println("recalculating...")
+    if frame.posDirty() {
+      frame.CalcDepth()
 
-    frame.CalcDepth()
+      frame.CalcPos()
 
-    frame.CalcPos()
+      // TODO: hwo does this work for higher frames?
+      if app.mouseInWindow() {
+        app.updateMouseElement(-1, -1, 0, 0)
+      }
+    }
 
-    if app.mouseInWindow() {
-      app.updateMouseElement(-1, -1, 0, 0)
+    if frame.dirty() {
+      anyDirty = true
     }
   }
 
-  if frame.dirty() {
-    fmt.Println("redrawing...", frame.P1.nTris(), "&", frame.P2.nTris())
-
+  if anyDirty {
     app.draw()
   }
 }
 
-// can be called from any thread
+// can be called from any thread. Doesn't block
 func (app *App) Draw() {
-  app.drawCh <- true
+  go func() {
+    app.drawCh <- true
+  }()
 }
 
 func (app *App) draw() {
-  frame := app.ActiveFrame()
-
   if err := app.window.GLMakeCurrent(app.ctx); err != nil {
     fmt.Fprintf(app.debug, "unable to make current: %s\n", err.Error())
     return
   }
 
-  x, y := frame.GetPos()
-  w, h := frame.GetSize()
+  a := 0
 
-  checkGLError()
+  for i, frame := range app.frames {
+    if i < app.activeFrame {
+      b := a + 1
+      if b == 2 {
+        b = 0
+      }
 
-  gl.Viewport(int32(x), int32(y), int32(w), int32(h))
+      app.renderToTexture(a)
+      if app.activeFrame > 0 {
+        frame.ForceAllDirty() // all tris must be uploaded
+      }
+      app.drawFrame(frame)
 
-  checkGLError()
+      app.renderToTexture(b)
+      app.blur(a, b, 1.0, 0.0)
 
-  app.drawFrame(frame)
+      if (i < app.activeFrame - 1) {
+        app.renderToTexture(a)
+        app.blur(b, a, 0.0, 1.0)
+      } else {
+        gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+        app.blur(b, -1, 0.0, 1.0)
+      }
+
+      a = a + 1
+      if a == 2 {
+        a = 0
+      }
+    } else {
+      gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+      if app.activeFrame > 0 {
+        frame.ForceAllDirty() // all tris must be uploaded
+      }
+      app.drawFrame(frame)
+
+      break
+    }
+
+  }
 
   app.window.GLSwap()
 
@@ -169,7 +207,34 @@ func (app *App) draw() {
   checkGLError()
 }
 
+func (app *App) renderToTexture(fboI int) {
+  winW, winH := app.getWindowSize()
+
+  setupRenderToTextureFBO(
+    winW, 
+    winH, 
+    app.programs.fbos[fboI],
+    app.programs.fbo_texIDs[fboI],
+    app.programs.fbo_drawBufs[fboI],
+  )
+}
+
 func (app *App) drawFrame(frame *Frame) {
+  winW, winH := app.getWindowSize()
+
+  gl.Viewport(0, 0, int32(winW), int32(winH))
+
+  x, y := frame.GetPos()
+  w, h := frame.GetSize()
+
+  applyScissor := w < winW || h < winH || x > 0 || y > 0
+
+  if applyScissor {
+    gl.Enable(gl.SCISSOR_TEST)
+
+    gl.Scissor(int32(x), int32(y), int32(w), int32(h))
+  }
+
   color := frame.P1.Skin.BGColor()
 
   checkGLError()
@@ -209,6 +274,59 @@ func (app *App) drawFrame(frame *Frame) {
 
   checkGLError()
   gl.DrawArrays(gl.TRIANGLES, 0, int32(frame.P2.Len())*3)
+
+  checkGLError()
+
+  if applyScissor {
+    gl.Disable(gl.SCISSOR_TEST)
+  }
+}
+
+func (app *App) blur(srcI int, dstI int, dirX, dirY float64) {
+  var fbo uint32 = 0
+  if dstI > -1 {
+    fbo = app.programs.fbos[dstI]
+  }
+
+  texID := app.programs.fbo_texIDs[srcI]
+  texUnit := app.programs.fbo_texUnits[srcI]
+
+  w, h := app.getWindowSize()
+
+  gl.UseProgram(app.programs.blurPass)
+
+  gl.Uniform2f(int32(app.programs.blurPass_uSizeLoc), float32(w), float32(h))
+
+  gl.Uniform2f(int32(app.programs.blurPass_uDirLoc), float32(dirX), float32(dirY))
+
+  gl.ActiveTexture(texUnit)
+
+  gl.BindTexture(gl.TEXTURE_2D, texID)
+
+  gl.Uniform1i(int32(app.programs.blurPass_uTexLoc), int32(texUnit - gl.TEXTURE0))
+
+  gl.EnableVertexAttribArray(app.programs.blurPass_aCoordLoc)
+  gl.BindBuffer(gl.ARRAY_BUFFER, app.programs.blurPass_aCoordVBO)
+  gl.VertexAttribPointer(app.programs.blurPass_aCoordLoc, 2, gl.FLOAT, false, 0, nil)
+
+  data := []float32{
+    0.0, 0.0,
+    1.0, 0.0,
+    0.0, 1.0,
+    1.0, 0.0,
+    1.0, 1.0,
+    0.0, 1.0,
+  }
+
+  gl.BufferData(gl.ARRAY_BUFFER, 4*len(data), gl.Ptr(data), gl.STATIC_DRAW)
+
+  gl.BindFramebuffer(gl.FRAMEBUFFER, fbo)
+
+  gl.Viewport(0, 0, int32(w), int32(h))
+
+  gl.Clear(gl.DEPTH_BUFFER_BIT)
+
+  gl.DrawArrays(gl.TRIANGLES, 0, 6)
 
   checkGLError()
 }

@@ -22,14 +22,14 @@ type Frame struct {
 }
 
 // skinmap and glyphmap can be shared across multiple windows/frames/layers
-func newFrame(skin *SkinMap, glyphs *GlyphMap) *Frame {
+func newFrame(isFirst bool, skin *SkinMap, glyphs *GlyphMap) *Frame {
   frame := &Frame{
     0, 0, 0, 0, 0,
     newDrawPass1Data(skin), newDrawPass2Data(glyphs),
     nil, nil, nil, newFrameState(),
   }
 
-  frame.Body      = newBody(frame)
+  frame.Body      = newBody(frame, isFirst)
   frame.Menu      = newMenu(frame)
   frame.FocusRect = newFocusRect(frame)
 
@@ -38,8 +38,11 @@ func newFrame(skin *SkinMap, glyphs *GlyphMap) *Frame {
 
 func (e *Frame) syncWindowSize(winW, winH int) {
   e.winW, e.winH = winW, winH
+
   e.P1.winW, e.P1.winH = winW, winH
   e.P2.winW, e.P2.winH = winW, winH
+
+  e.ForcePosDirty()
 }
 
 func (e *Frame) dirty() bool {
@@ -57,6 +60,13 @@ func (e *Frame) clearPosDirty() {
 
 func (e *Frame) ForcePosDirty() {
   e.P1.Type.dirty = true
+  e.P2.Type.dirty = true
+}
+
+// needed when switching frames
+func (e *Frame) ForceAllDirty() {
+  e.P1.ForceAllDirty()
+  e.P2.ForceAllDirty()
 }
 
 func (e *Frame) GetPos() (int, int) {
@@ -171,4 +181,9 @@ func (e *Frame) findMouseElement(oldMouseElement Element, x, y int) (Element, bo
 
     return findHitElement(oldMouseElement, x, y)
   }
+}
+
+func (e *Frame) Clear() {
+  e.Body.ClearChildren()
+  e.Menu.ClearChildren()
 }

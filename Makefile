@@ -1,4 +1,4 @@
-cmds = glyph_maker glyph_tester main 
+cmds = glyph_maker glyph_tester example 
 
 export build = $(abspath ./build)
 
@@ -8,8 +8,8 @@ build_darwin_amd64=$(abspath ./build/darwin_amd64)
 generator=gen_element
 
 dsts=$(addprefix $(build)/,$(cmds))
-dsts_windows_amd64=$(addprefix $(build_windows_amd64)/,main)
-dsts_darwin_amd64=$(addprefix $(build_darwin_amd64)/,main)
+dsts_windows_amd64=$(addprefix $(build_windows_amd64)/,example)
+dsts_darwin_amd64=$(addprefix $(build_darwin_amd64)/,example)
 
 pkg=$(shell find . -name \*.go)
 
@@ -17,7 +17,7 @@ pkg=$(shell find . -name \*.go)
 
 all: $(generator) $(dsts)
 
-main: ./build/main
+example: ./build/example
 
 ms: $(dsts_windows_amd64)
 

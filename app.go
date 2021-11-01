@@ -63,7 +63,7 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph, nFrames int) {
   frames := make([]*Frame, nFrames)
   for i := 0; i < nFrames; i++ {
     // skinMap and glyphMap are shared across frames
-    frames[i] = newFrame(skinMap, glyphMap)
+    frames[i] = newFrame(i == 0, skinMap, glyphMap)
   }
 
   if _app != nil {
@@ -123,6 +123,7 @@ func Run() {
 }
 
 // additional frames are always displayed in the center
+// elements can only be added after this! (otherwise activeFrame is still the previous frame)
 func PushFrame(maxW, maxH int) {
   app := getApp()
 
@@ -139,11 +140,19 @@ func PushFrame(maxW, maxH int) {
 func PopFrame() {
   app := getApp()
 
+  app.ActiveFrame().Clear()
+
   app.activeFrame--
 
   if app.activeFrame < 0 {
     panic("already at base frame")
   }
+
+  newActiveFrame := app.ActiveFrame()
+
+  newActiveFrame.ForceAllDirty()
+
+  app.Draw()
 }
 
 func (app *App) run() error {

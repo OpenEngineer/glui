@@ -650,6 +650,14 @@ func (d *DrawPass2Data) SetGlyphCoords(triId0, triId1 uint32, name string) {
   d.SetGlyphCoord(triId1, 2, r.X, r.Bottom())
 }
 
+func (d *DrawPassData) ForceAllDirty() {
+  d.Pos.dirty = true
+  d.Type.dirty = true
+  d.Param.dirty = true
+  d.Color.dirty = true
+  d.TCoord.dirty = true
+}
+
 func (d *DrawPassData) SyncAndBind() {
   d.Pos.sync()
   d.Type.sync()

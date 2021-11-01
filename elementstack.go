@@ -12,7 +12,7 @@ type ElementStack struct {
 func newElementStack() *ElementStack {
   return &ElementStack{
     make([]Element, 0),
-    0,
+    1, // start at 1, because 0 isn't visible
     true,
   }
 }
