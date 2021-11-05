@@ -38,7 +38,11 @@ The dialog can be removed by calling the `PopFrame()` function.
 Fonts/icons can be included as a texture. There is no font hinting, but this is hardly noticeable on modern computer screens.
 
 # TODO
+* RadioGroup
+* Images
+* Scrollbars
 
+# Notes
 ## Mixing a color with a skin
 * if the skin color is white -> show the mixing color
 * if the skin color is gray -> apply that grayness to the mixing color (i.e. multiply normalized colors)

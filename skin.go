@@ -20,6 +20,10 @@ type Skin interface {
   Focus()         []byte
   Inset()         []byte
   Bar()           []byte // vertical bar, transposed to form horizontal bar
+
+  RadioOff() []byte // square shape
+  RadioOn()  []byte // square shape
+  Tick()     []byte // square shape, determines size of checbox
 }
 
 func calcSquareSkinSize(d []byte) int {

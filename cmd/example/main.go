@@ -29,9 +29,11 @@ func main() {
   button2 := glui.NewFlatIconButton("floppy", 30).Size(40, 40)
   //button2.A(glui.NewHor(glui.CENTER, glui.CENTER, 0).A(icon))
 
+  cb := glui.NewCheckbox()
+
   dropdown := glui.NewSelect([]string{"Dog", "Cat", "Hamster"})
 
-  tabPage1.A(input1, button1, button2)
+  tabPage1.A(input1, button1, button2, cb)
 
   tabPage2.A(dropdown)
 

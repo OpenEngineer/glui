@@ -38,6 +38,16 @@ type SkinMap struct {
   barY int
   barT int // not the border thickness of the bar, but the actual intended bar thickness
 
+  radioOffX int
+  radioOffY int
+  radioOnX  int
+  radioOnY  int
+  radioSize int // size of one side
+
+  tickX int
+  tickY int
+  tickSize int // internal size of one side
+
   loc uint32
   tid uint32
   tunit uint32
@@ -66,6 +76,12 @@ func (sm *SkinMap) genData(s Skin) {
   sm.genCornerData(s, tb)
 
   sm.genBarData(s, tb)
+
+  sm.genRadioOffData(s, tb)
+
+  sm.genRadioOnData(s, tb)
+
+  sm.genTickData(s, tb)
 
   if err := tb.ToImage("skin.png"); err != nil {
     panic(err)
@@ -105,6 +121,36 @@ func (sm *SkinMap) genBarData(s Skin, tb *TextureBuilder) {
 
   sm.barX, sm.barY = tb.Build(bar, n, n)
   sm.barT = n
+}
+
+func (sm *SkinMap) genRadioOffData(s Skin, tb *TextureBuilder) {
+  d := s.RadioOff()
+
+  n := calcSquareSkinSize(d)
+
+  sm.radioOffX, sm.radioOffY = tb.Build(d, n, n)
+  sm.radioSize = n
+}
+
+func (sm *SkinMap) genRadioOnData(s Skin, tb *TextureBuilder) {
+  d := s.RadioOn()
+
+  n := calcSquareSkinSize(d)
+
+  sm.radioOnX, sm.radioOnY = tb.Build(d, n, n)
+
+  if sm.radioSize != n {
+    panic("inconsistent radio button size")
+  }
+}
+
+func (sm *SkinMap) genTickData(s Skin, tb *TextureBuilder) {
+  d := s.Tick()
+
+  n := calcSquareSkinSize(d)
+
+  sm.tickX, sm.tickY = tb.Build(d, n, n)
+  sm.tickSize = n
 }
 
 func (sm *SkinMap) genBordered(d []byte, tb *TextureBuilder, checkT bool) (int, int, int) {
@@ -217,6 +263,14 @@ func (s *SkinMap) BarOrigin() (int, int) {
 
 func (s *SkinMap) BarThickness() int {
   return s.barT
+}
+
+func (s SkinMap) TickOrigin() (int, int) {
+  return s.tickX, s.tickY
+}
+
+func (s *SkinMap) TickSize() int {
+  return s.tickSize
 }
 
 func (s *SkinMap) getButtonCoords() ([4]int, [4]int) {
