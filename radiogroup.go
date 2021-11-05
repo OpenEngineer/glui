@@ -271,7 +271,9 @@ func (e *RadioGroup) selectItem(item *radioItem) {
 }
 
 func (e *RadioGroup) onFocus(evt *Event) {
-  e.Root.FocusRect.Show(e)
+  if evt.IsKeyboardEvent() {
+    e.Root.FocusRect.Show(e)
+  }
 }
 
 func (e *RadioGroup) onBlur(evt *Event) {

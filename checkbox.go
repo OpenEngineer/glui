@@ -28,7 +28,9 @@ func NewCheckbox() *Checkbox {
 }
 
 func (e *Checkbox) onFocus(evt *Event) {
-  e.Root.FocusRect.Show(e)
+  if evt.IsKeyboardEvent() {
+    e.Root.FocusRect.Show(e)
+  }
 }
 
 func (e *Checkbox) onBlur(evt *Event) {
