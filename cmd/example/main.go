@@ -62,8 +62,9 @@ func main() {
       glui.NewCaptionButton("No").W(100).OnClick(func() {
         evt.StopPropagation()
         glui.PopFrame()
+        evt.Callback(false)
       }), glui.NewCaptionButton("Yes").W(100).OnClick(func() {
-        evt.Callback()
+        evt.Callback(true)
       }))))
   })
 

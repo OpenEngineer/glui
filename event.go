@@ -26,7 +26,7 @@ type Event struct {
   stopBubbling bool
 
   stopPropagation bool // multiple functions can be tied to a single eventlisteners, this stops older functions from being called
-  callback  func() // for async quit
+  callback  func(args ...interface{}) // for async quit
 }
 
 func NewMouseEvent(x, y int) *Event {
@@ -61,7 +61,7 @@ func NewTextInputEvent(str string) *Event {
   return &Event{0, 0, 0, 0, "", false, false, false, str, "", nil, false, false, nil}
 }
 
-func NewAppEvent(msg string, fn func()) *Event {
+func NewAppEvent(msg string, fn func(args ...interface{})) *Event {
   return &Event{0, 0, 0, 0, "", false, false, false, "", msg, nil, false, false, fn}
 }
 
@@ -73,8 +73,8 @@ func (e *Event) StopPropagation() {
   e.stopPropagation = true
 }
 
-func (e *Event) Callback() {
-  e.callback()
+func (e *Event) Callback(args ...interface{}) {
+  e.callback(args...)
 }
 
 func (e *Event) stopBubblingWhenElementReached(stopEl Element) {

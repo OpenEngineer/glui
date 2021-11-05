@@ -36,6 +36,7 @@ type App struct {
 
   frames      []*Frame
   activeFrame int
+  quitPending bool
 
   ctx    sdl.GLContext
   debug  *os.File
@@ -82,6 +83,7 @@ func NewApp(name string, skin Skin, glyphs map[string]*Glyph, nFrames int) {
     glyphMap,
     frames,
     0,
+    false,
     nil,
     debug,
   }
@@ -215,9 +217,23 @@ func (app *App) run() error {
 }
 
 func (app *App) quit() {
-  callback := func() {
-    // XXX: does the timestamp matter?
-    sdl.PushEvent(&sdl.QuitEvent{sdl.QUIT, 0})
+  if app.quitPending {
+    return
+  }
+
+  app.quitPending = true
+
+  callback := func(args ...interface{}) {
+    app.quitPending = false
+
+    if len(args) == 1 {
+      if arg, ok := args[0].(bool); ok {
+        if arg {
+          // XXX: does the timestamp matter?
+          sdl.PushEvent(&sdl.QuitEvent{sdl.QUIT, 0})
+        }
+      }
+    }
   }
 
   for i := app.activeFrame; i >= 0; i-- {
@@ -234,7 +250,7 @@ func (app *App) quit() {
     }
   }
 
-  callback()
+  callback(true)
 }
 
 func Quit() {
