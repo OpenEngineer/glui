@@ -9,6 +9,7 @@ import (
 
 const (
   RADIO_SIZE = 20 // includes border
+  RADIO_DOT_RADIUS = 0.4 // fraction of RADIO_SIZE/2
   TICK_SIZE = 16 // doesn't include border
   TICK_THICKNESS = 0.3 // fraction of the TICK_SIZE/2
 )
@@ -451,7 +452,7 @@ func (s *ClassicSkin) RadioOn() []byte {
   c0 := &radioCircle{float64(nSide)/2.0}
   c1 := &radioCircle{float64(nSide)/2.0 - 1.0} // one pixel smaller than outer
   c2 := &radioCircle{float64(nSide)/2.0 - 2.0} // two pixels smamller than outer
-  c3 := &radioCircle{float64(nSide)/2.0 - 5.0} // 5 pixels smaller than outer
+  c3 := &radioCircle{RADIO_DOT_RADIUS*float64(nSide)/2.0}
 
   for i := 0; i < nSide; i++ {
     for j := 0; j < nSide; j++ {

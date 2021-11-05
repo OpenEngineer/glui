@@ -112,7 +112,7 @@ func (e *Select) onKeyDown(evt *Event) {
       e.Root.Menu.Hide()
     } 
   } else if evt.Key == "down" {
-    i := e.valueIndex()
+    i := e.Index()
 
     if i == len(e.options) - 1 {
       e.SetValue(e.options[0])
@@ -120,7 +120,7 @@ func (e *Select) onKeyDown(evt *Event) {
       e.SetValue(e.options[i+1])
     }
   } else if evt.Key == "up" {
-    i := e.valueIndex()
+    i := e.Index()
     
     if i <= 0 {
       e.SetValue(e.options[len(e.options)-1])
@@ -197,7 +197,7 @@ func (e *Select) Value() string {
   return e.value
 }
 
-func (e *Select) valueIndex() int {
+func (e *Select) Index() int {
   for i, opt := range e.options {
     if opt == e.value {
       return i

@@ -265,6 +265,18 @@ func (s *SkinMap) BarThickness() int {
   return s.barT
 }
 
+func (s SkinMap) RadioOffOrigin() (int, int) {
+  return s.radioOffX, s.radioOffY
+}
+
+func (s SkinMap) RadioOnOrigin() (int, int) {
+  return s.radioOnX, s.radioOnY
+}
+
+func (s *SkinMap) RadioSize() int {
+  return s.radioSize
+}
+
 func (s SkinMap) TickOrigin() (int, int) {
   return s.tickX, s.tickY
 }

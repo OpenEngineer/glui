@@ -30,10 +30,11 @@ func main() {
   //button2.A(glui.NewHor(glui.CENTER, glui.CENTER, 0).A(icon))
 
   cb := glui.NewCheckbox()
+  rg := glui.NewRadioGroup([]string{"Jaguar", "Rabbit", "Parrot", "Turtle"}, false)
 
   dropdown := glui.NewSelect([]string{"Dog", "Cat", "Hamster"})
 
-  tabPage1.A(input1, button1, button2, cb)
+  tabPage1.A(input1, button1, button2, cb, rg)
 
   tabPage2.A(dropdown)
 

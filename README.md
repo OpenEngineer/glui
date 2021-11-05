@@ -38,9 +38,9 @@ The dialog can be removed by calling the `PopFrame()` function.
 Fonts/icons can be included as a texture. There is no font hinting, but this is hardly noticeable on modern computer screens.
 
 # TODO
-* RadioGroup
 * Images
 * Scrollbars
+* Panel with overflow scrollbar
 
 # Notes
 ## Mixing a color with a skin
