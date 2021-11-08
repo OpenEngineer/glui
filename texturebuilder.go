@@ -31,6 +31,19 @@ func NewTextureBuilder(nComp int, initWidth int, initHeight int) *TextureBuilder
   }
 }
 
+func (tb *TextureBuilder) HaveFreeSpace(w, h int) bool {
+  b := false
+
+  for _, f := range tb.free {
+    if f.W >= w && f.H >= h {
+      b = true
+      break
+    }
+  }
+
+  return b
+}
+
 func (tb *TextureBuilder) Build(data []byte, w int, h int) (int, int) {
   // look for a free that is able to accomodate
   horFailCount := 0
@@ -79,13 +92,13 @@ func (tb *TextureBuilder) Build(data []byte, w int, h int) (int, int) {
       tb.free = append(tb.free, Rect{f.X, f.Y + h, f.W, f.H - h})
     }
 
+    tb.filterEmptyFree()
+
     return f.X, f.Y
   } else {
     if horFailCount > verFailCount {
-      fmt.Println("failed to find free rect, growing right", tb.free)
       tb.growRight()
     } else {
-      fmt.Println("failed to find free rect, growing down", tb.free)
       tb.growDown()
     }
 
@@ -95,6 +108,18 @@ func (tb *TextureBuilder) Build(data []byte, w int, h int) (int, int) {
   }
 }
 
+func (tb *TextureBuilder) filterEmptyFree() {
+  free := make([]Rect, 0)
+
+  for _, fr := range tb.free {
+    if fr.W > 0 && fr.H > 0 {
+      free = append(free, fr)
+    }
+  }
+
+  tb.free = free
+}
+
 func (tb *TextureBuilder) BuildBordered(data []byte, t int) (int, int) {
   s := 2*t+1
 
@@ -102,11 +127,134 @@ func (tb *TextureBuilder) BuildBordered(data []byte, t int) (int, int) {
 }
 
 func (tb *TextureBuilder) Free(x, y, w, h int) {
-  tb.free = append(tb.free, Rect{x, y, w, h})
+  if w > 0 && h > 0 {
+    tb.free = append(tb.free, Rect{x, y, w, h})
+  }
+
+  tb.Defrag()
 }
 
-// TODO
+func (tb *TextureBuilder) dumpFree(fname string) {
+  f, err := os.Create(fname)
+  if err != nil {
+    panic("unable to debug defrag")
+  }
+
+  for _, fr := range tb.free {
+    fmt.Fprintf(f, "%d %d\n", fr.X, fr.Y)
+    fmt.Fprintf(f, "%d %d\n", fr.Right(), fr.Y)
+    fmt.Fprintf(f, "%d %d\n", fr.Right(), fr.Bottom())
+    fmt.Fprintf(f, "%d %d\n", fr.X, fr.Bottom())
+    fmt.Fprintf(f, "%d %d\n\n", fr.X, fr.Y)
+  }
+}
+
 func (tb *TextureBuilder) Defrag() {
+  // DEBUG
+  //tb.dumpFree("defrag_pre.dat")
+
+  tb.free = defragFreeRects(tb.free)
+
+  //tb.dumpFree("defrag_post.dat")
+}
+
+func aIsBetterThanB(a []Rect, b []Rect) bool {
+  a = sortRects(a[:])
+  b = sortRects(b[:])
+
+  for i := 0; i < len(a); i++ {
+    if i >= len(b) {
+      return false
+    }
+
+    rA := a[i]
+    rB := b[i]
+
+    rAWH := rA.W*rA.H
+    rBWH := rB.W*rB.H
+    if rAWH > rBWH {
+      return true
+    } else if rBWH > rAWH {
+      return false
+    }
+  }
+
+  return true
+}
+
+func defragFreeRects(free []Rect) []Rect {
+  // no further improvements possible
+  if len(free) < 1 {
+    return free
+  }
+
+  removeTwo := func(lst []Rect, i, j int) []Rect {
+    if i > j {
+      i, j = j, i
+    }
+
+    newLst := make([]Rect, len(lst) - 2)
+
+    copy(newLst[0:i], lst[0:i])
+    copy(newLst[i:j-1], lst[i+1:j])
+    if j < len(lst) - 1 {
+      copy(newLst[j-1:], lst[j+1:])
+    }
+
+    return newLst
+  }
+
+  // first simple search for common edges
+  for i, r := range free {
+    for j, r_ := range free {
+      if i == j {
+        continue
+      }
+
+      rNew, ok := r.MergeAlongEdge(r_)
+      if ok {
+        if r.Area() + r_.Area() != rNew.Area() {
+          fmt.Println(rNew, r_, r)
+          panic("area not preserved")
+        }
+
+        free = append(removeTwo(free, i, j), rNew)
+
+        // this is a guaranteed improvement, and we return now
+        return defragFreeRects(free)
+      }
+    }
+  }
+
+  // now search for partially overlapping edges
+  improved := false
+  freeTries := make([][]Rect, 0) // different possibilities
+  for i, r := range free {
+    for j, r_ := range free {
+      if i == j {
+        continue
+      }
+
+      rNew, rRem, ok := r.MergeAlongPartialEdge(r_)
+      if ok {
+        freeTries = append(freeTries, append(removeTwo(free, i, j), rNew, rRem))
+      }
+    }
+  }
+
+  for _, try := range freeTries {
+    if aIsBetterThanB(try, free) {
+      free = try
+
+      improved = true
+    }
+  }
+
+  if improved {
+    return defragFreeRects(free)
+  } else { 
+    return free
+  }
 }
 
 func (tb *TextureBuilder) setData(x int, y int, data []byte, w int, h int) {
@@ -134,6 +282,8 @@ func (tb *TextureBuilder) growRight() {
 
   tb.free = append(tb.free, Rect{oldWidth, 0, oldWidth, tb.height})
   tb.dirty = true
+
+  tb.Defrag()
 }
 
 func (tb *TextureBuilder) growDown() {
@@ -147,6 +297,8 @@ func (tb *TextureBuilder) growDown() {
 
   tb.free = append(tb.free, Rect{0, oldHeight, tb.width, oldHeight})
   tb.dirty = true
+
+  tb.Defrag()
 }
 
 func (tb *TextureBuilder) ToImage(fname string) error {

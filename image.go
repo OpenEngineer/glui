@@ -1,9 +1,6 @@
 package glui
 
 import (
-  "fmt"
-  "image"
-  "reflect"
 )
 
 //go:generate ./gen_element Image "CalcDepth"
@@ -11,35 +8,62 @@ import (
 type Image struct {
   ElementData
 
-  img image.Image
+  img *ImageData
 }
 
-func NewImage(img image.Image) *Image {
-  fmt.Println(reflect.TypeOf(img).String())
-
+func NewImage(img *ImageData) *Image {
   e := &Image{
     NewElementData(2, 0),
     img,
   }
 
-  e.Root.P1.SetQuadImage(e.p1Tris[0], e.p1Tris[1], img)
+  if img != nil {
+    e.width = img.W
+    e.height = img.H
+
+    e.Root.P1.SetQuadImage(e.p1Tris[0], e.p1Tris[1], img)
+  } else {
+    e.Hide()
+  }
+
+  return e
+}
+
+func (e *Image) Img(img *ImageData) *Image {
+  e.img = img
+
+  if img != nil {
+
+    e.width = img.W
+    e.height = img.H
+
+    e.Root.P1.SetQuadImage(e.p1Tris[0], e.p1Tris[1], img)
+  } else {
+    e.Hide()
+  }
+
+  e.Root.ForcePosDirty()
 
   return e
 }
 
 func (e *Image) Show() {
-  e.Root.P1.SetTriType(e.p1Tris[0], VTYPE_IMAGE)
-  e.Root.P1.SetTriType(e.p1Tris[1], VTYPE_IMAGE)
+  if e.img != nil {
+    e.Root.P1.SetTriType(e.p1Tris[0], VTYPE_IMAGE)
+    e.Root.P1.SetTriType(e.p1Tris[1], VTYPE_IMAGE)
+  }
 
   e.ElementData.Show()
 }
 
 // ignores the maxWidth and maxHeight args
 func (e *Image) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
-  w, h := imgSize(e.img)
+  if e.img != nil {
+    e.Root.P1.SetQuadPos(e.p1Tris[0], e.p1Tris[1], Rect{0, 0, e.width, e.height}, e.Z(maxZIndex))
+    e.Root.P1.setQuadImageRelTCoords(e.p1Tris[0], e.p1Tris[1])
 
-  e.Root.P1.SetQuadPos(e.p1Tris[0], e.p1Tris[1], Rect{0, 0, w, h}, e.Z(maxZIndex))
-  e.Root.P1.setQuadImageRelTCoords(e.p1Tris[0], e.p1Tris[1])
-
-  return e.InitRect(w, h)
+    return e.InitRect(e.width, e.height)
+  } else {
+    return e.InitRect(0, 0)
+  }
 }

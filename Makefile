@@ -1,4 +1,4 @@
-cmds = glyph_maker glyph_tester example 
+cmds = glyph_maker glyph_tester load_img example
 
 export build = $(abspath ./build)
 

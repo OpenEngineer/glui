@@ -23,6 +23,7 @@ type Select struct {
   wrapper *SelectWrapper
 
   value string
+  onChange func(i int, value string)
 }
 
 
@@ -34,6 +35,7 @@ func NewSelect(options []string) *Select {
     NewIcon("arrow-down-drop", 10),
     nil,
     "",
+    nil,
   }
   
   e.wrapper = &SelectWrapper{NewElementData(0, 0), e}
@@ -50,6 +52,12 @@ func NewSelect(options []string) *Select {
   e.On("blur", e.onBlur)
   e.On("keydown", e.onKeyDown)
   e.On("keypress", e.onKeyPress)
+
+  return e
+}
+
+func (e *Select) OnChange(fn func(i int, value string)) *Select {
+  e.onChange = fn
 
   return e
 }
@@ -191,6 +199,10 @@ func (e *Select) SetValue(v string) {
   }
 
   e.value = v
+
+  if e.onChange != nil {
+    e.onChange(e.Index(), e.Value())
+  }
 }
 
 func (e *Select) Value() string {

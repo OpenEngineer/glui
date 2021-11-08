@@ -1,7 +1,6 @@
 package glui
 
 import (
-  "image"
   "unsafe"
 
   "github.com/go-gl/gl/v4.1-core/gl"
@@ -65,7 +64,7 @@ func newSkinMap(s Skin) *SkinMap {
 }
 
 func (sm *SkinMap) genData(s Skin) {
-  sm.tb = NewTextureBuilder(4, 1024, 1024)
+  sm.tb = NewTextureBuilder(4, 128, 128)
 
   sm.genButtonData(s, sm.tb)
 
@@ -85,9 +84,9 @@ func (sm *SkinMap) genData(s Skin) {
 
   sm.genTickData(s, sm.tb)
 
-  if err := sm.tb.ToImage("skin.png"); err != nil {
+  /*if err := sm.tb.ToImage("skin.png"); err != nil {
     panic(err)
-  }
+  }*/
 
   sm.syncTextureBuilder()
 }
@@ -335,22 +334,31 @@ func (s *SkinMap) getBarCoords() ([2]int, [4]int) {
   return x, y
 }
 
-func (s *SkinMap) AllocImage(img image.Image) (int, int) {
-  w, h := imgSize(img)
-  
-  data := make([]byte, 4*w*h)
+func (s *SkinMap) AllocImage(img *ImageData, infos map[*ImageData]ImageInfo) (int, int) {
+  someFreeableFound := true
+  for !s.tb.HaveFreeSpace(img.W, img.H) && someFreeableFound {
+    someFreeableFound = false
 
-  for i := 0; i < w; i++ {
-    for j := 0; j < h; j++ {
-      c := img.At(i, j)
+    keys := make([]*ImageData, 0)
+    for k, _ := range infos {
+      keys = append(keys, k)
+    }
 
-      r, g, b, a := c.RGBA()
+    keys = sortImageData(keys)
 
-      setColor(data, i*h + j, byte(r), byte(g), byte(b), byte(a))
+    for _, k := range keys {
+      info := infos[k] 
+      if !info.Used && info.X >= 0 && info.Y >= 0 {
+        s.tb.Free(info.X, info.Y, k.W, k.H)
+        someFreeableFound = true
+        delete(infos, k)
+        break
+      }
     }
   }
 
-  return s.tb.Build(data, w, h)
+  // optionally we could defrag here
+  return s.tb.Build(img.Pix, img.W, img.H)
 }
 
 func (s *SkinMap) DeallocImage(x, y, w, h int) {

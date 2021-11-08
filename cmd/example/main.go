@@ -1,12 +1,27 @@
 package main
 
 import (
-  //"time"
+  "fmt"
+  "os"
+  "os/signal"
+  "runtime/pprof"
 
   "github.com/computeportal/glui"
 )
 
 func main() {
+  prof := false
+  profFile := "example.prof"
+  for _, arg := range os.Args {
+    if arg == "-prof" || arg == "--prof" {
+      prof = true
+    }
+  }
+
+  if prof {
+    startProfiling(profFile)
+  }
+
   glui.NewApp("test", &glui.ClassicSkin{}, MakeGlyphs(), 2)
 
   body := glui.ActiveBody()
@@ -30,15 +45,39 @@ func main() {
   //button2.A(glui.NewHor(glui.CENTER, glui.CENTER, 0).A(icon))
 
   cb := glui.NewCheckbox()
-  rg := glui.NewRadioGroup([]string{"Jaguar", "Rabbit", "Parrot", "Turtle"}, false)
+  rg := glui.NewRadioGroup([]string{"Jaguar", "Rabbit", "Parrot", "Turtle", "Camel"}, false)
+  img1 := glui.NewImage(nil)
+  rg.OnChange(func(i int, _ string) {
+    switch i {
+    case 0:
+      img1.Img(jaguar)
+    case 1:
+      img1.Img(rabbit)
+    case 2:
+      img1.Img(parrot)
+    case 3:
+      img1.Img(turtle)
+    case 4:
+      img1.Img(camel)
+    }
+  })
 
-  dropdown := glui.NewSelect([]string{"Dog", "Cat", "Hamster"})
+  sel := glui.NewSelect([]string{"Dog", "Cat", "Hamster"})
 
-  tabPage1.A(input1, button1, button2, cb, rg)
+  tabPage1.A(input1, button1, button2, cb, rg, img1)
 
-  //img := glui.NewImage(breugel_de_oude())
-  img := glui.NewImage(camel())
-  tabPage2.A(dropdown, img)
+  img2 := glui.NewImage(breugel)
+  sel.OnChange(func(i int, _ string) {
+    switch i {
+    case 0:
+      img2.Img(dog)
+    case 1:
+      img2.Img(cat)
+    case 2:
+      img2.Img(hamster)
+    }
+  })
+  tabPage2.A(sel, img2)
 
   //tabbed2 := glui.NewTabbed()
   //otherSidePage := tabbed2.NewTab("other side", false)
@@ -86,4 +125,51 @@ func main() {
 
   glui.Run()
 
+  if prof {
+    stopProfiling(profFile)
+  }
+}
+
+var fProf *os.File = nil
+
+func printMessageAndExit(msg string) {
+	fmt.Fprintf(os.Stderr, "\u001b[1m"+msg+"\u001b[0m\n\n")
+  os.Exit(1)
+}
+
+func startProfiling(profFile string) {
+  var err error
+  fProf, err = os.Create(profFile)
+  if err != nil {
+    printMessageAndExit(err.Error())
+  }
+
+  pprof.StartCPUProfile(fProf)
+
+  go func() {
+    sigchan := make(chan os.Signal)
+    signal.Notify(sigchan, os.Interrupt)
+    <-sigchan
+
+    stopProfiling(profFile)
+
+    os.Exit(1)
+  }()
+}
+
+func stopProfiling(profFile string) {
+  if fProf != nil {
+		pprof.StopCPUProfile()
+
+    // also write mem profile
+		fMem, err := os.Create(profFile + ".mprof")
+		if err != nil {
+			printMessageAndExit(err.Error())
+		}
+
+		pprof.WriteHeapProfile(fMem)
+		fMem.Close()
+
+    fProf = nil
+  }
 }

@@ -18,6 +18,8 @@ type RadioGroup struct {
   
   options []string
   fillHor bool // false -> vertical fill
+
+  onChange func(i int, value string)
 }
 
 func NewRadioGroup(options []string, fillHor bool) *RadioGroup {
@@ -25,6 +27,7 @@ func NewRadioGroup(options []string, fillHor bool) *RadioGroup {
     NewElementData(0, 0),
     options,
     fillHor,
+    nil,
   }
 
   for _, option := range options {
@@ -168,6 +171,10 @@ func (e *radioItem) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   return e.InitRect(x + txtW, h)
 }
 
+func (e *RadioGroup) OnChange(fn func(i int, value string)) {
+  e.onChange = fn
+}
+
 func (e *RadioGroup) item(i int) *radioItem {
   if i < 0 || i >= len(e.options) {
     panic("i out of range")
@@ -259,14 +266,20 @@ func (e *RadioGroup) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
 }
 
 func (e *RadioGroup) selectItem(item *radioItem) {
+  iSel := -1
   for i := 0; i < e.nChildren(); i++ {
     otherItem := e.item(i)
 
     if item == otherItem {
+      iSel = i
       otherItem.select_()
     } else {
       otherItem.deselect()
     }
+  }
+
+  if e.onChange != nil && iSel != -1 {
+    e.onChange(iSel, e.Value())
   }
 }
 
