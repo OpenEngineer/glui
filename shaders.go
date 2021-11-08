@@ -14,6 +14,7 @@ func writeVertexTypes(b *strings.Builder) {
   b.WriteString(fmt.Sprintf("const int SKIN  = %d;\n", VTYPE_SKIN))
   b.WriteString(fmt.Sprintf("const int GLYPH  = %d;\n", VTYPE_GLYPH))
   b.WriteString(fmt.Sprintf("const int DUMMY  = %d;\n", VTYPE_DUMMY))
+  b.WriteString(fmt.Sprintf("const int IMAGE  = %d;\n", VTYPE_IMAGE))
 }
 
 func skinPassVertexShader() string {
@@ -95,6 +96,8 @@ void main() {
       sColor.z*vColor.z,
       sColor.w
     );
+  } else if (t == IMAGE) {
+    oColor = texture(uTex, vTCoord);
   } else if (t == DUMMY) {
     oColor = vec4(vParam, vParam, vParam, 1.0); // so that aParam isn't optimized out
   }

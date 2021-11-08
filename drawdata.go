@@ -631,21 +631,28 @@ func (d *DrawPass1Data) SetSkinCoord(triId uint32, vertexId uint32, x_ int, y_ i
   x := float32(x_)/float32(d.skinWidth)
   y := float32(y_)/float32(d.skinHeight)
 
-  // XXX: transpose for some reason
-  d.TCoord.Set2(triId, vertexId, y, x)
+  d.SetTCoord(triId, vertexId, x, y)
 }
 
 // if size of texture changes, all the coords need to change
 func (d *DrawPass1Data) syncSkinSize(w, h int) {
+  if w == d.skinWidth && h == d.skinHeight {
+    return
+  }
+
   xScale := float32(d.skinWidth)/float32(w)
   yScale := float32(d.skinHeight)/float32(h)
 
-  for i := 0; i < len(d.TCoord.data)/2; i++ {
-    x := d.TCoord.data[i*2]
-    y := d.TCoord.data[i*2+1]
+  for triId := 0; triId < d.Len(); triId++ {
+    for vertexId := 0; vertexId < 3; vertexId++ {
+      // scale regardless of Type (a tri might be hidden, and then switch to another Type later on)
+      x, y := d.GetTCoord(uint32(triId), uint32(vertexId))
 
-    d.TCoord.data[i*2] = x*xScale
-    d.TCoord.data[i*2+1] = y*yScale
+      x = x*xScale
+      y = y*yScale
+
+      d.SetTCoord(uint32(triId), uint32(vertexId), x, y)
+    }
   }
 
   d.TCoord.dirty = true
@@ -655,10 +662,6 @@ func (d *DrawPass1Data) syncSkinSize(w, h int) {
 
 func (d *DrawPassData) SetTriType(triId uint32, value float32) {
   d.Type.Set1Const(triId, value)
-
-  if value == VTYPE_IMAGE {
-    panic("use SetQuadImage instead")
-  }
 }
 
 func (d *DrawPass1Data) SetQuadImage(tri0, tri1 uint32, img image.Image) {
@@ -695,17 +698,29 @@ func (d *DrawPass1Data) SetQuadImage(tri0, tri1 uint32, img image.Image) {
     d.images[tri1Index] = img
   }
 
-  d.SetQuadImageRelTCoords(tri0, tri1)
+  d.setQuadImageRelTCoords(tri0, tri1)
 }
 
-func (d *DrawPassData) SetQuadImageRelTCoords(tri0, tri1 uint32) {
-  d.TCoord.Set2(tri0, 0, 0.0, 0.0)
-  d.TCoord.Set2(tri0, 1, 0.0, 1.0)
-  d.TCoord.Set2(tri0, 2, 1.0, 0.0)
+func (d *DrawPassData) setQuadImageRelTCoords(tri0, tri1 uint32) {
+  d.SetTCoord(tri0, 0, 0.0, 0.0)
+  d.SetTCoord(tri0, 1, 1.0, 0.0) 
+  d.SetTCoord(tri0, 2, 0.0, 1.0)
 
-  d.TCoord.Set2(tri1, 0, 0.0, 1.0)
-  d.TCoord.Set2(tri1, 1, 1.0, 1.0)
-  d.TCoord.Set2(tri1, 2, 1.0, 0.0)
+  d.SetTCoord(tri1, 0, 1.0, 1.0)
+  d.SetTCoord(tri1, 1, 1.0, 0.0)
+  d.SetTCoord(tri1, 2, 0.0, 1.0)
+}
+
+func (d *DrawPassData) SetTCoord(triId uint32, vertexId uint32, x, y float32) {
+  // XXX transpose for some reason
+  d.TCoord.Set2(triId, vertexId, y, x)
+}
+
+func (d *DrawPassData) GetTCoord(triId uint32, vertexId uint32) (float32, float32) {
+  // XXX transpose for some reason
+  y, x := d.TCoord.Get2(triId, vertexId)
+
+  return x, y
 }
 
 func (d *DrawPassData) SetColorConst(triId uint32, c sdl.Color) {
@@ -939,6 +954,10 @@ func (d *DrawPass1Data) setButtonStyle(tris []uint32) {
 
 
 func (d *DrawPass1Data) SyncImagesToTexture() {
+  fmt.Println("syncing images to texture")
+
+  someAdded := false
+
   unusedImages := make(map[image.Image]bool)
   for k, _ := range d.imageOrigins {
     unusedImages[k] = true
@@ -950,22 +969,27 @@ func (d *DrawPass1Data) SyncImagesToTexture() {
     // verify that the type is actually zero
     t := d.Type.Get(tri, 0, 0)
     if t != VTYPE_IMAGE {
+      fmt.Println("skipping image tri that isn't really image tri", t)
       continue
     }
 
     // check that the tri has a positive size (i.e. isn't 'cropped-out')
     x0, y0, x1, y1, x2, y2 := d.GetTri2DPos(tri)
 
-    if triArea(x0, y0, x1, y1, x2, y2) <= 1e-8 {
+    A := triArea(x0, y0, x1, y1, x2, y2)
+    if A <= 1e-8 {
+      fmt.Println("skipping tiny image tri", A, x0, y0, x1, y1, x2, y2)
       continue
     }
 
     origin, ok := d.imageOrigins[img]
     if !ok {
+      fmt.Println("adding image to texture")
       originX, originY := d.Skin.AllocImage(img) // the size of the texture changes at this point, yet the TCoords are in rel coordinates
       origin = [2]int{originX, originY}
 
       d.imageOrigins[img] = origin
+      someAdded = true
     } else {
       delete(unusedImages, img)
     }
@@ -976,25 +1000,33 @@ func (d *DrawPass1Data) SyncImagesToTexture() {
     d.scaleAndTranslateTCoord(tri, 0, float32(imgW), float32(imgH), float32(origin[0]), float32(origin[1]))
     d.scaleAndTranslateTCoord(tri, 1, float32(imgW), float32(imgH), float32(origin[0]), float32(origin[1]))
     d.scaleAndTranslateTCoord(tri, 2, float32(imgW), float32(imgH), float32(origin[0]), float32(origin[1]))
-
   }
 
   // images that are not touched should be removed from the map and from the texture
-  for k, _ := range unusedImages {
+  /*for k, _ := range unusedImages {
     origin := d.imageOrigins[k]
     imgW, imgH := imgSize(k)
 
     d.Skin.DeallocImage(origin[0], origin[1], imgW, imgH)
 
     delete(d.imageOrigins, k)
+  }*/
+
+  if someAdded {
+    fmt.Println("some images added")
+    if err := d.Skin.tb.ToImage("skin_w_images.png"); err != nil {
+      panic(err)
+    }
   }
 }
 
 func (d *DrawPass1Data) scaleAndTranslateTCoord(triId uint32, vertexId uint32, w, h, dx, dy float32) {
-  x, y := d.TCoord.Get2(triId, vertexId)
+  y, x := d.TCoord.Get2(triId, vertexId)
 
   x = (x*w + dx)/float32(d.skinWidth)
   y = (y*h + dy)/float32(d.skinHeight)
 
-  d.TCoord.Set2(triId, vertexId, x, y)
+  fmt.Println("new texcoords:", x, y)
+
+  d.TCoord.Set2(triId, vertexId, y, x)
 }

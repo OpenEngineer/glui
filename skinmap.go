@@ -65,7 +65,7 @@ func newSkinMap(s Skin) *SkinMap {
 }
 
 func (sm *SkinMap) genData(s Skin) {
-  sm.tb = NewTextureBuilder(4, 128, 128)
+  sm.tb = NewTextureBuilder(4, 1024, 1024)
 
   sm.genButtonData(s, sm.tb)
 

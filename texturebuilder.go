@@ -1,6 +1,7 @@
 package glui
 
 import (
+  "fmt"
   "image"
   "image/color"
   "image/png"
@@ -35,46 +36,63 @@ func (tb *TextureBuilder) Build(data []byte, w int, h int) (int, int) {
   horFailCount := 0
   verFailCount := 0
 
+  // free rect with smallest waste wins
+  bestFree := -1
+  bestWaste := w*h
   for i, f := range tb.free {
     horFail := f.W < w
     verFail := f.H < h
     if horFail {
       horFailCount++
-    }
+    } 
+
     if verFail {
       verFailCount++
     }
 
     if !horFail && !verFail {
-      tb.setData(f.X, f.Y, data, w, h)
-
-      if f.W == w && f.H == h {
-        if len(tb.free) == 1 {
-          tb.free = []Rect{}
-        } else {
-          tb.free = append(tb.free[0:i], tb.free[i+1:]...)
-        }
-      } else if (f.W - w) < (f.H - h) {
-        tb.free[i] = Rect{f.X, f.Y + h, w, f.H - h}
-        tb.free = append(tb.free, Rect{f.X + w, f.Y, f.W - w, f.H})
-      } else {
-        tb.free[i] = Rect{f.X + w, f.Y, f.W - w, h}
-        tb.free = append(tb.free, Rect{f.X, f.Y + h, f.W, f.H - h})
+      waste := (f.W - w)*h + f.W*(f.H - h)
+      if bestFree == -1 || waste < bestWaste {
+        bestFree = i
+        bestWaste = waste
       }
-
-      return f.X, f.Y
     }
   }
 
-  if horFailCount > verFailCount {
-    tb.growRight()
+  if bestFree != -1 {
+    i := bestFree
+    f := tb.free[i]
+
+    tb.setData(f.X, f.Y, data, w, h)
+
+    if f.W == w && f.H == h {
+      if len(tb.free) == 1 {
+        tb.free = []Rect{}
+      } else {
+        tb.free = append(tb.free[0:i], tb.free[i+1:]...)
+      }
+    } else if (f.W - w) < (f.H - h) {
+      tb.free[i] = Rect{f.X, f.Y + h, w, f.H - h}
+      tb.free = append(tb.free, Rect{f.X + w, f.Y, f.W - w, f.H})
+    } else {
+      tb.free[i] = Rect{f.X + w, f.Y, f.W - w, h}
+      tb.free = append(tb.free, Rect{f.X, f.Y + h, f.W, f.H - h})
+    }
+
+    return f.X, f.Y
   } else {
-    tb.growDown()
+    if horFailCount > verFailCount {
+      fmt.Println("failed to find free rect, growing right", tb.free)
+      tb.growRight()
+    } else {
+      fmt.Println("failed to find free rect, growing down", tb.free)
+      tb.growDown()
+    }
+
+    tb.dirty = true
+
+    return tb.Build(data, w, h)
   }
-
-  tb.dirty = true
-
-  return tb.Build(data, w, h)
 }
 
 func (tb *TextureBuilder) BuildBordered(data []byte, t int) (int, int) {
@@ -93,13 +111,13 @@ func (tb *TextureBuilder) Defrag() {
 
 func (tb *TextureBuilder) setData(x int, y int, data []byte, w int, h int) {
   for i := x; i < x+w; i++ {
-    for j := y; j < y+h; j++ {
-      for c := 0; c < tb.nComp; c++ {
-        dst := (i*tb.height + j)*tb.nComp + c
-        src := ((i-x)*h + (j - y))*tb.nComp + c
-        tb.data[dst] = data[src]
-      }
-    }
+    dst0 := (i*tb.height + y)*tb.nComp
+    dst1 := (i*tb.height + y+h)*tb.nComp
+
+    src0 := ((i-x)*h + (y - y))*tb.nComp
+    src1 := ((i-x)*h + (y + h - y))*tb.nComp
+
+    copy(tb.data[dst0 : dst1 : dst1], data[src0 : src1 : src1])
   }
 
   tb.dirty = true

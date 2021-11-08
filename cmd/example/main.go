@@ -36,7 +36,9 @@ func main() {
 
   tabPage1.A(input1, button1, button2, cb, rg)
 
-  tabPage2.A(dropdown)
+  //img := glui.NewImage(breugel_de_oude())
+  img := glui.NewImage(camel())
+  tabPage2.A(dropdown, img)
 
   //tabbed2 := glui.NewTabbed()
   //otherSidePage := tabbed2.NewTab("other side", false)
