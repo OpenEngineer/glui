@@ -167,8 +167,8 @@ func (e *tableBody) syncSelection() {
       // set tri color
 
       if e.showSel {
-        e.Root.P1.Type.Set1Const(tri0, VTYPE_PLAIN)
-        e.Root.P1.Type.Set1Const(tri1, VTYPE_PLAIN)
+        e.Root.P1.SetTriType(tri0, VTYPE_PLAIN)
+        e.Root.P1.SetTriType(tri1, VTYPE_PLAIN)
 
         e.Root.P1.SetColorConst(tri0, e.Root.P1.Skin.SelColor())
         e.Root.P1.SetColorConst(tri1, e.Root.P1.Skin.SelColor())
@@ -179,8 +179,8 @@ func (e *tableBody) syncSelection() {
           c.Select(i, true)
         }
       } else {
-        e.Root.P1.Type.Set1Const(tri0, VTYPE_HIDDEN)
-        e.Root.P1.Type.Set1Const(tri1, VTYPE_HIDDEN)
+        e.Root.P1.SetTriType(tri0, VTYPE_HIDDEN)
+        e.Root.P1.SetTriType(tri1, VTYPE_HIDDEN)
       }
 
       selI++

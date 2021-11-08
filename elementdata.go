@@ -99,11 +99,11 @@ func (e *ElementData) GetSize() (int, int) {
 
 func (e *ElementData) Hide() {
   for _, tri := range e.p1Tris {
-    e.Root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
+    e.Root.P1.SetTriType(tri, VTYPE_HIDDEN)
   }
 
   for _, tri := range e.p2Tris {
-    e.Root.P2.Type.Set1Const(tri, VTYPE_HIDDEN)
+    e.Root.P2.SetTriType(tri, VTYPE_HIDDEN)
   }
 
   for _, child := range e.children {

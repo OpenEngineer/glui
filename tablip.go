@@ -136,8 +136,8 @@ func (e *tabLip) Show() {
           e.Root.P1.setQuadSkinCoords(tri0, tri1, 0, 0, xCornerTex, yCornerTex)
         }
       } else if i == 1 {
-        e.Root.P1.Type.Set1Const(tri0, VTYPE_PLAIN)
-        e.Root.P1.Type.Set1Const(tri1, VTYPE_PLAIN)
+        e.Root.P1.SetTriType(tri0, VTYPE_PLAIN)
+        e.Root.P1.SetTriType(tri1, VTYPE_PLAIN)
 
         e.Root.P1.SetColorConst(tri0, bgColor)
         e.Root.P1.SetColorConst(tri1, bgColor)

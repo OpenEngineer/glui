@@ -254,12 +254,12 @@ func (e *Button) setTypesAndTCoords(pressed bool) {
       tri0 := e.p1Tris[(3+1)*2 + 0]
       tri1 := e.p1Tris[(3+1)*2 + 1]
 
-      e.Root.P1.Type.Set1Const(tri0, VTYPE_HIDDEN)
-      e.Root.P1.Type.Set1Const(tri1, VTYPE_HIDDEN)
+      e.Root.P1.SetTriType(tri0, VTYPE_HIDDEN)
+      e.Root.P1.SetTriType(tri1, VTYPE_HIDDEN)
     } else {
       for _, tri := range e.p1Tris {
         // hide the tris, leave the color up the underlying element
-        e.Root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
+        e.Root.P1.SetTriType(tri, VTYPE_HIDDEN)
         //e.Root.P1.SetColorConst(tri, e.Root.P1.Skin.BGColor())
       }
     }

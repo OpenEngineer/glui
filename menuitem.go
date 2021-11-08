@@ -74,7 +74,7 @@ func (e *MenuItem) setTypesAndColor() {
   }
 
   for _, tri := range e.p1Tris {
-    e.Root.P1.Type.Set1Const(tri, VTYPE_PLAIN)
+    e.Root.P1.SetTriType(tri, VTYPE_PLAIN)
     e.Root.P1.SetColorConst(tri, c)
   }
 }

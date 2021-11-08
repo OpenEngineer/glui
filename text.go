@@ -92,8 +92,8 @@ func (e *Text) Show() {
     tri0 := e.p2Tris[i*2+0]
     tri1 := e.p2Tris[i*2+1]
 
-    e.Root.P2.Type.Set1Const(tri0, VTYPE_GLYPH)
-    e.Root.P2.Type.Set1Const(tri1, VTYPE_GLYPH)
+    e.Root.P2.SetTriType(tri0, VTYPE_GLYPH)
+    e.Root.P2.SetTriType(tri1, VTYPE_GLYPH)
     e.Root.P2.SetColorConst(tri0, e.color)
     e.Root.P2.SetColorConst(tri1, e.color)
   }

@@ -507,8 +507,8 @@ func (e *Input) showVBar() {
   tri0 := e.p1Tris[18]
   tri1 := e.p1Tris[19]
 
-  e.Root.P1.Type.Set1Const(tri0, VTYPE_PLAIN)
-  e.Root.P1.Type.Set1Const(tri1, VTYPE_PLAIN)
+  e.Root.P1.SetTriType(tri0, VTYPE_PLAIN)
+  e.Root.P1.SetTriType(tri1, VTYPE_PLAIN)
 
   e.currentVBar = true
 }
@@ -517,8 +517,8 @@ func (e *Input) hideVBar() {
   tri0 := e.p1Tris[18]
   tri1 := e.p1Tris[19]
 
-  e.Root.P1.Type.Set1Const(tri0, VTYPE_HIDDEN)
-  e.Root.P1.Type.Set1Const(tri1, VTYPE_HIDDEN)
+  e.Root.P1.SetTriType(tri0, VTYPE_HIDDEN)
+  e.Root.P1.SetTriType(tri1, VTYPE_HIDDEN)
 
   e.currentVBar = false
 }

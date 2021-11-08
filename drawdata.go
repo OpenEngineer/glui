@@ -2,6 +2,7 @@ package glui
 
 import (
   "fmt"
+  "image"
   "math"
   "strings"
 
@@ -17,7 +18,8 @@ const (
   VTYPE_PLAIN  = 1
   VTYPE_SKIN   = 2
   VTYPE_GLYPH  = 3
-  VTYPE_DUMMY  = 4 // so that aParam isn't optimized out
+  VTYPE_IMAGE  = 4
+  VTYPE_DUMMY  = 5 // so that aParam isn't optimized out
 )
 
 type Float32Buffer struct {
@@ -61,6 +63,14 @@ type DrawPass1Data struct {
   DrawPassData
 
   Skin *SkinMap
+
+  // width and height of buffered texture might differ from memory
+  skinWidth int 
+  skinHeight int
+
+  imageTris    []uint32 // so we don't need to search Type for VTYPE_IMAGE
+  images       []image.Image // same pointers are assumed to be same images
+  imageOrigins map[image.Image][2]int // images allocated in in the texture are also in this map 
 }
 
 type DrawPass2Data struct {
@@ -127,7 +137,15 @@ func newDrawPassData() DrawPassData {
 }
 
 func newDrawPass1Data(skin *SkinMap) *DrawPass1Data {
-  return &DrawPass1Data{newDrawPassData(), skin}
+  return &DrawPass1Data{
+    newDrawPassData(), 
+    skin, 
+    skin.width, 
+    skin.height,
+    make([]uint32, 0),
+    make([]image.Image, 0),
+    make(map[image.Image][2]int),
+  }
 }
 
 func newDrawPass2Data(glyphs *GlyphMap) *DrawPass2Data {
@@ -176,6 +194,19 @@ func (d *DrawPassData) Grow() {
   d.Param.grow(nTrisNew)
   d.Color.grow(nTrisNew)
   d.TCoord.grow(nTrisNew)
+}
+
+func (d *DrawPassData) GetTri2DPos(tri uint32) (x0 float32, y0 float32, x1 float32, y1 float32, x2 float32, y2 float32) {
+  x0 = d.Pos.Get(tri, 0, 0)
+  y0 = d.Pos.Get(tri, 0, 1)
+
+  x1 = d.Pos.Get(tri, 1, 0)
+  y1 = d.Pos.Get(tri, 1, 1)
+
+  x2 = d.Pos.Get(tri, 2, 0)
+  y2 = d.Pos.Get(tri, 2, 1)
+
+  return
 }
 
 func (b *Float32Buffer) grow(nTrisNew int) {
@@ -239,7 +270,7 @@ func (d *DrawPassData) Alloc(nTris int) []uint32 {
 
 func (d *DrawPassData) Dealloc(offsets []uint32) {
   for _, tri := range offsets {
-    d.Type.Set1Const(tri, VTYPE_HIDDEN)
+    d.SetTriType(tri, VTYPE_HIDDEN)
   }
 
   oldFree := d.free
@@ -294,6 +325,12 @@ func (b *Float32Buffer) Get(triId uint32, vertexId uint32, compId uint32) float3
   offset := (triId*3 + vertexId)*uint32(b.nComp)
 
   return b.data[offset + compId]
+}
+
+func (b *Float32Buffer) Get2(triId uint32, vertexId uint32) (float32, float32) {
+  offset := (triId*3 + vertexId)*uint32(b.nComp)
+
+  return b.data[offset], b.data[offset+1]
 }
 
 func (b *Float32Buffer) Set(triId uint32, vertexId uint32, compId uint32, value float32) {
@@ -591,11 +628,84 @@ func (d *DrawPassData) SetQuadPosF(tri0 uint32, tri1 uint32, r RectF, z float32)
 }
 
 func (d *DrawPass1Data) SetSkinCoord(triId uint32, vertexId uint32, x_ int, y_ int) {
-  x := float32(x_)/float32(d.Skin.width)
-  y := float32(y_)/float32(d.Skin.height)
+  x := float32(x_)/float32(d.skinWidth)
+  y := float32(y_)/float32(d.skinHeight)
 
   // XXX: transpose for some reason
   d.TCoord.Set2(triId, vertexId, y, x)
+}
+
+// if size of texture changes, all the coords need to change
+func (d *DrawPass1Data) syncSkinSize(w, h int) {
+  xScale := float32(d.skinWidth)/float32(w)
+  yScale := float32(d.skinHeight)/float32(h)
+
+  for i := 0; i < len(d.TCoord.data)/2; i++ {
+    x := d.TCoord.data[i*2]
+    y := d.TCoord.data[i*2+1]
+
+    d.TCoord.data[i*2] = x*xScale
+    d.TCoord.data[i*2+1] = y*yScale
+  }
+
+  d.TCoord.dirty = true
+  d.skinWidth = w
+  d.skinHeight = h
+}
+
+func (d *DrawPassData) SetTriType(triId uint32, value float32) {
+  d.Type.Set1Const(triId, value)
+
+  if value == VTYPE_IMAGE {
+    panic("use SetQuadImage instead")
+  }
+}
+
+func (d *DrawPass1Data) SetQuadImage(tri0, tri1 uint32, img image.Image) {
+  d.Type.Set1Const(tri0, VTYPE_IMAGE)
+  d.Type.Set1Const(tri1, VTYPE_IMAGE)
+
+  tri0Index := -1
+  tri1Index := -1
+  for i, tri := range d.imageTris {
+    if tri == tri0 {
+      tri0Index = i
+    }
+
+    if tri == tri1 {
+      tri1Index = i
+    }
+
+    if tri0Index >= 0 && tri1Index >= 0 {
+      break
+    }
+  }
+
+  if tri0Index == -1 {
+    d.imageTris = append(d.imageTris, tri0)
+    d.images = append(d.images, img)
+  } else {
+    d.images[tri0Index] = img
+  }
+
+  if tri1Index == -1 {
+    d.imageTris = append(d.imageTris, tri1)
+    d.images = append(d.images, img)
+  } else {
+    d.images[tri1Index] = img
+  }
+
+  d.SetQuadImageRelTCoords(tri0, tri1)
+}
+
+func (d *DrawPassData) SetQuadImageRelTCoords(tri0, tri1 uint32) {
+  d.TCoord.Set2(tri0, 0, 0.0, 0.0)
+  d.TCoord.Set2(tri0, 1, 0.0, 1.0)
+  d.TCoord.Set2(tri0, 2, 1.0, 0.0)
+
+  d.TCoord.Set2(tri1, 0, 0.0, 1.0)
+  d.TCoord.Set2(tri1, 1, 1.0, 1.0)
+  d.TCoord.Set2(tri1, 2, 1.0, 0.0)
 }
 
 func (d *DrawPassData) SetColorConst(triId uint32, c sdl.Color) {
@@ -673,9 +783,14 @@ func (d *DrawPassData) SyncAndBind() {
 }
 
 func (d *DrawPass1Data) SyncAndBind() {
-  d.DrawPassData.SyncAndBind()
-
   d.Skin.bind()
+
+  // update the texture coordinates
+  if d.Skin.width != d.skinWidth || d.Skin.height != d.skinHeight {
+    d.syncSkinSize(d.Skin.width, d.Skin.height)
+  }
+
+  d.DrawPassData.SyncAndBind()
 }
 
 func (d *DrawPass2Data) SyncAndBind() {
@@ -692,6 +807,10 @@ func (d *DrawPassData) posDirty() bool {
   return d.Type.dirty // a change of type indicates that some elements became visible/hidden, and thus affect positioning of siblings etc.
 }
 
+func (d *DrawPassData) forcePosDirty() {
+  d.Type.dirty = true
+}
+
 func (d *DrawPassData) clearPosDirty() {
   d.Type.dirty = false
 }
@@ -703,11 +822,11 @@ func (d *DrawPass1Data) showBorderedElement(tris []uint32) {
       tri1 := tris[(i*3 + j)*2 + 1]
 
       if (i == 1 && j == 1) {
-        d.Type.Set1Const(tri0, VTYPE_PLAIN)
-        d.Type.Set1Const(tri1, VTYPE_PLAIN)
+        d.SetTriType(tri0, VTYPE_PLAIN)
+        d.SetTriType(tri1, VTYPE_PLAIN)
       } else {
-        d.Type.Set1Const(tri0, VTYPE_SKIN)
-        d.Type.Set1Const(tri1, VTYPE_SKIN)
+        d.SetTriType(tri0, VTYPE_SKIN)
+        d.SetTriType(tri1, VTYPE_SKIN)
       }
     }
   }
@@ -742,21 +861,21 @@ func (d *DrawPass1Data) setBorderedElementTypesAndTCoords(tris []uint32, x0, y0 
       tri1 := tris[(i*3 + j)*2 + 1]
 
       if (i == 1 && j == 1) {
-        d.Type.Set1Const(tri0, VTYPE_PLAIN)
+        d.SetTriType(tri0, VTYPE_PLAIN)
         d.SetColorConst(tri0, bgColor)
         //d.TCoord.Set2Const(tri0, 0.0, 0.0)
 
-        d.Type.Set1Const(tri1, VTYPE_PLAIN)
+        d.SetTriType(tri1, VTYPE_PLAIN)
         d.SetColorConst(tri1, bgColor)
         //d.TCoord.Set2Const(tri1, 0.0, 0.0)
       } else {
-        d.Type.Set1Const(tri0, VTYPE_SKIN)
+        d.SetTriType(tri0, VTYPE_SKIN)
         d.Color.Set4Const(tri0, 1.0, 1.0, 1.0, 1.0)
         //d.SetSkinCoord(tri0, 0, x[i], y[j])
         //d.SetSkinCoord(tri0, 1, x[i+1], y[j])
         //d.SetSkinCoord(tri0, 2, x[i], y[j+1])
 
-        d.Type.Set1Const(tri1, VTYPE_SKIN)
+        d.SetTriType(tri1, VTYPE_SKIN)
         d.Color.Set4Const(tri1, 1.0, 1.0, 1.0, 1.0)
 
         d.setQuadSkinCoords(tri0, tri1, i, j, x, y)
@@ -818,3 +937,64 @@ func (d *DrawPass1Data) setButtonStyle(tris []uint32) {
   d.setBorderedElementTypesAndTCoords(tris, x0, y0, t, c)
 }
 
+
+func (d *DrawPass1Data) SyncImagesToTexture() {
+  unusedImages := make(map[image.Image]bool)
+  for k, _ := range d.imageOrigins {
+    unusedImages[k] = true
+  }
+
+  for i, tri := range d.imageTris {
+    img := d.images[i]
+
+    // verify that the type is actually zero
+    t := d.Type.Get(tri, 0, 0)
+    if t != VTYPE_IMAGE {
+      continue
+    }
+
+    // check that the tri has a positive size (i.e. isn't 'cropped-out')
+    x0, y0, x1, y1, x2, y2 := d.GetTri2DPos(tri)
+
+    if triArea(x0, y0, x1, y1, x2, y2) <= 1e-8 {
+      continue
+    }
+
+    origin, ok := d.imageOrigins[img]
+    if !ok {
+      originX, originY := d.Skin.AllocImage(img) // the size of the texture changes at this point, yet the TCoords are in rel coordinates
+      origin = [2]int{originX, originY}
+
+      d.imageOrigins[img] = origin
+    } else {
+      delete(unusedImages, img)
+    }
+
+    imgW, imgH := imgSize(img)
+
+    // now add origin to the texture coords
+    d.scaleAndTranslateTCoord(tri, 0, float32(imgW), float32(imgH), float32(origin[0]), float32(origin[1]))
+    d.scaleAndTranslateTCoord(tri, 1, float32(imgW), float32(imgH), float32(origin[0]), float32(origin[1]))
+    d.scaleAndTranslateTCoord(tri, 2, float32(imgW), float32(imgH), float32(origin[0]), float32(origin[1]))
+
+  }
+
+  // images that are not touched should be removed from the map and from the texture
+  for k, _ := range unusedImages {
+    origin := d.imageOrigins[k]
+    imgW, imgH := imgSize(k)
+
+    d.Skin.DeallocImage(origin[0], origin[1], imgW, imgH)
+
+    delete(d.imageOrigins, k)
+  }
+}
+
+func (d *DrawPass1Data) scaleAndTranslateTCoord(triId uint32, vertexId uint32, w, h, dx, dy float32) {
+  x, y := d.TCoord.Get2(triId, vertexId)
+
+  x = (x*w + dx)/float32(d.skinWidth)
+  y = (y*h + dy)/float32(d.skinHeight)
+
+  d.TCoord.Set2(triId, vertexId, x, y)
+}

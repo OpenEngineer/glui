@@ -182,8 +182,8 @@ func (e *VSplit) Show() {
         tri0 := e.p1Tris[barI*TRIS_PER_BAR + j*2 + 0]
         tri1 := e.p1Tris[barI*TRIS_PER_BAR + j*2 + 1]
 
-        e.Root.P1.Type.Set1Const(tri0, VTYPE_SKIN)
-        e.Root.P1.Type.Set1Const(tri1, VTYPE_SKIN)
+        e.Root.P1.SetTriType(tri0, VTYPE_SKIN)
+        e.Root.P1.SetTriType(tri1, VTYPE_SKIN)
         e.Root.P1.SetColorConst(tri0, sdl.Color{0xff, 0xff, 0xff, 0xff})
         e.Root.P1.SetColorConst(tri1, sdl.Color{0xff, 0xff, 0xff, 0xff})
 

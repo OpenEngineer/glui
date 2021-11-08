@@ -1,6 +1,7 @@
 package glui
 
 import (
+  "image"
   "unsafe"
 
   "github.com/go-gl/gl/v4.1-core/gl"
@@ -8,6 +9,7 @@ import (
 )
 
 type SkinMap struct {
+  tb     *TextureBuilder
   skin   Skin
 
   data   []byte
@@ -63,33 +65,38 @@ func newSkinMap(s Skin) *SkinMap {
 }
 
 func (sm *SkinMap) genData(s Skin) {
-  tb := NewTextureBuilder(4, 128, 128)
+  sm.tb = NewTextureBuilder(4, 128, 128)
 
-  sm.genButtonData(s, tb)
+  sm.genButtonData(s, sm.tb)
 
-  sm.genInputData(s, tb)
+  sm.genInputData(s, sm.tb)
 
-  sm.genFocusData(s, tb)
+  sm.genFocusData(s, sm.tb)
 
-  sm.genInsetData(s, tb)
+  sm.genInsetData(s, sm.tb)
 
-  sm.genCornerData(s, tb)
+  sm.genCornerData(s, sm.tb)
 
-  sm.genBarData(s, tb)
+  sm.genBarData(s, sm.tb)
 
-  sm.genRadioOffData(s, tb)
+  sm.genRadioOffData(s, sm.tb)
 
-  sm.genRadioOnData(s, tb)
+  sm.genRadioOnData(s, sm.tb)
 
-  sm.genTickData(s, tb)
+  sm.genTickData(s, sm.tb)
 
-  if err := tb.ToImage("skin.png"); err != nil {
+  if err := sm.tb.ToImage("skin.png"); err != nil {
     panic(err)
   }
 
-  sm.data = tb.data
-  sm.width = tb.width
-  sm.height = tb.height
+  sm.syncTextureBuilder()
+}
+
+func (sm *SkinMap) syncTextureBuilder() {
+  sm.data = sm.tb.data
+  sm.width = sm.tb.width
+  sm.height = sm.tb.height
+  sm.tb.dirty = false
 }
 
 func (sm *SkinMap) genButtonData(s Skin, tb *TextureBuilder) {
@@ -194,6 +201,11 @@ func (s *SkinMap) bind() {
   checkGLError()
   gl.ActiveTexture(s.tunit)
   gl.BindTexture(gl.TEXTURE_2D, s.tid)
+  if s.tb.dirty {
+    s.syncTextureBuilder()
+    gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(s.width), int32(s.height), 0, gl.RGBA, 
+      gl.UNSIGNED_BYTE, unsafe.Pointer(&(s.data[0])))
+  }
   checkGLError()
 }
 
@@ -321,4 +333,26 @@ func (s *SkinMap) getBarCoords() ([2]int, [4]int) {
   y[3] = y0 + t
 
   return x, y
+}
+
+func (s *SkinMap) AllocImage(img image.Image) (int, int) {
+  w, h := imgSize(img)
+  
+  data := make([]byte, 4*w*h)
+
+  for i := 0; i < w; i++ {
+    for j := 0; j < h; j++ {
+      c := img.At(i, j)
+
+      r, g, b, a := c.RGBA()
+
+      setColor(data, i*h + j, byte(r), byte(g), byte(b), byte(a))
+    }
+  }
+
+  return s.tb.Build(data, w, h)
+}
+
+func (s *SkinMap) DeallocImage(x, y, w, h int) {
+  s.tb.Free(x, y, w, h)
 }

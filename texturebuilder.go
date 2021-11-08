@@ -15,6 +15,8 @@ type TextureBuilder struct {
   free   []Rect
 
   data   []byte
+
+  dirty  bool
 }
 
 func NewTextureBuilder(nComp int, initWidth int, initHeight int) *TextureBuilder {
@@ -24,6 +26,7 @@ func NewTextureBuilder(nComp int, initWidth int, initHeight int) *TextureBuilder
     initHeight,
     []Rect{Rect{0, 0, initWidth, initHeight}},
     make([]byte, nComp*initWidth*initHeight),
+    true,
   }
 }
 
@@ -69,6 +72,8 @@ func (tb *TextureBuilder) Build(data []byte, w int, h int) (int, int) {
     tb.growDown()
   }
 
+  tb.dirty = true
+
   return tb.Build(data, w, h)
 }
 
@@ -76,6 +81,14 @@ func (tb *TextureBuilder) BuildBordered(data []byte, t int) (int, int) {
   s := 2*t+1
 
   return tb.Build(data, s, s)
+}
+
+func (tb *TextureBuilder) Free(x, y, w, h int) {
+  tb.free = append(tb.free, Rect{x, y, w, h})
+}
+
+// TODO
+func (tb *TextureBuilder) Defrag() {
 }
 
 func (tb *TextureBuilder) setData(x int, y int, data []byte, w int, h int) {
@@ -88,6 +101,8 @@ func (tb *TextureBuilder) setData(x int, y int, data []byte, w int, h int) {
       }
     }
   }
+
+  tb.dirty = true
 }
 
 func (tb *TextureBuilder) growRight() {
@@ -100,6 +115,7 @@ func (tb *TextureBuilder) growRight() {
   tb.setData(0, 0, oldData, oldWidth, tb.height)
 
   tb.free = append(tb.free, Rect{oldWidth, 0, oldWidth, tb.height})
+  tb.dirty = true
 }
 
 func (tb *TextureBuilder) growDown() {
@@ -112,6 +128,7 @@ func (tb *TextureBuilder) growDown() {
   tb.setData(0, 0, oldData, tb.width, oldHeight)
 
   tb.free = append(tb.free, Rect{0, oldHeight, tb.width, oldHeight})
+  tb.dirty = true
 }
 
 func (tb *TextureBuilder) ToImage(fname string) error {

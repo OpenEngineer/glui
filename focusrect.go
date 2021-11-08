@@ -31,13 +31,13 @@ func (e *FocusRect) setTypesAndTCoords() {
   e.Root.P1.setBorderedElementTypesAndTCoords(e.tris, x0, y0, e.t, sdl.Color{0xff, 0xff, 0xff, 0xff})
 
   for _, tri := range e.tris {
-    e.Root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
+    e.Root.P1.SetTriType(tri, VTYPE_HIDDEN)
   }
   tri0 := e.tris[8]
   tri1 := e.tris[9]
 
-  e.Root.P1.Type.Set1Const(tri0, VTYPE_HIDDEN)
-  e.Root.P1.Type.Set1Const(tri1, VTYPE_HIDDEN)
+  e.Root.P1.SetTriType(tri0, VTYPE_HIDDEN)
+  e.Root.P1.SetTriType(tri1, VTYPE_HIDDEN)
 }
 
 func (e *FocusRect) Show(anchor Element) {
@@ -45,7 +45,7 @@ func (e *FocusRect) Show(anchor Element) {
 
   for i, tri := range e.tris {
     if i < 8 || i > 9 {
-      e.Root.P1.Type.Set1Const(tri, VTYPE_SKIN)
+      e.Root.P1.SetTriType(tri, VTYPE_SKIN)
     }
   }
 }
@@ -54,7 +54,7 @@ func (e *FocusRect) Hide() {
   e.anchor = nil
 
   for _, tri := range e.tris {
-    e.Root.P1.Type.Set1Const(tri, VTYPE_HIDDEN)
+    e.Root.P1.SetTriType(tri, VTYPE_HIDDEN)
   }
 }
 

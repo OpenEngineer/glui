@@ -120,7 +120,7 @@ func (app *App) DrawIfDirty() {
 
       frame.CalcPos()
 
-      // TODO: hwo does this work for higher frames?
+      // TODO: how should this work for upper frames?
       if app.mouseInWindow() {
         app.updateMouseElement(-1, -1, 0, 0)
       }

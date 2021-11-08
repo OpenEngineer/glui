@@ -52,9 +52,9 @@ func (e *Menu) ShowAt(anchor Element, anchorX, anchorY float64, width int) {
 
   for i, tri := range e.p1Tris {
     if i == 8 || i == 9 {
-      e.Root.P1.Type.Set1Const(tri, VTYPE_PLAIN)
+      e.Root.P1.SetTriType(tri, VTYPE_PLAIN)
     } else {
-      e.Root.P1.Type.Set1Const(tri, VTYPE_SKIN)
+      e.Root.P1.SetTriType(tri, VTYPE_SKIN)
     }
   }
 

@@ -61,8 +61,8 @@ func (e *Icon) Show() {
   tri2 := e.p2Tris[2]
   tri3 := e.p2Tris[3]
 
-  e.Root.P2.Type.Set1Const(tri2, VTYPE_GLYPH)
-  e.Root.P2.Type.Set1Const(tri3, VTYPE_GLYPH)
+  e.Root.P2.SetTriType(tri2, VTYPE_GLYPH)
+  e.Root.P2.SetTriType(tri3, VTYPE_GLYPH)
 
   e.Root.P2.SetColorConst(tri2, e.mainColor)
   e.Root.P2.SetColorConst(tri3, e.mainColor)
@@ -70,11 +70,11 @@ func (e *Icon) Show() {
   e.Root.P2.SetGlyphCoords(tri2, tri3, e.name)
 
   if e.shadow {
-    e.Root.P2.Type.Set1Const(tri0, VTYPE_GLYPH)
-    e.Root.P2.Type.Set1Const(tri1, VTYPE_GLYPH)
+    e.Root.P2.SetTriType(tri0, VTYPE_GLYPH)
+    e.Root.P2.SetTriType(tri1, VTYPE_GLYPH)
   } else {
-    e.Root.P2.Type.Set1Const(tri0, VTYPE_HIDDEN)
-    e.Root.P2.Type.Set1Const(tri1, VTYPE_HIDDEN)
+    e.Root.P2.SetTriType(tri0, VTYPE_HIDDEN)
+    e.Root.P2.SetTriType(tri1, VTYPE_HIDDEN)
   }
 
   e.Root.P2.SetColorConst(tri0, e.shadowColor)

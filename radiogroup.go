@@ -131,8 +131,8 @@ func (e *radioItem) setTypesAndTCoords() {
   tri0 := e.p1Tris[0]
   tri1 := e.p1Tris[1]
 
-  e.Root.P1.Type.Set1Const(tri0, VTYPE_SKIN)
-  e.Root.P1.Type.Set1Const(tri1, VTYPE_SKIN)
+  e.Root.P1.SetTriType(tri0, VTYPE_SKIN)
+  e.Root.P1.SetTriType(tri1, VTYPE_SKIN)
 
   e.Root.P1.Color.Set4Const(tri0, 1.0, 1.0, 1.0, 1.0)
   e.Root.P1.Color.Set4Const(tri1, 1.0, 1.0, 1.0, 1.0)

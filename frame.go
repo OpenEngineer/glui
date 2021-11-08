@@ -59,8 +59,8 @@ func (e *Frame) clearPosDirty() {
 }
 
 func (e *Frame) ForcePosDirty() {
-  e.P1.Type.dirty = true
-  e.P2.Type.dirty = true
+  e.P1.forcePosDirty()
+  e.P2.forcePosDirty()
 }
 
 // needed when switching frames
@@ -144,6 +144,8 @@ func (e *Frame) CalcPos() {
     e.Menu.Translate(x, y)
     e.FocusRect.Translate(x, y)
   }
+
+  e.P1.SyncImagesToTexture()
 }
 
 func (e *Frame) Animate(tick uint64) {
