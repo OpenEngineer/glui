@@ -435,7 +435,7 @@ func (e *Input) onBlur(evt *Event) {
   e.hideVBar()
 }
 
-func (e *Input) Cursor() int {
+func (e *Input) Cursor(x, y int) int {
   return sdl.SYSTEM_CURSOR_IBEAM
 }
 

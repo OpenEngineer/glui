@@ -3,6 +3,11 @@ package glui
 import (
 )
 
+const (
+  MOUSE_DOWN_MOVE_DELAY = 300 // ms
+  MOUSE_DOWN_MOVE_INTERVAL = 32 // ms
+)
+
 //go:generate ./gen_element Scrollbar "CalcDepth appendChild On"
 
 // has two children: the up/down or left/right buttons
@@ -13,12 +18,15 @@ type Scrollbar struct {
 
   orientation Orientation
 
-  sliderSize  int
-  sliderStart int // 0 for slider that is at top/left-most position
-  lineHeight  int // move per up/down click
+  sliderLength int
+  sliderPos  int // 0 for slider that is at top/left-most position
+  lineHeight int // move per up/down click
 
   lastDown    int
   lastDownSS  int
+  lastButtonTS    uint64
+  lastButtonIsUp  bool
+  lastMouseMoveOverSlider bool
 
   // TODO: callbacks
 }
@@ -30,7 +38,8 @@ func NewScrollbar(orientation Orientation) *Scrollbar {
     50,
     0,
     10,
-    -1, -1,
+    -1, -1, 0, false,
+    false,
   }
 
   b1 := NewIconButton("arrow-up-drop", 10, e.orientation.Rotate()).Size(e.size(), e.size())
@@ -44,13 +53,37 @@ func NewScrollbar(orientation Orientation) *Scrollbar {
   b2.OnClick(e.onDownClick)
 
   b1.On("doubleclick", func(evt *Event) {
-    // we already moved by 'e.lineHeight' upon single click
-    e.MoveBy(-(e.sliderSize - e.lineHeight))
+    e.movePageUp(true)
+  })
+
+  b1.On("tripleclick", func(evt *Event) {
+    e.Home()
   })
   
   b2.On("doubleclick", func(evt *Event) {
-    // we already moved by 'e.lineHeight' upon single click
-    e.MoveBy(e.sliderSize - e.lineHeight)
+    e.movePageDown(true)
+  })
+
+  b2.On("tripleclick", func(evt *Event) {
+    e.End()
+  })
+
+  b1.On("mousedown", func(evt *Event) {
+    e.lastButtonTS = e.Root.CurrentTick()
+    e.lastButtonIsUp = true
+  })
+
+  b1.On("mouseup", func(evt *Event) {
+    e.lastButtonTS = 0
+  })
+
+  b2.On("mousedown", func(evt *Event) {
+    e.lastButtonTS = e.Root.CurrentTick()
+    e.lastButtonIsUp = false
+  })
+
+  b2.On("mouseup", func(evt *Event) {
+    e.lastButtonTS = 0
   })
 
   e.On("click", e.onMouseClick)
@@ -59,8 +92,53 @@ func NewScrollbar(orientation Orientation) *Scrollbar {
   e.On("mouseup", e.onMouseUp)
   e.On("focus", e.onFocus)
   e.On("blur", e.onBlur)
+  e.On("keypress", e.onKeyPress)
 
   return e
+}
+
+func (e *Scrollbar) focused() bool {
+  return e.Root.FocusRect.IsOwnedBy(e)
+}
+
+func (e *Scrollbar) onKeyPress(evt *Event) {
+  if !e.focused() {
+    return
+  }
+
+  if evt.Key == "down" && e.orientation == VER {
+    if evt.Shift {
+      e.movePageDown(false)
+    } else {
+      e.moveDown()
+    }
+  } else if evt.Key == "up" && e.orientation == VER {
+    if evt.Shift {
+      e.movePageUp(false)
+    } else {
+      e.moveUp()
+    }
+  } else if evt.Key == "right" && e.orientation == HOR {
+    if evt.Shift {
+      e.movePageDown(false)
+    } else {
+      e.moveDown()
+    }
+  } else if evt.Key == "left" && e.orientation == HOR {
+    if evt.Shift {
+      e.movePageUp(false)
+    } else {
+      e.moveUp()
+    }
+  } else if evt.Key == "end" {
+    e.End()
+  } else if evt.Key == "home" {
+    e.Home()
+  } else if evt.Key == "pagedown" {
+    e.movePageDown(false)
+  } else if evt.Key == "pageup" {
+    e.movePageUp(false)
+  }
 }
 
 func (e *Scrollbar) onFocus(evt *Event) {
@@ -140,7 +218,7 @@ func (e *Scrollbar) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     b2.Translate(maxWidth - e.size(), 0)
 
     // slider
-    w := e.sliderSize
+    w := e.sliderLength
     h := e.size()
 
     e.limitSliderPos()
@@ -151,7 +229,7 @@ func (e *Scrollbar) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
         break
       }
 
-      e.Root.P1.TranslateTri(tri, e.size() + e.sliderStart, 0.0, dz)
+      e.Root.P1.TranslateTri(tri, e.size() + e.sliderPos, 0.0, dz)
     }
 
     // track
@@ -163,7 +241,7 @@ func (e *Scrollbar) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     b2.Translate(0, maxHeight - e.size())
 
     w := e.size()
-    h := e.sliderSize
+    h := e.sliderLength
 
     e.limitSliderPos()
 
@@ -173,7 +251,7 @@ func (e *Scrollbar) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
         break
       }
 
-      e.Root.P1.TranslateTri(tri, 0.0, e.size() + e.sliderStart, dz)
+      e.Root.P1.TranslateTri(tri, 0.0, e.size() + e.sliderPos, dz)
     }
 
     // track
@@ -198,17 +276,17 @@ func (e *Scrollbar) SliderRect() Rect {
 
   if e.orientation == HOR {
     slRect = Rect{
-      thisRect.X + e.size() + e.sliderStart,
+      thisRect.X + e.size() + e.sliderPos,
       thisRect.Y,
-      e.sliderSize,
+      e.sliderLength,
       thisRect.H,
     }
   } else {
     slRect = Rect{
       thisRect.X,
-      thisRect.Y + e.size() + e.sliderStart,
+      thisRect.Y + e.size() + e.sliderPos,
       thisRect.W,
-      e.sliderSize,
+      e.sliderLength,
     }
   }
 
@@ -227,14 +305,14 @@ func (e *Scrollbar) TrackRects() (Rect, Rect) {
     rUp = Rect{
       thisRect.X + e.size(),
       thisRect.Y,
-      e.sliderStart,
+      e.sliderPos,
       thisRect.H,
     }
 
     rDown = Rect{
-      thisRect.X + e.size() + e.sliderStart + e.sliderSize,
+      thisRect.X + e.size() + e.sliderPos + e.sliderLength,
       thisRect.Y,
-      thisRect.W - 2*e.size() - e.sliderStart - e.sliderSize,
+      thisRect.W - 2*e.size() - e.sliderPos - e.sliderLength,
       thisRect.H,
     }
   } else {
@@ -242,14 +320,14 @@ func (e *Scrollbar) TrackRects() (Rect, Rect) {
       thisRect.X,
       thisRect.Y + e.size(),
       thisRect.W,
-      e.sliderStart,
+      e.sliderPos,
     }
 
     rDown = Rect{
       thisRect.X,
-      thisRect.Y + e.size() + e.sliderStart + e.sliderSize,
+      thisRect.Y + e.size() + e.sliderPos + e.sliderLength,
       thisRect.W,
-      thisRect.H - 2*e.size() - e.sliderStart - e.sliderSize,
+      thisRect.H - 2*e.size() - e.sliderPos - e.sliderLength,
     }
   }
 
@@ -271,10 +349,10 @@ func (e *Scrollbar) trackPos(evt *Event) int {
 func (e *Scrollbar) onMouseClick(evt *Event) {
   p := e.trackPos(evt)
 
-  e.MoveTo(p - e.sliderSize/2)
+  e.MoveTo(p - e.sliderLength/2)
 }
 
-func (e *Scrollbar) getTrackLength() int {
+func (e *Scrollbar) trackLength() int {
   if e.orientation == HOR {
     return e.width - 2*e.size()
   } else {
@@ -283,25 +361,65 @@ func (e *Scrollbar) getTrackLength() int {
 }
 
 func (e *Scrollbar) limitSliderPos() {
-  if e.sliderStart + e.sliderSize > e.getTrackLength() {
-    e.sliderStart = e.getTrackLength() - e.sliderSize
+  if e.sliderPos + e.sliderLength > e.trackLength() {
+    e.sliderPos = e.trackLength() - e.sliderLength
   }
 
-  if e.sliderStart < 0 {
-    e.sliderStart = 0
+  if e.sliderPos < 0 {
+    e.sliderPos = 0
   }
 }
 
 func (e *Scrollbar) MoveTo(ss int) {
-  e.sliderStart = ss
+  e.sliderPos = ss
 
   e.limitSliderPos()
 
   e.Root.ForcePosDirty()
 }
 
+func (e *Scrollbar) Home() {
+  e.MoveTo(0)
+}
+
+func (e *Scrollbar) End() {
+  e.MoveTo(e.trackLength() - e.sliderLength)
+}
+
 func (e *Scrollbar) MoveBy(d int) {
-  e.MoveTo(e.sliderStart + d)
+  e.MoveTo(e.sliderPos + d)
+}
+
+func (e *Scrollbar) moveDown() {
+  e.MoveBy(e.lineHeight)
+}
+
+func (e *Scrollbar) moveUp() {
+  e.MoveBy(-e.lineHeight)
+}
+
+func (e *Scrollbar) movePageDown(compensateForClick bool) {
+  if compensateForClick {
+    e.MoveBy(e.sliderLength - e.lineHeight)
+  } else {
+    e.MoveBy(e.sliderLength)
+  }
+}
+
+func (e *Scrollbar) Cursor(x, y int) int {
+  if e.SliderRect().Hit(x, y) {
+    return e.ButtonCursor(x, y, e.enabled)
+  } else {
+    return -1
+  }
+}
+
+func (e *Scrollbar) movePageUp(compensateForClick bool) {
+  if compensateForClick {
+    e.MoveBy(-(e.sliderLength - e.lineHeight))
+  } else {
+    e.MoveBy(-e.sliderLength)
+  }
 }
 
 func (e *Scrollbar) onMouseDown(evt *Event) {
@@ -312,7 +430,7 @@ func (e *Scrollbar) onMouseDown(evt *Event) {
   }
 
   e.lastDown = e.trackPos(evt)
-  e.lastDownSS = e.sliderStart
+  e.lastDownSS = e.sliderPos
 }
 
 func (e *Scrollbar) onMouseUp(evt *Event) {
@@ -338,4 +456,44 @@ func (e *Scrollbar) onMouseMove(evt *Event) {
   p := e.trackPos(evt)
 
   e.MoveTo(e.lastDownSS + p - e.lastDown)
+}
+
+// returns a fraction
+func (e *Scrollbar) Pos() float32 {
+  p := float32(e.sliderPos)/float32(e.trackLength())
+
+  if p < 0.0 {
+    return 0.0
+  } else if p > 1.0 {
+    p = 1.0 - float32(e.sliderLength)/float32(e.trackLength())
+
+    if p < 0.0 {
+      return 0.0
+    } else {
+      return p
+    }
+  } else {
+    return p
+  }
+}
+
+func (e *Scrollbar) Animate(tick uint64) {
+  if e.lastButtonTS != 0 {
+    delayTicks := uint64(MOUSE_DOWN_MOVE_DELAY/ANIMATION_LOOP_INTERVAL)
+    intervalTicks := uint64(MOUSE_DOWN_MOVE_INTERVAL/ANIMATION_LOOP_INTERVAL)
+
+    // start moving after 200ms
+    if tick - e.lastButtonTS > delayTicks {
+      // trigger a movement every 200ms
+      if (tick - e.lastButtonTS - delayTicks)%intervalTicks == 0 {
+        if e.lastButtonIsUp {
+          e.moveUp()
+        } else {
+          e.moveDown()
+        }
+      }
+    }
+  }
+
+  e.ElementData.Animate(tick)
 }

@@ -110,8 +110,8 @@ func (e *tabLip) IsFocusable() bool {
   return e.ElementData.IsFocusable() && !e.isActive()
 }
 
-func (e *tabLip) Cursor() int {
-  return e.ButtonCursor(!e.isActive())
+func (e *tabLip) Cursor(x, y int) int {
+  return e.ButtonCursor(x, y, !e.isActive())
 }
 
 func (e *tabLip) Show() {

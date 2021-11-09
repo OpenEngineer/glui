@@ -64,8 +64,8 @@ func newRadioItem(group *RadioGroup, caption string, selected bool) *radioItem {
   return e
 }
 
-func (e *radioItem) Cursor() int {
-  return e.ButtonCursor(e.enabled)
+func (e *radioItem) Cursor(x, y int) int {
+  return e.ButtonCursor(x, y, e.enabled)
 }
 
 func (e *radioItem) onMouseClick(evt *Event) {

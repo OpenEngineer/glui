@@ -189,3 +189,7 @@ func (e *Frame) Clear() {
   e.Body.ClearChildren()
   e.Menu.ClearChildren()
 }
+
+func (e *Frame) CurrentTick() uint64 {
+  return e.state.lastTick
+}

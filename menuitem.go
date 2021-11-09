@@ -115,7 +115,7 @@ func (e *MenuItem) onMouseClick(evt *Event) {
   }
 }
 
-func (e *MenuItem) Cursor() int {
+func (e *MenuItem) Cursor(x, y int) int {
   if e.enabled {
     return sdl.SYSTEM_CURSOR_HAND
   } else {

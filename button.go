@@ -122,8 +122,8 @@ func newButton(flat bool, sticky bool) *Button {
   return e
 }
 
-func (e *Button) Cursor() int {
-  return e.ButtonCursor(e.enabled)
+func (e *Button) Cursor(x, y int) int {
+  return e.ButtonCursor(x, y, e.enabled)
 }
 
 // set onClick here, so it can also be accessed by the keypresses

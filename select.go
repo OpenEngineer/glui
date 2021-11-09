@@ -62,7 +62,7 @@ func (e *Select) OnChange(fn func(i int, value string)) *Select {
   return e
 }
 
-func (e *Select) Cursor() int {
+func (e *Select) Cursor(x, y int) int {
   if e.enabled {
     return sdl.SYSTEM_CURSOR_HAND
   } else {

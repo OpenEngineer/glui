@@ -49,6 +49,9 @@ func (app *App) changeFocusElement(newFocusable Element, blurEvt, focusEvt *Even
     if elementNotNil(newFocusable) {
       TriggerEvent(frame.state.focusElement, "focus", focusEvt)
     }
+  } else if !frame.FocusRect.IsOwnedBy(frame.state.focusElement) && focusEvt.IsKeyboardEvent() {
+    // retrigger the focus event
+    TriggerEvent(frame.state.focusElement, "focus", focusEvt)
   }
 }
 
@@ -147,8 +150,11 @@ func (app *App) updateCursor() {
 
   cursor := -1
   e := frame.state.mouseElement
+
+  x, y := currentMousePos()
+
   for cursor < 0 && elementNotNil(e) {
-    cursor = e.Cursor()
+    cursor = e.Cursor(x, y)
     e = e.Parent()
   }
 

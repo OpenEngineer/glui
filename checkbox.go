@@ -108,8 +108,8 @@ func (e *Checkbox) toggleAndUpdate() {
   e.setTypesAndTCoords()
 }
 
-func (e *Checkbox) Cursor() int {
-  return e.ButtonCursor(e.enabled)
+func (e *Checkbox) Cursor(x, y int) int {
+  return e.ButtonCursor(x, y, e.enabled)
 }
 
 func (e *Checkbox) Value() bool {

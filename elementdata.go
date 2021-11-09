@@ -137,15 +137,15 @@ func (e *ElementData) Disable() {
   e.enabled = false
 }
 
-func (e *ElementData) ButtonCursor(enabled bool) int {
+func (e *ElementData) ButtonCursor(x, y int, enabled bool) int {
   if enabled {
     return sdl.SYSTEM_CURSOR_HAND
   } else {
-    return e.Cursor()
+    return e.Cursor(x, y)
   }
 }
 
-func (e *ElementData) Cursor() int {
+func (e *ElementData) Cursor(x, y int) int {
   return -1
 }
 

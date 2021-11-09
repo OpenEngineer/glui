@@ -29,12 +29,18 @@ type Event struct {
   callback  func(args ...interface{}) // for async quit
 }
 
+func currentMousePos() (int, int) {
+  x_, y_, _ := sdl.GetMouseState()
+
+  x := int(x_)
+  y := int(y_)
+
+  return x, y
+}
+
 func NewMouseEvent(x, y int) *Event {
   if x < 0 {
-    x_, y_, _ := sdl.GetMouseState()
-
-    x = int(x_)
-    y = int(y_)
+    x, y = currentMousePos()
   }
 
   ks := sdl.GetKeyboardState()
@@ -167,6 +173,12 @@ func extractKeyboardEventDetails(event *sdl.KeyboardEvent) (string, string, bool
     break
   case sdl.K_ESCAPE:
     kType = "escape"
+    break
+  case sdl.K_PAGEDOWN:
+    kType = "pagedown"
+    break
+  case sdl.K_PAGEUP:
+    kType = "pageup"
     break
   }
 

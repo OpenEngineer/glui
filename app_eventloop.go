@@ -200,15 +200,18 @@ func (app *App) initMainEventLoop(m *sync.Mutex) {
 }
 
 func (app *App) onTick(event *animationEvent) {
-  frame := app.ActiveFrame()
+  // only animate the active frame, but update all the frame states
+  for i, frame := range app.frames {
+    frame.state.lastTick = event.tick
 
-  frame.state.lastTick = event.tick
+    if i == app.activeFrame {
+      frame.Animate(event.tick)
 
-  frame.Animate(event.tick)
-
-  if event.force {
-    frame.ForcePosDirty()
-  } 
+      if event.force {
+        frame.ForcePosDirty()
+      } 
+    }
+  }
 }
 
 func (app *App) onMouseMove(event *sdl.MouseMotionEvent) {
@@ -356,17 +359,22 @@ func (app *App) onTab(event *sdl.KeyboardEvent) {
   var newFocusable Element
 
   shift := event.Keysym.Mod & sdl.KMOD_SHIFT > 0
-  if shift {
-    if elementNotNil(frame.state.focusElement) {
-      newFocusable = findPrevFocusable(frame.state.focusElement)
-    } else {
-      newFocusable = findPrevFocusable(frame.Body)
-    }
+
+  if elementNotNil(frame.state.focusElement) && !frame.FocusRect.IsOwnedBy(frame.state.focusElement) {
+    newFocusable = frame.state.focusElement
   } else {
-    if elementNotNil(frame.state.focusElement) {
-      newFocusable = findNextFocusable(frame.state.focusElement)
+    if shift {
+      if elementNotNil(frame.state.focusElement) {
+        newFocusable = findPrevFocusable(frame.state.focusElement)
+      } else {
+        newFocusable = findPrevFocusable(frame.Body)
+      }
     } else {
-      newFocusable = findNextFocusable(frame.Body)
+      if elementNotNil(frame.state.focusElement) {
+        newFocusable = findNextFocusable(frame.state.focusElement)
+      } else {
+        newFocusable = findNextFocusable(frame.Body)
+      }
     }
   }
 

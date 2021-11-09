@@ -314,7 +314,7 @@ func (e *VSplit) calcPosBar(barI int, xLeft int, yTop int, h int, maxZIndex int)
   }
 }
 
-func (e *VSplit) Cursor() int {
+func (e *VSplit) Cursor(x, y int) int {
   if e.hover {
     return sdl.SYSTEM_CURSOR_SIZEWE
   } else {
