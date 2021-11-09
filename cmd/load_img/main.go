@@ -1,8 +1,6 @@
 package main
 
 import (
-  "bytes"
-  "compress/gzip"
   "encoding/base64"
   "errors"
   "fmt"
@@ -10,28 +8,13 @@ import (
   "os"
   "path/filepath"
   "regexp"
-  "strconv"
   "strings"
-
-  "github.com/computeportal/glui"
 )
 
 func main() {
   if err := mainInternal(); err != nil {
     fmt.Fprintf(os.Stderr, err.Error())
   }
-}
-
-// compress!
-func encodeBytes(b []byte) string {
-  cBytes := &bytes.Buffer{}
-  cWriter := gzip.NewWriter(cBytes)
-  cWriter.Write(b)
-  cWriter.Close()
-
-  b = cBytes.Bytes()
-
-  return base64.StdEncoding.EncodeToString(b)
 }
 
 func mainInternal() error {
@@ -47,34 +30,12 @@ func mainInternal() error {
 
   ext := filepath.Ext(imgFile)
 
-  var (
-    data *glui.ImageData
-    err error
-  )
-
   imgBytes, err := ioutil.ReadFile(imgFile)
   if err != nil {
     return err
   }
 
-  imgBuf := bytes.NewBuffer(imgBytes)
-
-  switch strings.ToLower(ext) {
-  case ".jpg", ".jpeg":
-    data, err = glui.DecodeJPG(imgBuf)
-    if err != nil {
-      return err
-    }
-  case ".png":
-    data, err = glui.DecodePNG(imgBuf)
-    if err != nil {
-      return err
-    }
-  default:
-    return errors.New("image extension " + ext + " not recognized")
-  }
-
-  dataStr := encodeBytes(data.Pix)
+  imgData := base64.StdEncoding.EncodeToString(imgBytes)
 
   var b strings.Builder
 
@@ -90,9 +51,7 @@ func mainInternal() error {
 
   b.WriteString("import (\n")
   b.WriteString("  \"bytes\"\n")
-  b.WriteString("  \"compress/gzip\"\n")
   b.WriteString("  \"encoding/base64\"\n")
-  b.WriteString("  \"io\"\n")
   b.WriteString("  \"github.com/computeportal/glui\"\n")
   b.WriteString(")\n")
 
@@ -102,17 +61,13 @@ func mainInternal() error {
   b.WriteString("  ")
   b.WriteString(dataName)
   b.WriteString(" =\"")
-  b.WriteString(dataStr)
+  b.WriteString(imgData)
   b.WriteString("\"\n")
   b.WriteString(")\n")
 
   b.WriteString("var ")
   b.WriteString(name)
-  b.WriteString(" = &glui.ImageData{nil, ")
-  b.WriteString(strconv.Itoa(data.W))
-  b.WriteString(", ")
-  b.WriteString(strconv.Itoa(data.H))
-  b.WriteString("}\n")
+  b.WriteString(" = &glui.ImageData{nil, 0, 0}\n")
 
   b.WriteString("func load_")
   b.WriteString(name)
@@ -123,15 +78,29 @@ func mainInternal() error {
   b.WriteString(")\n")
   b.WriteString("  if err != nil {panic(err)}\n")
 
-  b.WriteString("  r, err := gzip.NewReader(bytes.NewBuffer(b))\n")
-  b.WriteString("  if err != nil {panic(err)}\n")
+  b.WriteString("  buf := bytes.NewBuffer(b)\n")
 
-  b.WriteString("  c := &bytes.Buffer{}\n")
-  b.WriteString("  io.Copy(c, r)\n")
+  switch strings.ToLower(ext) {
+  case ".jpg", ".jpeg":
+    b.WriteString("  data, err := glui.DecodeJPG(buf)\n")
+  case ".png":
+    b.WriteString("  data, err := glui.DecodePNG(buf)\n")
+  default:
+    return errors.New("image extension " + ext + " not recognized")
+  }
+  b.WriteString("  if err != nil {panic(err)}\n")
 
   b.WriteString("  ")
   b.WriteString(name)
-  b.WriteString(".Pix = c.Bytes()\n")
+  b.WriteString(".Pix = data.Pix\n")
+
+  b.WriteString("  ")
+  b.WriteString(name)
+  b.WriteString(".W = data.W\n")
+
+  b.WriteString("  ")
+  b.WriteString(name)
+  b.WriteString(".H = data.H\n")
 
   b.WriteString("  return true\n")
   b.WriteString("}\n")
