@@ -758,20 +758,37 @@ func (d *DrawPass2Data) SetGlyphCoord(triId uint32, vertexId uint32, x_ int, y_ 
   d.TCoord.Set2(triId, vertexId, y, x)
 }
 
-func (d *DrawPass2Data) SetGlyphCoords(triId0, triId1 uint32, name string) {
+func (d *DrawPass2Data) SetGlyphCoords(tri0, tri1 uint32, name string) {
   g := d.Glyphs.GetGlyph(name)
 
   k := g.TexId
   
   r := d.Glyphs.GetRect(k)
 
-  d.SetGlyphCoord(triId0, 0, r.X, r.Y)
-  d.SetGlyphCoord(triId0, 1, r.Right(), r.Y)
-  d.SetGlyphCoord(triId0, 2, r.X, r.Bottom())
+  d.SetGlyphCoord(tri0, 0, r.X, r.Y)
+  d.SetGlyphCoord(tri0, 1, r.Right(), r.Y)
+  d.SetGlyphCoord(tri0, 2, r.X, r.Bottom())
 
-  d.SetGlyphCoord(triId1, 0, r.Right(), r.Bottom())
-  d.SetGlyphCoord(triId1, 1, r.Right(), r.Y)
-  d.SetGlyphCoord(triId1, 2, r.X, r.Bottom())
+  d.SetGlyphCoord(tri1, 0, r.Right(), r.Bottom())
+  d.SetGlyphCoord(tri1, 1, r.Right(), r.Y)
+  d.SetGlyphCoord(tri1, 2, r.X, r.Bottom())
+}
+
+// transposed version
+func (d *DrawPass2Data) SetGlyphCoordsT(tri0, tri1 uint32, name string) {
+  g := d.Glyphs.GetGlyph(name)
+
+  k := g.TexId
+  
+  r := d.Glyphs.GetRect(k)
+
+  d.SetGlyphCoord(tri0, 0, r.X, r.Y)
+  d.SetGlyphCoord(tri0, 1, r.X, r.Bottom())
+  d.SetGlyphCoord(tri0, 2, r.Right(), r.Y)
+
+  d.SetGlyphCoord(tri1, 0, r.Right(), r.Bottom())
+  d.SetGlyphCoord(tri1, 1, r.X, r.Bottom())
+  d.SetGlyphCoord(tri1, 2, r.Right(), r.Y)
 }
 
 func (d *DrawPassData) ForceAllDirty() {
@@ -853,6 +870,13 @@ func (d *DrawPass1Data) setTopLeftTriSkinCoords(tri uint32, i int, j int, x [4]i
   d.SetSkinCoord(tri, 2, x[i],   y[j+1])
 }
 
+// transposed version
+func (d *DrawPass1Data) setTopLeftTriSkinCoordsT(tri uint32, i int, j int, x [4]int, y [4]int) {
+  d.SetSkinCoord(tri, 0, x[i],   y[j])
+  d.SetSkinCoord(tri, 1, x[i], y[j+1])
+  d.SetSkinCoord(tri, 2, x[i+1],   y[j])
+}
+
 // (i,j) is top left of corresponding top left tri
 func (d *DrawPass1Data) setBottomRightTriSkinCoords(tri uint32, i int, j int, x [4]int, y [4]int) {
   d.SetSkinCoord(tri, 0, x[i+1], y[j+1])
@@ -860,9 +884,22 @@ func (d *DrawPass1Data) setBottomRightTriSkinCoords(tri uint32, i int, j int, x 
   d.SetSkinCoord(tri, 2, x[i],   y[j+1])
 }
 
+// transposed version
+func (d *DrawPass1Data) setBottomRightTriSkinCoordsT(tri uint32, i int, j int, x [4]int, y [4]int) {
+  d.SetSkinCoord(tri, 0, x[i+1], y[j+1])
+  d.SetSkinCoord(tri, 1, x[i], y[j+1])
+  d.SetSkinCoord(tri, 2, x[i+1],   y[j])
+}
+
 func (d *DrawPass1Data) setQuadSkinCoords(topRightTri uint32, bottomLeftTri uint32, i, j int, x [4]int, y [4]int) {
   d.setTopLeftTriSkinCoords(topRightTri, i, j, x, y)
   d.setBottomRightTriSkinCoords(bottomLeftTri, i, j, x, y)
+}
+
+// transposed version
+func (d *DrawPass1Data) setQuadSkinCoordsT(topRightTri uint32, bottomLeftTri uint32, i, j int, x [4]int, y [4]int) {
+  d.setTopLeftTriSkinCoordsT(topRightTri, i, j, x, y)
+  d.setBottomRightTriSkinCoordsT(bottomLeftTri, i, j, x, y)
 }
 
 // also used by input

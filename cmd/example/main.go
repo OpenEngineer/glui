@@ -45,7 +45,7 @@ func main() {
   //button2.A(glui.NewHor(glui.CENTER, glui.CENTER, 0).A(icon))
 
   cb := glui.NewCheckbox()
-  rg := glui.NewRadioGroup([]string{"Jaguar", "Rabbit", "Parrot", "Turtle", "Camel"}, false)
+  rg := glui.NewRadioGroup([]string{"Jaguar", "Rabbit", "Parrot", "Turtle", "Camel"}, glui.VER)
   img1 := glui.NewImage(nil)
   rg.OnChange(func(i int, _ string) {
     switch i {
@@ -64,7 +64,8 @@ func main() {
 
   sel := glui.NewSelect([]string{"Dog", "Cat", "Hamster"})
 
-  tabPage1.A(input1, button1, button2, cb, rg, img1)
+  sb := glui.NewScrollbar(glui.HOR)
+  tabPage1.A(input1, button1, button2, cb, rg, sb, img1)
 
   img2 := glui.NewImage(breugel)
   sel.OnChange(func(i int, _ string) {

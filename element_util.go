@@ -113,6 +113,19 @@ func hasEvent(e Element, name string) bool {
   return e.GetEventListener(name) != nil
 }
 
+func ancestorHasEvent(e Element, name string) bool {
+  if hasEvent(e, name) {
+    return true
+  } else {
+     p := e.Parent()
+     if p != nil {
+       return ancestorHasEvent(p, name)
+     } else {
+       return false
+     }
+  }
+}
+
 func focusable(e Element) bool {
   return elementNotNil(e) && e.IsFocusable()
 }

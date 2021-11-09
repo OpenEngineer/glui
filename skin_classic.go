@@ -12,6 +12,7 @@ const (
   RADIO_DOT_RADIUS = 0.4 // fraction of RADIO_SIZE/2
   TICK_SIZE = 16 // doesn't include border
   TICK_THICKNESS = 0.3 // fraction of the TICK_SIZE/2
+  SCROLLBAR_WIDTH = 20
 )
 
 var (
@@ -1062,6 +1063,20 @@ func (s *ClassicSkin) Tick() []byte {
 
       setColor(d, i*nSide + (nSide - 1 - j), shade, shade, shade, alpha)
     }
+  }
+
+  return d
+}
+
+func (s *ClassicSkin) ScrollbarTrack() []byte {
+  n := SCROLLBAR_WIDTH
+
+  d := make([]byte, 4*n)
+
+  shade := byte(0xd0)
+
+  for i := 0; i < n; i++ {
+    setColor(d, i, shade, shade, shade, 255)
   }
 
   return d

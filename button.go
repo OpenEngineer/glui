@@ -35,6 +35,19 @@ func NewFlatIconButton(iconName string, iconSize int) *Button {
   return button
 }
 
+func NewIconButton(iconName string, iconSize int, iconOrientation Orientation) *Button {
+  icon := NewIcon(iconName, iconSize)
+
+  if iconOrientation != HOR {
+    icon.SetOrientation(iconOrientation)
+  }
+
+  button := NewButton()
+  button.A(NewHor(CENTER, CENTER, 0).H(-1).A(icon))
+
+  return button
+}
+
 func NewStickyFlatButton() *Button {
   return newButton(true, true)
 }

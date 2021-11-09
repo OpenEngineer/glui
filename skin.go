@@ -24,6 +24,8 @@ type Skin interface {
   RadioOff() []byte // square shape
   RadioOn()  []byte // square shape
   Tick()     []byte // square shape, determines size of checbox
+
+  ScrollbarTrack() []byte // 1xn
 }
 
 func calcSquareSkinSize(d []byte) int {

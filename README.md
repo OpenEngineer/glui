@@ -8,9 +8,13 @@ Mac isn't supported because Mac doesn't support OpenGL anymore.
 # Element types
 
 * Button
+* Checkbox
 * Hor
 * Icon
+* Image
 * Input
+* RadioGroup
+* Select
 * Tabbed
 * Table
 * Text

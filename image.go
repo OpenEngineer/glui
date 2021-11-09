@@ -42,7 +42,7 @@ func (e *Image) Img(img *ImageData) *Image {
     e.Hide()
   }
 
-  e.Root.ForcePosDirty()
+  e.Root.ForceAllDirty()
 
   return e
 }

@@ -255,11 +255,19 @@ func (app *App) onMouseUp(event *sdl.MouseButtonEvent) {
 
   fnTrigger := func() {
     if event.Button == sdl.BUTTON_LEFT {
-      app.triggerHitEvent("mouseup", NewMouseEvent(int(event.X), int(event.Y)))
-      app.detectClick(int(event.X), int(event.Y)) // turn mouseup into click, doubleclick or tripleclick
+      evt := NewMouseEvent(int(event.X), int(event.Y))
+      app.triggerHitEvent("mouseup", evt)
+
+      if !evt.stopPropagation {
+        app.detectClick(int(event.X), int(event.Y)) // turn mouseup into click, doubleclick or tripleclick
+      }
     } else if event.Button == sdl.BUTTON_RIGHT {
-      app.triggerHitEvent("rightmouseup", NewMouseEvent(int(event.X), int(event.Y)))
-      app.triggerHitEvent("rightclick", NewMouseEvent(int(event.X), int(event.Y)))
+      evt := NewMouseEvent(int(event.X), int(event.Y))
+      app.triggerHitEvent("rightmouseup", evt)
+
+      if !evt.stopPropagation {
+        app.triggerHitEvent("rightclick", NewMouseEvent(int(event.X), int(event.Y)))
+      }
     }
   }
 
@@ -317,13 +325,13 @@ func (app *App) detectClick(x, y int) {
   case 1:
   case 2:
     if elementNotNil(frame.state.mouseElement) {
-      if hasEvent(frame.state.mouseElement, "doubleclick") {
+      if ancestorHasEvent(frame.state.mouseElement, "doubleclick") {
         eName = "doubleclick"
       }
     }
   default:
     if elementNotNil(frame.state.mouseElement) {
-      if hasEvent(frame.state.mouseElement, "tripleclick") {
+      if ancestorHasEvent(frame.state.mouseElement, "tripleclick") {
         eName = "tripleclick"
       }
     }

@@ -49,6 +49,10 @@ type SkinMap struct {
   tickY int
   tickSize int // internal size of one side
 
+  sbTrackX    int
+  sbTrackY    int
+  sbTrackSize int
+
   loc uint32
   tid uint32
   tunit uint32
@@ -84,9 +88,11 @@ func (sm *SkinMap) genData(s Skin) {
 
   sm.genTickData(s, sm.tb)
 
-  /*if err := sm.tb.ToImage("skin.png"); err != nil {
+  sm.genScrollbarTrack(s, sm.tb)
+
+  if err := sm.tb.ToImage("skin.png"); err != nil {
     panic(err)
-  }*/
+  }
 
   sm.syncTextureBuilder()
 }
@@ -157,6 +163,15 @@ func (sm *SkinMap) genTickData(s Skin, tb *TextureBuilder) {
 
   sm.tickX, sm.tickY = tb.Build(d, n, n)
   sm.tickSize = n
+}
+
+func (sm *SkinMap) genScrollbarTrack(s Skin, tb *TextureBuilder) {
+  d := s.ScrollbarTrack()
+
+  n := len(d)/4
+
+  sm.sbTrackX, sm.sbTrackY = tb.Build(d, 1, n)
+  sm.sbTrackSize = n
 }
 
 func (sm *SkinMap) genBordered(d []byte, tb *TextureBuilder, checkT bool) (int, int, int) {
@@ -294,6 +309,14 @@ func (s SkinMap) TickOrigin() (int, int) {
 
 func (s *SkinMap) TickSize() int {
   return s.tickSize
+}
+
+func (s *SkinMap) ScrollbarTrackOrigin() (int, int) {
+  return s.sbTrackX, s.sbTrackY
+}
+
+func (s *SkinMap) ScrollbarTrackSize() int {
+  return s.sbTrackSize
 }
 
 func (s *SkinMap) getButtonCoords() ([4]int, [4]int) {

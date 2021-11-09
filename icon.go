@@ -11,6 +11,7 @@ type Icon struct {
 
   name string
   size int
+  orientation Orientation
   mainColor sdl.Color
 
   shadow      bool
@@ -29,6 +30,7 @@ func NewIcon(name string, size int) *Icon {
     NewElementData(0, 2*2), 
     name, 
     size, 
+    HOR,
     color, 
     false, 
     shadowColor, 
@@ -42,17 +44,36 @@ func NewIcon(name string, size int) *Icon {
   return e
 }
 
+func (e *Icon) SetOrientation(or Orientation) *Icon {
+  if or != e.orientation {
+    e.orientation = or
+
+    e.updateGlyphCoords()
+  }
+
+  return e
+}
+
 func (e *Icon) ChangeGlyph(name string) {
   e.name = name
   e.glyph = e.Root.P2.Glyphs.GetGlyph(name)
 
+  e.updateGlyphCoords()
+}
+
+func (e *Icon) updateGlyphCoords() {
   tri0 := e.p2Tris[0]
   tri1 := e.p2Tris[1]
   tri2 := e.p2Tris[2]
   tri3 := e.p2Tris[3]
 
-  e.Root.P2.SetGlyphCoords(tri0, tri1, e.name)
-  e.Root.P2.SetGlyphCoords(tri2, tri3, e.name)
+  if e.orientation == HOR {
+    e.Root.P2.SetGlyphCoords(tri0, tri1, e.name)
+    e.Root.P2.SetGlyphCoords(tri2, tri3, e.name)
+  } else {
+    e.Root.P2.SetGlyphCoordsT(tri0, tri1, e.name)
+    e.Root.P2.SetGlyphCoordsT(tri2, tri3, e.name)
+  }
 }
 
 func (e *Icon) Show() {
@@ -67,7 +88,6 @@ func (e *Icon) Show() {
   e.Root.P2.SetColorConst(tri2, e.mainColor)
   e.Root.P2.SetColorConst(tri3, e.mainColor)
 
-  e.Root.P2.SetGlyphCoords(tri2, tri3, e.name)
 
   if e.shadow {
     e.Root.P2.SetTriType(tri0, VTYPE_GLYPH)
@@ -80,7 +100,7 @@ func (e *Icon) Show() {
   e.Root.P2.SetColorConst(tri0, e.shadowColor)
   e.Root.P2.SetColorConst(tri1, e.shadowColor)
 
-  e.Root.P2.SetGlyphCoords(tri0, tri1, e.name)
+  e.updateGlyphCoords()
 
   scale := float64(e.size)/float64(GlyphResolution)
   for _, tri := range e.p2Tris {

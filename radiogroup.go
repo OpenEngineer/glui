@@ -17,16 +17,16 @@ type RadioGroup struct {
   ElementData
   
   options []string
-  fillHor bool // false -> vertical fill
+  orientation Orientation
 
   onChange func(i int, value string)
 }
 
-func NewRadioGroup(options []string, fillHor bool) *RadioGroup {
+func NewRadioGroup(options []string, orientation Orientation) *RadioGroup {
   e := &RadioGroup{
     NewElementData(0, 0),
     options,
-    fillHor,
+    orientation,
     nil,
   }
 
@@ -192,7 +192,7 @@ func (e *RadioGroup) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   x := e.padding[3]
   y := e.padding[0]
 
-  if e.fillHor {
+  if e.orientation == HOR {
     lineH := 0
     totalW := 0
     for _, child := range e.children {
