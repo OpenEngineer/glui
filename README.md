@@ -15,6 +15,7 @@ Mac isn't supported because Mac doesn't support OpenGL anymore.
 * Input
 * RadioGroup
 * Select
+* Scrollbar
 * Tabbed
 * Table
 * Text
