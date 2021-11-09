@@ -101,6 +101,14 @@ func (e *Scrollbar) focused() bool {
   return e.Root.FocusRect.IsOwnedBy(e)
 }
 
+func (e *Scrollbar) SetSliderLength(sl int) {
+  e.sliderLength = sl
+
+  e.limitSliderPos()
+
+  e.Root.ForcePosDirty()
+}
+
 func (e *Scrollbar) onKeyPress(evt *Event) {
   if !e.focused() {
     return

@@ -64,8 +64,9 @@ func main() {
 
   sel := glui.NewSelect([]string{"Dog", "Cat", "Hamster"})
 
-  sb := glui.NewScrollbar(glui.HOR)
-  tabPage1.A(input1, button1, button2, cb, rg, sb, img1)
+  overflow := glui.NewOverflow().A(img1)
+
+  tabPage1.A(input1, button1, button2, cb, rg, overflow)
 
   img2 := glui.NewImage(breugel)
   sel.OnChange(func(i int, _ string) {
