@@ -40,7 +40,6 @@ Fonts/icons can be included as a texture. There is no font hinting, but this is 
 # TODO
 * Scrollbars
 * Panel with overflow scrollbar
-* Use original image compression?
 
 # Notes
 ## Mixing a color with a skin
