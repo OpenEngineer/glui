@@ -42,7 +42,7 @@ func (e *Image) Img(img *ImageData) *Image {
     e.Hide()
   }
 
-  e.Root.ForceAllDirty()
+  e.Root.ForcePosDirty()
 
   return e
 }
@@ -60,7 +60,7 @@ func (e *Image) Show() {
 func (e *Image) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
   if e.img != nil {
     e.Root.P1.SetQuadPos(e.p1Tris[0], e.p1Tris[1], Rect{0, 0, e.width, e.height}, e.Z(maxZIndex))
-    e.Root.P1.setQuadImageRelTCoords(e.p1Tris[0], e.p1Tris[1])
+    e.Root.P1.setQuadImageRelTCoords(e.p1Tris[0], e.p1Tris[1], e.width, e.height)
 
     return e.InitRect(e.width, e.height)
   } else {

@@ -150,12 +150,7 @@ func (tb *TextureBuilder) dumpFree(fname string) {
 }
 
 func (tb *TextureBuilder) Defrag() {
-  // DEBUG
-  //tb.dumpFree("defrag_pre.dat")
-
   tb.free = defragFreeRects(tb.free)
-
-  //tb.dumpFree("defrag_post.dat")
 }
 
 func aIsBetterThanB(a []Rect, b []Rect) bool {
@@ -258,6 +253,7 @@ func defragFreeRects(free []Rect) []Rect {
 }
 
 func (tb *TextureBuilder) setData(x int, y int, data []byte, w int, h int) {
+  // newer method with larger contiguous copies
   for i := x; i < x+w; i++ {
     dst0 := (i*tb.height + y)*tb.nComp
     dst1 := (i*tb.height + y+h)*tb.nComp
@@ -267,6 +263,17 @@ func (tb *TextureBuilder) setData(x int, y int, data []byte, w int, h int) {
 
     copy(tb.data[dst0 : dst1 : dst1], data[src0 : src1 : src1])
   }
+
+  //old method for reference
+  // for i := x; i < x+w; i++ {
+  //   for j := y; j < y+h; j++ {
+  //     for c := 0; c < tb.nComp; c++ {
+  //       dst := (i*tb.height + j)*tb.nComp + c
+  //       src := ((i-x)*h + (j - y))*tb.nComp + c
+  //       tb.data[dst] = data[src]
+  //     }
+  //   }
+  // }
 
   tb.dirty = true
 }

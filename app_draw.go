@@ -649,7 +649,6 @@ func (app *App) DrawBlurred() {
 
   checkGLError()
 
-  sdl.Delay(10000)
 }*/
 
 /*func (app *App) drawAndCopyToBitmap(w int, h int, dst unsafe.Pointer) {

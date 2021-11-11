@@ -37,7 +37,7 @@ func NewScrollbar(orientation Orientation) *Scrollbar {
     orientation,
     50,
     0,
-    10,
+    20,
     -1, -1, 0, false,
     false,
   }
@@ -248,6 +248,7 @@ func (e *Scrollbar) CalcPos(maxWidth, maxHeight, maxZIndex int) (int, int) {
     e.height = maxHeight
     b2.Translate(0, maxHeight - e.size())
 
+    // slider
     w := e.size()
     h := e.sliderLength
 

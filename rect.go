@@ -54,6 +54,21 @@ func (r Rect) Pos(fx, fy float64) (int, int) {
   return x, y
 }
 
+// other is appliead to this
+func (r Rect) Common(other Rect) Rect {
+  smallestXMax := int(math.Min(float64(r.Right()), float64(other.Right())))
+  largestXMin := int(math.Max(float64(r.X), float64(other.X)))
+
+  smallestYMax := int(math.Min(float64(r.Bottom()), float64(other.Bottom())))
+  largestYMin := int(math.Max(float64(r.Y), float64(other.Y)))
+
+  if smallestXMax > largestXMin && smallestYMax > largestYMin {
+    return Rect{largestXMin, largestYMin, smallestXMax - largestXMin, smallestYMax - largestYMin}
+  } else {
+    return Rect{}
+  }
+}
+
 func (r Rect) Merge(other Rect) Rect {
   x0 := r.X
   if other.X < x0 {

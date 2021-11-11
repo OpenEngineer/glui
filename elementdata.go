@@ -317,3 +317,19 @@ func (e *ElementData) SetButtonPos(maxWidth, maxHeight, maxZIndex int) (int, int
 func (e *ElementData) IsFocusable() bool {
   return e.GetEventListener("focus") != nil && e.Visible()
 }
+
+func (e *ElementData) Crop(r Rect) {
+  e.rect = e.rect.Common(r)
+
+  for _, tri := range e.p1Tris {
+    e.Root.P1.CropTri(tri, r)
+  }
+
+  for _, tri := range e.p2Tris {
+    e.Root.P2.CropTri(tri, r)
+  }
+
+  for _, child := range e.children {
+    child.Crop(r)
+  }
+}

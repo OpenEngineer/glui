@@ -34,6 +34,8 @@ type Element interface {
   Deleted() bool // implemented by ElementData
 
   IsFocusable() bool // implemented by ElementData in general case (i.e. hasEvent(e, "focus) && e.Visible())
+  
+  Crop(r Rect)
 }
 
 type Container interface {

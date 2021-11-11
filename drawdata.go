@@ -49,6 +49,10 @@ type DrawPassData struct {
   winW int // needed here to turn pixels coordinates into gl coordinates
   winH int
 
+  // width and height of buffered texture might differ from memory
+  texWidth  int 
+  texHeight int
+
   free []uint32
 
   Pos    *Float32Buffer
@@ -63,9 +67,6 @@ type DrawPass1Data struct {
 
   Skin *SkinMap
 
-  // width and height of buffered texture might differ from memory
-  skinWidth  int 
-  skinHeight int
 
   imageTris  []uint32 // so we don't need to search Type for VTYPE_IMAGE
   images     []*ImageData // same pointers are assumed to be same images
@@ -126,6 +127,7 @@ func newDrawPassData() DrawPassData {
 
   return DrawPassData{
     0, 0,
+    0, 0,
     free,
     NewFloat32Buffer(3),
     types,
@@ -136,19 +138,25 @@ func newDrawPassData() DrawPassData {
 }
 
 func newDrawPass1Data(skin *SkinMap) *DrawPass1Data {
-  return &DrawPass1Data{
+  dd := &DrawPass1Data{
     newDrawPassData(), 
     skin, 
-    skin.width, 
-    skin.height,
     make([]uint32, 0),
     make([]*ImageData, 0),
     make(map[*ImageData]ImageInfo),
   }
+
+  dd.texWidth, dd.texHeight = skin.width, skin.height
+
+  return dd
 }
 
 func newDrawPass2Data(glyphs *GlyphMap) *DrawPass2Data {
-  return &DrawPass2Data{newDrawPassData(), glyphs}
+  dd := &DrawPass2Data{newDrawPassData(), glyphs}
+
+  dd.texWidth, dd.texHeight = glyphs.size, glyphs.size
+
+  return dd
 }
 
 func (d *DrawPassData) initGL(
@@ -599,6 +607,50 @@ func (d *DrawPassData) TranslateTri(triId uint32, dx_ int, dy_ int, dz float32) 
   d.translatePos(triId, 2, dx, dy, dz)
 }
 
+func (d *DrawPassData) CropTri(tri uint32, r_ Rect) {
+  xMin := 2.0*float32(r_.X)/float32(d.winW) - 1.0
+  xMax := 2.0*float32(r_.Right())/float32(d.winW) - 1.0
+
+  yMax := 1.0 - 2.0*float32(r_.Y)/float32(d.winH)
+  yMin := 1.0 - 2.0*float32(r_.Bottom())/float32(d.winH)
+
+  du_dx :=  0.5*float32(d.winW)/float32(d.texWidth)
+  dv_dy := -0.5*float32(d.winH)/float32(d.texHeight)
+
+  // pos is impacted, but texture pos too!
+  d.cropPosAndTCoord(tri, 0, xMin, yMin, xMax, yMax, du_dx, dv_dy)
+  d.cropPosAndTCoord(tri, 1, xMin, yMin, xMax, yMax, du_dx, dv_dy)
+  d.cropPosAndTCoord(tri, 2, xMin, yMin, xMax, yMax, du_dx, dv_dy)
+}
+
+func (d *DrawPassData) cropPosAndTCoord(tri uint32, vertex uint32, xMin, yMin, xMax, yMax float32, du_dx, dv_dy float32) {
+  x, y := d.Pos.Get2(tri, vertex)
+  u, v := d.GetTCoord(tri, vertex)
+
+  dx := float32(0.0)
+  dy := float32(0.0)
+
+  if x < xMin {
+    dx = xMin - x
+  } else if x > xMax {
+    dx = xMax - x
+  }
+
+  if y < yMin {
+    dy = yMin - y
+  } else if y > yMax {
+    dy = yMax - y
+  }
+
+  if dx != float32(0.0) || dy != (0.0) {
+    du := du_dx*dx
+    dv := dv_dy*dy
+
+    d.Pos.Set2(tri, vertex, x + dx, y + dy)
+    d.TCoord.Set2(tri, vertex, v + dv, u + du)
+  }
+}
+
 func (d *DrawPassData) SetPosF(triId uint32, vertexId uint32, x_ float64, y_ float64, z float32) {
   x := 2.0*float32(x_)/float32(d.winW) - 1.0
   y := 1.0 - 2.0*float32(y_)/float32(d.winH)
@@ -627,20 +679,22 @@ func (d *DrawPassData) SetQuadPosF(tri0 uint32, tri1 uint32, r RectF, z float32)
 }
 
 func (d *DrawPass1Data) SetSkinCoord(triId uint32, vertexId uint32, x_ int, y_ int) {
-  x := float32(x_)/float32(d.skinWidth)
-  y := float32(y_)/float32(d.skinHeight)
+  x := float32(x_)/float32(d.texWidth)
+  y := float32(y_)/float32(d.texHeight)
 
   d.SetTCoord(triId, vertexId, x, y)
 }
 
 // if size of texture changes, all the coords need to change
-func (d *DrawPass1Data) syncSkinSize(w, h int) {
-  if w == d.skinWidth && h == d.skinHeight {
+func (d *DrawPass1Data) syncSkinSize() {
+  w, h := d.Skin.width, d.Skin.height
+
+  if w == d.texWidth && h == d.texHeight {
     return
   }
 
-  xScale := float32(d.skinWidth)/float32(w)
-  yScale := float32(d.skinHeight)/float32(h)
+  xScale := float32(d.texWidth)/float32(w)
+  yScale := float32(d.texHeight)/float32(h)
 
   for triId := 0; triId < d.Len(); triId++ {
     for vertexId := 0; vertexId < 3; vertexId++ {
@@ -655,8 +709,8 @@ func (d *DrawPass1Data) syncSkinSize(w, h int) {
   }
 
   d.TCoord.dirty = true
-  d.skinWidth = w
-  d.skinHeight = h
+  d.texWidth = w
+  d.texHeight = h
 }
 
 func (d *DrawPassData) SetTriType(triId uint32, value float32) {
@@ -697,20 +751,27 @@ func (d *DrawPass1Data) SetQuadImage(tri0, tri1 uint32, img *ImageData) {
     d.images[tri1Index] = img
   }
 
-  d.setQuadImageRelTCoords(tri0, tri1)
+  d.setQuadImageRelTCoords(tri0, tri1, img.W, img.H)
 }
 
-func (d *DrawPassData) setQuadImageRelTCoords(tri0, tri1 uint32) {
-  d.SetTCoord(tri0, 0, 0.0, 0.0)
-  d.SetTCoord(tri0, 1, 1.0, 0.0) 
-  d.SetTCoord(tri0, 2, 0.0, 1.0)
+func (d *DrawPassData) setQuadImageRelTCoords(tri0, tri1 uint32, w_, h_ int) {
+  w := float32(w_)/float32(d.texWidth)
+  h := float32(h_)/float32(d.texHeight)
 
-  d.SetTCoord(tri1, 0, 1.0, 1.0)
-  d.SetTCoord(tri1, 1, 1.0, 0.0)
-  d.SetTCoord(tri1, 2, 0.0, 1.0)
+  d.SetTCoord(tri0, 0, 0, 0)
+  d.SetTCoord(tri0, 1, w, 0) 
+  d.SetTCoord(tri0, 2, 0, h)
+
+  d.SetTCoord(tri1, 0, w, h)
+  d.SetTCoord(tri1, 1, w, 0)
+  d.SetTCoord(tri1, 2, 0, h)
 }
 
 func (d *DrawPassData) SetTCoord(triId uint32, vertexId uint32, x, y float32) {
+  /*if x < 0.0 || y < 0.0 {
+    panic("can't be negative")
+  }*/
+
   // XXX transpose for some reason
   d.TCoord.Set2(triId, vertexId, y, x)
 }
@@ -816,10 +877,7 @@ func (d *DrawPassData) SyncAndBind() {
 func (d *DrawPass1Data) SyncAndBind() {
   d.Skin.bind()
 
-  // update the texture coordinates
-  if d.Skin.width != d.skinWidth || d.Skin.height != d.skinHeight {
-    d.syncSkinSize(d.Skin.width, d.Skin.height)
-  }
+  d.syncSkinSize()
 
   d.DrawPassData.SyncAndBind()
 }
@@ -830,6 +888,7 @@ func (d *DrawPass2Data) SyncAndBind() {
   d.Glyphs.bind()
 }
 
+// XXX: should we make a distinction between posDirty and dirty?
 func (d *DrawPassData) dirty() bool {
   return d.Pos.dirty || d.Type.dirty || d.Param.dirty || d.TCoord.dirty || d.Color.dirty
 }
@@ -1035,24 +1094,24 @@ func (d *DrawPass1Data) SyncImagesToTexture() {
       }
 
       // now add origin to the texture coords
-      d.scaleAndTranslateTCoord(tri, 0, float32(img.W), float32(img.H), float32(info.X), float32(info.Y))
-      d.scaleAndTranslateTCoord(tri, 1, float32(img.W), float32(img.H), float32(info.X), float32(info.Y))
-      d.scaleAndTranslateTCoord(tri, 2, float32(img.W), float32(img.H), float32(info.X), float32(info.Y))
+      d.translateTCoord(tri, 0, float32(info.X), float32(info.Y))
+      d.translateTCoord(tri, 1, float32(info.X), float32(info.Y))
+      d.translateTCoord(tri, 2, float32(info.X), float32(info.Y))
     }
   }
 
-  /*if someAdded {
-    if err := d.Skin.tb.ToImage("skin_w_images.png"); err != nil {
-      panic(err)
-    }
-  }*/
+  //if someAdded {
+    //if err := d.Skin.tb.ToImage("skin_w_images.png"); err != nil {
+      //panic(err)
+    //}
+  //}
 }
 
-func (d *DrawPass1Data) scaleAndTranslateTCoord(triId uint32, vertexId uint32, w, h, dx, dy float32) {
-  y, x := d.TCoord.Get2(triId, vertexId)
+func (d *DrawPass1Data) translateTCoord(triId uint32, vertexId uint32, dx, dy float32) {
+  x, y := d.GetTCoord(triId, vertexId)
 
-  x = (x*w + dx)/float32(d.skinWidth)
-  y = (y*h + dy)/float32(d.skinHeight)
+  x = x + dx/float32(d.texWidth)
+  y = y + dy/float32(d.texHeight)
 
-  d.TCoord.Set2(triId, vertexId, y, x)
+  d.SetTCoord(triId, vertexId, x, y)
 }

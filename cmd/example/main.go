@@ -64,11 +64,11 @@ func main() {
 
   sel := glui.NewSelect([]string{"Dog", "Cat", "Hamster"})
 
-  overflow := glui.NewOverflow().A(img1)
+  overflow := glui.NewOverflow().Size(-1, -1).A(rg, img1)
 
-  tabPage1.A(input1, button1, button2, cb, rg, overflow)
+  tabPage1.A(input1, button1, button2, cb, overflow)
 
-  img2 := glui.NewImage(breugel)
+  img2 := glui.NewImage(nil)
   sel.OnChange(func(i int, _ string) {
     switch i {
     case 0:

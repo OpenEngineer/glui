@@ -203,7 +203,8 @@ func (s *SkinMap) initGL(uTexLoc uint32, texID uint32, texUnit uint32) {
   gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
   checkGLError()
 
-  gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(s.width), int32(s.height), 0, gl.RGBA, 
+  // remember: transpose for some reason
+  gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(s.height), int32(s.width), 0, gl.RGBA, 
     gl.UNSIGNED_BYTE, unsafe.Pointer(&(s.data[0])))
   checkGLError()
 
@@ -217,7 +218,8 @@ func (s *SkinMap) bind() {
   gl.BindTexture(gl.TEXTURE_2D, s.tid)
   if s.tb.dirty {
     s.syncTextureBuilder()
-    gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(s.width), int32(s.height), 0, gl.RGBA, 
+    // remember: transpose for some reason
+    gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, int32(s.height), int32(s.width), 0, gl.RGBA, 
       gl.UNSIGNED_BYTE, unsafe.Pointer(&(s.data[0])))
   }
   checkGLError()
@@ -381,7 +383,9 @@ func (s *SkinMap) AllocImage(img *ImageData, infos map[*ImageData]ImageInfo) (in
   }
 
   // optionally we could defrag here
-  return s.tb.Build(img.Pix, img.W, img.H)
+  x, y := s.tb.Build(img.Pix, img.W, img.H)
+
+  return x, y
 }
 
 func (s *SkinMap) DeallocImage(x, y, w, h int) {

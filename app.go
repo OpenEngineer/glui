@@ -10,9 +10,7 @@ import (
 
 const (
   START_DELAY             = 10 // ms
-  EVENT_LOOP_INTERVAL     = 13 // ms
-  ANIMATION_LOOP_INTERVAL = 16 // ms
-  RENDER_LOOP_INTERVAL    = 16 // ms
+  ANIMATION_LOOP_INTERVAL = 2*16 // ms
 )
 
 // app is stored in global variable because this makes it easier to access to active frame when creating new elements
@@ -190,7 +188,7 @@ func (app *App) run() error {
   }
 
   // give opengl some time to initialize
-  sdl.Delay(START_DELAY)
+  delay(START_DELAY)
 
   app.ActiveFrame().show()
 
@@ -202,7 +200,7 @@ func (app *App) run() error {
   }(m)
 
   // make sure the mutex is locked/unlocked by initMainEventLoop()
-  sdl.Delay(START_DELAY)
+  delay(START_DELAY)
 
   // once we are able to unlock the mutex here, we can start emitting events
   m.Lock()

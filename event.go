@@ -11,6 +11,7 @@ type Event struct {
   Y int // mouse Y pos (top edge of window is 0)
 
   // mouse movement since last event, 0 if irrelevant
+  // for wheel event this is the amount of scroll
   XRel int 
   YRel int
 
@@ -53,6 +54,14 @@ func NewMouseEvent(x, y int) *Event {
 
 func NewMouseMoveEvent(x, y int, dx, dy int) *Event {
   e := NewMouseEvent(x, y)
+  e.XRel = dx
+  e.YRel = dy
+
+  return e
+}
+
+func NewMouseWheelEvent(dx, dy int) *Event {
+  e := NewMouseEvent(-1, -1)
   e.XRel = dx
   e.YRel = dy
 

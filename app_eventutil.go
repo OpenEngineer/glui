@@ -3,9 +3,15 @@ package glui
 import (
   "fmt"
   "reflect"
+  "time"
 
   "github.com/veandco/go-sdl2/sdl"
 )
+
+func delay(d int) {
+  time.Sleep(time.Duration(d)*time.Millisecond)
+  //sdl.Delay(uint32(d))
+}
 
 func TriggerEvent(e Element, name string, evt *Event) {
   for elementNotNil(e) {
@@ -73,10 +79,7 @@ func (app *App) updateMouseElement(x, y int, dx, dy int) {
   frame := app.ActiveFrame()
 
   if x < 0 {
-    x_, y_, _ := sdl.GetMouseState()
-
-    x = int(x_)
-    y = int(y_)
+    x, y = currentMousePos()
   }
 
   newMouseElement, isSameOrChildOfOld := frame.findMouseElement(frame.state.mouseElement, x, y)
@@ -110,6 +113,13 @@ func (app *App) updateMouseElement(x, y int, dx, dy int) {
       fmt.Println("mouseElement is nil")
     } else {
       fmt.Println("mouseElement is ", reflect.TypeOf(frame.state.mouseElement).String())
+
+      if oflow, ok := frame.state.mouseElement.(*Overflow); ok {
+        fmt.Println(oflow.Rect())
+        for _, child := range oflow.children {
+          fmt.Println(reflect.TypeOf(child).String(), child.Rect())
+        }
+      }
     }
 
     if ca != newMouseElement {

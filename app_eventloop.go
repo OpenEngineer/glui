@@ -30,7 +30,7 @@ func (app *App) forwardSystemAndUserEvents() error {
     case *sdl.QuitEvent:
       app.eventCh <- event_
       running = false
-      sdl.Delay(START_DELAY) // give the draw loop some time to exit cleanly
+      delay(START_DELAY) // give the draw loop some time to exit cleanly
     default:
       app.eventCh <- event_
     }
@@ -109,7 +109,7 @@ func (app *App) emitAnimationEvents() {
 
     tick++
 
-    sdl.Delay(ANIMATION_LOOP_INTERVAL)
+    delay(ANIMATION_LOOP_INTERVAL)
   }
 }
 
@@ -151,6 +151,8 @@ func (app *App) initMainEventLoop(m *sync.Mutex) {
           frame.state.blockNextMouseButtonEvent = true
         }
       }
+    case *sdl.MouseWheelEvent:
+      app.onMouseWheel(event)
     case *sdl.TextInputEvent:
       app.onTextInput(event)
     case *sdl.KeyboardEvent:
@@ -219,6 +221,16 @@ func (app *App) onMouseMove(event *sdl.MouseMotionEvent) {
 
   if !frame.state.outside {
     app.updateMouseElement(int(event.X), int(event.Y), int(event.XRel), int(event.YRel))
+  }
+}
+
+func (app *App) onMouseWheel(event *sdl.MouseWheelEvent) {
+  frame := app.ActiveFrame()
+
+  if !frame.state.outside && elementNotNil(frame.state.mouseElement) {
+    // TODO: smart scaling depending on the platform
+    // TODO: smart direction depending on the platform
+    TriggerEvent(frame.state.mouseElement, "wheel", NewMouseWheelEvent(-int(event.X)*5, -int(event.Y)*5))
   }
 }
 
